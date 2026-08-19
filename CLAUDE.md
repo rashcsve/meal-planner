@@ -203,5 +203,5 @@ Tabular numerals wherever numbers stack in a column.
 - One primary button per view; ghost for everything else.
 - Never remove focus-visible — keyboard nav is a feature of this app.
 - No hex values outside index.css. Ever.
-- No dark mode, no Storybook, no animation beyond skeleton shimmer.
+- No dark mode, no animation beyond skeleton shimmer.
 - Add a primitive when a screen needs it, never speculatively.
