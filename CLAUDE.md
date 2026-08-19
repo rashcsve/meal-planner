@@ -121,19 +121,26 @@ explicitly ask.
 
 ## Structure
 
+npm workspaces: `api`, `web`, `shared`. `shared` holds Zod schemas used by
+both `api` and `web`, so request/response shapes are defined once.
+
 ```
 meal-planner/
-  src/
-    index.ts
-    config/
-    db/
-    routes/
-    services/
-    repositories/
-    lib/
-  drizzle/          generated migrations
-  tests/
-  docker-compose.yml
-  drizzle.config.ts
+  api/
+    src/
+      index.ts
+      config/
+      db/
+      routes/
+      services/
+      repositories/
+      lib/
+    drizzle/          generated migrations
+    tests/
+    docker-compose.yml
+    drizzle.config.ts
+  web/                frontend (React + Vite)
+  shared/             Zod schemas shared between api and web
+  package.json        workspace root, delegates scripts to api
   CLAUDE.md
 ```

@@ -12,13 +12,13 @@ Node 22+, TypeScript (ESM), Hono, PostgreSQL 17, Drizzle ORM, Zod.
 1. Start Postgres:
 
    ```bash
-   docker compose up -d
+   docker compose -f api/docker-compose.yml up -d
    ```
 
 2. Copy the environment file and adjust if needed:
 
    ```bash
-   cp .env.example .env
+   cp api/.env.example api/.env
    ```
 
 3. Apply migrations:
@@ -43,14 +43,17 @@ Node 22+, TypeScript (ESM), Hono, PostgreSQL 17, Drizzle ORM, Zod.
 ## Structure
 
 ```
-src/
-  index.ts        entrypoint, mounts routes
-  config/         validated environment variables
-  db/             schema, connection
-  routes/         HTTP only: parse, validate, call service, format response
-  services/       business logic, no HTTP or SQL
-  repositories/   all database access
-drizzle/          generated migrations
+api/              backend (Hono + Drizzle)
+  src/
+    index.ts        entrypoint, mounts routes
+    config/         validated environment variables
+    db/             schema, connection
+    routes/         HTTP only: parse, validate, call service, format response
+    services/       business logic, no HTTP or SQL
+    repositories/   all database access
+  drizzle/          generated migrations
+web/              frontend (React + Vite)
+shared/           Zod schemas shared between api and web
 ```
 
 ## Tests

@@ -2,12 +2,8 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { createRecipeSchema } from "shared";
 import { createRecipe, listRecipes } from "../services/recipes.js";
-
-const createRecipeSchema = z.object({
-  title: z.string().min(1),
-  minutes: z.number().int().positive(),
-});
 
 export const recipesRoute = new Hono();
 

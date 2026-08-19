@@ -39,6 +39,5 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  },
-  "exclude": ["web", "node_modules"]
+  }
 }
