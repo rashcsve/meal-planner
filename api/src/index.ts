@@ -12,10 +12,12 @@ app.use(requestLogger);
 app.use(cors({ origin: config.CORS_ORIGIN }));
 app.onError(errorHandler);
 
-app.get("/health", (c) => {
-  return c.json({ status: "ok" });
-});
+const routes = app
+  .get("/health", (c) => {
+    return c.json({ status: "ok" });
+  })
+  .route("/api/recipes", recipesRoute);
 
-app.route("/api/recipes", recipesRoute);
+export type AppType = typeof routes;
 
 serve({ fetch: app.fetch, port: 3000 });
