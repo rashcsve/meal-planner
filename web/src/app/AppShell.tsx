@@ -1,7 +1,10 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
+import { useNavShortcuts } from "./useNavShortcuts";
 
 export function AppShell() {
+  useNavShortcuts();
+
   return (
     <div className="grid h-screen grid-cols-[194px_1fr]">
       <Sidebar />

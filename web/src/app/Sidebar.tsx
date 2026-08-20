@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Kbd } from "../shared/ui/Kbd";
 
-type NavItem = { to: string; label: string; key: string };
+export type NavItem = { to: string; label: string; key: string };
 
 const PLAN: NavItem[] = [
   { to: "/week", label: "Week", key: "1" },
@@ -13,6 +13,8 @@ const DATA: NavItem[] = [
   { to: "/household", label: "Household", key: "5" },
 ];
 const INPUT: NavItem[] = [{ to: "/import", label: "Import", key: "6" }];
+
+export const NAV_ITEMS: NavItem[] = [...PLAN, ...DATA, ...INPUT];
 
 function NavSection({ title, items }: { title: string; items: NavItem[] }) {
   return (
