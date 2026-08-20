@@ -70,3 +70,20 @@ body {
   font-stretch: 94%;
   font-weight: 600;
 }
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@utility skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-hair) 0%,
+    var(--color-paper) 50%,
+    var(--color-hair) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
