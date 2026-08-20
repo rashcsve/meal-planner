@@ -15,11 +15,11 @@ describe('POST /api/recipes then GET /api/recipes', () => {
     const postRes = await app.request('/api/recipes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: 'Pancakes', minutes: 20 }),
+      body: JSON.stringify({ title: 'Pancakes', time: 20 }),
     })
     expect(postRes.status).toBe(201)
     const created = await postRes.json()
-    expect(created).toMatchObject({ title: 'Pancakes', minutes: 20 })
+    expect(created).toMatchObject({ title: 'Pancakes', time: 20 })
 
     const getRes = await app.request('/api/recipes')
     expect(getRes.status).toBe(200)
