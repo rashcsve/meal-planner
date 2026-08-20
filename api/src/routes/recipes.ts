@@ -3,13 +3,33 @@ import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { createRecipeSchema } from "shared";
-import { createRecipe, listRecipes } from "../services/recipes.js";
+import { idParamSchema } from "../lib/params.js";
+import { createRecipe, getRecipe, listRecipes } from "../services/recipes.js";
 
 export const recipesRoute = new Hono()
   .get("/", async (c) => {
     const recipes = await listRecipes();
     return c.json(recipes);
   })
+  .get(
+    "/:id",
+    zValidator("param", idParamSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(400, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const recipe = await getRecipe(id);
+      if (!recipe) {
+        throw new HTTPException(404, { message: "Recipe not found" });
+      }
+      return c.json(recipe);
+    },
+  )
   .post(
     "/",
     zValidator("json", createRecipeSchema, (result) => {

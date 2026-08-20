@@ -1,5 +1,5 @@
 import type { CreateRecipeInput } from 'shared'
-import { findAllRecipes, insertRecipe } from '../repositories/recipes.js'
+import { findAllRecipes, findRecipeById, insertRecipe } from '../repositories/recipes.js'
 
 interface NutritionSource {
   kcalPer100g: number | null
@@ -26,6 +26,11 @@ function withKcalFigures<T extends NutritionSource>(recipe: T) {
 export async function listRecipes() {
   const recipes = await findAllRecipes()
   return recipes.map(withKcalFigures)
+}
+
+export async function getRecipe(id: number) {
+  const recipe = await findRecipeById(id)
+  return recipe ? withKcalFigures(recipe) : null
 }
 
 export async function createRecipe(data: CreateRecipeInput) {
