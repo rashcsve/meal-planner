@@ -36,6 +36,11 @@
   --text-34: 34px;
 
   --radius: 2px;
+  --radius-capsule: 3px;
+
+  --tracking-flag: 0.06em;
+
+  --outline-width-thin: 1.5px;
 }
 
 html {

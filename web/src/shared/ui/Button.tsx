@@ -24,8 +24,8 @@ export function Button({
       type={type}
       className={[
         "inline-flex cursor-pointer items-center justify-center gap-1 rounded border px-2.5 py-1.25 text-11 font-medium font-stretch-88%",
-        "focus-visible:outline-[1.5px] focus-visible:outline-lock focus-visible:-outline-offset-1",
-        "disabled:cursor-default disabled:opacity-[.35]",
+        "focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
+        "disabled:cursor-default disabled:opacity-35",
         variantClasses[variant],
         className,
       ]
