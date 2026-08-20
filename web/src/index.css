@@ -3,6 +3,8 @@
 @theme {
   --font-sans: "Archivo", sans-serif;
 
+  --spacing: 4px;
+
   --color-paper: #efeee9;
   --color-card: #ffffff;
   --color-sink: #e7e5df;
@@ -45,6 +47,13 @@
 
 html {
   font-size: 12px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
