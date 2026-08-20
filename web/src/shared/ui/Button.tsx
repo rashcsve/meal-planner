@@ -23,7 +23,7 @@ export function Button({
     <button
       type={type}
       className={[
-        "inline-flex cursor-pointer items-center justify-center gap-1 rounded border px-2.5 py-1.25 text-11 font-medium font-stretch-88%",
+        "inline-flex cursor-pointer items-center justify-center gap-1 rounded border px-2.5 py-1.25 text-11 font-bold font-stretch-88%",
         "focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
         "disabled:cursor-default disabled:opacity-35",
         variantClasses[variant],

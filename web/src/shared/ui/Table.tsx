@@ -59,11 +59,11 @@ export function Table<T>({
   const showCheckbox = Boolean(selectedIds && onToggleSelect);
 
   return (
-    <table className="w-full border-collapse text-12">
+    <table className="w-full rounded border-collapse border border-line bg-card text-12">
       <thead className="sticky top-0 z-10 bg-rail">
         <tr>
           {showCheckbox && (
-            <th className="border-b border-line px-3 py-2" style={{ width: "26px" }} />
+            <th className="border-b border-line px-2.25 py-1.75" style={{ width: "26px" }} />
           )}
           {columns.map((col) => (
             <th
@@ -71,7 +71,7 @@ export function Table<T>({
               onClick={col.sortable ? () => onSort?.(col.key) : undefined}
               style={{ width: col.width }}
               className={[
-                "type-label border-b border-line px-3 py-2 text-9 text-faint",
+                "border-b border-line px-2.25 py-1.75 text-9 font-bold font-stretch-88% tracking-[0.07em] text-faint uppercase",
                 col.align === "right" ? "text-right" : "text-left",
                 col.sortable ? "cursor-pointer select-none hover:text-ink" : "",
               ]
@@ -88,18 +88,22 @@ export function Table<T>({
           ))}
         </tr>
       </thead>
-      <tbody>
+      <tbody className="[&>tr:last-child>td]:border-b-0">
         {rows.map((row) => {
           if (isGroupRow(row)) {
             return (
-              <tr key={`group-${row.label}`} className="bg-sink">
+              <tr key={`group-${row.label}`} className="bg-rail">
                 <td
                   colSpan={columns.length + (showCheckbox ? 1 : 0)}
-                  className="px-3 py-2"
+                  className="px-2.25 py-1.25"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="type-label text-9 text-muted">{row.label}</span>
-                    <span className="type-num text-right">{row.subtotal}</span>
+                    <span className="text-10 font-black font-stretch-76% tracking-wider text-ink uppercase">
+                      {row.label}
+                    </span>
+                    <span className="text-right text-12 font-extrabold font-stretch-80% [font-feature-settings:'tnum']">
+                      {row.subtotal}
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -110,11 +114,11 @@ export function Table<T>({
           const state = getRowState?.(row) ?? "none";
           const checked = selectedIds?.has(id) ?? false;
           return (
-            <tr key={id} className="hover:bg-sink">
+            <tr key={id} className="hover:bg-rail">
               {showCheckbox && (
                 <td
                   className={[
-                    "border-b border-hair px-3 py-2",
+                    "border-b border-hair px-2.25 py-1.5",
                     rowStateShadow[state],
                   ].join(" ")}
                 >
@@ -127,7 +131,7 @@ export function Table<T>({
                     />
                     <span
                       className={[
-                        "grid h-[16px] w-[16px] place-items-center rounded border-[1.5px] border-ink text-10 text-transparent",
+                        "grid h-4 w-4 place-items-center rounded border-[1.5px] border-ink text-10 text-transparent",
                         "peer-checked:bg-ink peer-checked:text-paper",
                         "peer-focus-visible:outline-[1.5px] peer-focus-visible:outline-lock peer-focus-visible:-outline-offset-1",
                       ].join(" ")}
@@ -141,15 +145,26 @@ export function Table<T>({
                 <td
                   key={col.key}
                   className={[
-                    "border-b border-hair px-3 py-2",
-                    col.align === "right" ? "type-num text-right" : "text-left",
+                    "border-b border-hair px-2.25 py-1.5",
+                    col.align === "right"
+                      ? "text-right font-bold font-stretch-84% [font-feature-settings:'tnum']"
+                      : "text-left",
                     !showCheckbox && i === 0 ? rowStateShadow[state] : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
                 >
-                  {col.primary && checked ? (
-                    <span className="text-faint line-through">{col.render(row)}</span>
+                  {col.primary ? (
+                    <span
+                      className={[
+                        "type-name",
+                        checked ? "text-faint line-through" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      {col.render(row)}
+                    </span>
                   ) : (
                     col.render(row)
                   )}
