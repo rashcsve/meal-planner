@@ -1,96 +1,226 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import { useMemo, useState } from "react";
+import {
+  Table,
+  type ColumnDef,
+  type SortDirection,
+} from "../../shared/ui/Table";
+import { Skeleton } from "../../shared/ui/Skeleton";
+import { ErrorState } from "../../shared/ui/ErrorState";
+import { Pill } from "../../shared/ui/Pill";
+import { SearchInput } from "../../shared/ui/SearchInput";
+import { Filters } from "../../shared/ui/Filters";
+import { compareValues } from "../../shared/lib/compareValues";
+import { normalizeForSearch } from "../../shared/lib/normalizeText";
+import { formatTime } from "../../shared/lib/formatTime";
+import { useRecipes, type Recipe } from "./useRecipes";
 
-type Recipe = {
-  id: number;
-  title: string;
-  minutes: number;
-};
+type FilterValue =
+  | "all"
+  | "lunchdinner"
+  | "breakfast"
+  | "fish"
+  | "chicken"
+  | "czech"
+  | "italian"
+  | "russian"
+  | "fast";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "lunchdinner", label: "Lunch/Dinner" },
+  { value: "breakfast", label: "Breakfast" },
+  { value: "fish", label: "Fish" },
+  { value: "chicken", label: "Chicken" },
+  { value: "czech", label: "Czech" },
+  { value: "italian", label: "Italian" },
+  { value: "russian", label: "Russian" },
+  { value: "fast", label: "<30 min" },
+];
 
-async function getErrorMessage(res: Response): Promise<string> {
-  try {
-    const body = await res.json();
-    return body?.error?.message ?? res.statusText;
-  } catch {
-    return res.statusText;
+function matchesFilter(recipe: Recipe, filter: FilterValue): boolean {
+  switch (filter) {
+    case "all":
+      return true;
+    case "lunchdinner":
+      return recipe.meal === "lunch" || recipe.meal === "dinner";
+    case "breakfast":
+      return recipe.meal === "breakfast";
+    case "fish":
+      return recipe.protein === "fish";
+    case "chicken":
+      return recipe.protein === "chicken";
+    case "czech":
+      return recipe.cuisine === "czech";
+    case "italian":
+      return recipe.cuisine === "italian";
+    case "russian":
+      return recipe.cuisine === "russian";
+    case "fast":
+      return recipe.time < 30;
   }
 }
 
-export function RecipesPage() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function matchesFilters(recipe: Recipe, filters: FilterValue[]): boolean {
+  if (filters.length === 0 || filters.includes("all")) return true;
+  return filters.every((f) => matchesFilter(recipe, f));
+}
 
-  async function loadRecipes() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_URL}/api/recipes`);
-      if (!res.ok) throw new Error(await getErrorMessage(res));
-      setRecipes(await res.json());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load recipes");
-    } finally {
-      setLoading(false);
+function matchesSearch(recipe: Recipe, query: string): boolean {
+  if (!query) return true;
+  const haystack = [
+    recipe.title,
+    recipe.meal,
+    recipe.cuisine,
+    recipe.protein,
+    recipe.diet,
+    recipe.source,
+  ]
+    .filter((v): v is string => Boolean(v))
+    .map(normalizeForSearch)
+    .join(" ");
+  return haystack.includes(query);
+}
+
+const columns: ColumnDef<Recipe>[] = [
+  {
+    key: "title",
+    header: "Recipe",
+    sortable: true,
+    primary: true,
+    render: (r) => r.title,
+  },
+  {
+    key: "meal",
+    header: "Meal",
+    width: "70px",
+    sortable: true,
+    render: (r) => r.meal ?? "—",
+  },
+  {
+    key: "tags",
+    header: "Tags",
+    width: "180px",
+    render: (r) => (
+      <div className="flex flex-wrap gap-1">
+        {[r.cuisine, r.protein, r.diet]
+          .filter((tag): tag is string => Boolean(tag))
+          .map((tag) => (
+            <Pill key={tag}>{tag}</Pill>
+          ))}
+      </div>
+    ),
+  },
+  {
+    key: "time",
+    header: "Time",
+    align: "right",
+    width: "70px",
+    sortable: true,
+    render: (r) => formatTime(r.time),
+  },
+  {
+    key: "kcal",
+    header: "Kcal",
+    align: "right",
+    width: "70px",
+    sortable: true,
+    render: (r) => r.kcal ?? "—",
+  },
+  {
+    key: "cost",
+    header: "Cost",
+    align: "right",
+    width: "70px",
+    sortable: true,
+    render: (r) => (r.cost != null ? `${r.cost},-` : "—"),
+  },
+  {
+    key: "source",
+    header: "Source",
+    width: "120px",
+    sortable: true,
+    render: (r) => r.source ?? "—",
+  },
+];
+
+export function RecipesPage() {
+  const { data, isLoading, error } = useRecipes();
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<FilterValue[]>(["all"]);
+  const [sortKey, setSortKey] = useState("title");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  function handleFilterChange(next: FilterValue[]) {
+    const justAddedAll = next.includes("all") && !filters.includes("all");
+    if (justAddedAll || next.length === 0) {
+      setFilters(["all"]);
+      return;
     }
+    setFilters(next.filter((f) => f !== "all"));
   }
 
-  useEffect(() => {
-    loadRecipes();
-  }, []);
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    const query = normalizeForSearch(search.trim());
+    return data.filter(
+      (r) => matchesFilters(r, filters) && matchesSearch(r, query),
+    );
+  }, [data, search, filters]);
 
-  async function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const data = new FormData(form);
-    const title = String(data.get("title"));
-    const minutes = Number(data.get("minutes"));
+  const sorted = useMemo(() => {
+    const rows = [...filtered];
+    rows.sort((a, b) => {
+      const cmp = compareValues(
+        a[sortKey as keyof Recipe],
+        b[sortKey as keyof Recipe],
+      );
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+    return rows;
+  }, [filtered, sortKey, sortDirection]);
 
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_URL}/api/recipes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, minutes }),
-      });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
-      form.reset();
-      await loadRecipes();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create recipe");
-      setLoading(false);
-    }
+  function handleSortChange(key: string, direction: SortDirection) {
+    setSortKey(key);
+    setSortDirection(direction);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-8" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return <ErrorState title="Couldn't load recipes" message={error.message} />;
   }
 
   return (
-    <div style={{ maxWidth: 480, fontFamily: "sans-serif" }}>
-      <h1>Recipes</h1>
-      <form onSubmit={handleSubmit} style={{ marginBottom: "1.5rem" }}>
-        <input name="title" placeholder="Title" required />
-        <input
-          name="minutes"
-          type="number"
-          placeholder="Minutes"
-          min={1}
-          required
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <SearchInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search…"
         />
-        <button type="submit" disabled={loading}>
-          Add
-        </button>
-      </form>
-      {loading && <p>Loading…</p>}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {!loading && !error && (
-        <ul>
-          {recipes.map((r) => (
-            <li key={r.id}>
-              {r.title} — {r.minutes} min
-            </li>
-          ))}
-        </ul>
-      )}
+        <Filters
+          options={FILTER_OPTIONS}
+          value={filters}
+          onChange={handleFilterChange}
+          multiple
+        />
+      </div>
+      <Table
+        rows={sorted}
+        columns={columns}
+        rowId={(r) => r.id}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onSortChange={handleSortChange}
+      />
     </div>
   );
 }

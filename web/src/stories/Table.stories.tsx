@@ -137,13 +137,9 @@ function FullTableStory() {
     return getValue ? sortRows(rows, getValue, sortDirection) : rows;
   }, [sortKey, sortDirection]);
 
-  function handleSort(key: string) {
-    if (key === sortKey) {
-      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDirection("asc");
-    }
+  function handleSortChange(key: string, direction: "asc" | "desc") {
+    setSortKey(key);
+    setSortDirection(direction);
   }
 
   function toggle(id: string | number) {
@@ -162,7 +158,7 @@ function FullTableStory() {
       getRowState={(r) => r.state}
       sortKey={sortKey}
       sortDirection={sortDirection}
-      onSort={handleSort}
+      onSortChange={handleSortChange}
       selectedIds={selectedIds}
       onToggleSelect={toggle}
     />
