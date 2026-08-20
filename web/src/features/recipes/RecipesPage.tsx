@@ -9,10 +9,12 @@ import { ErrorState } from "../../shared/ui/ErrorState";
 import { Pill } from "../../shared/ui/Pill";
 import { SearchInput } from "../../shared/ui/SearchInput";
 import { Filters } from "../../shared/ui/Filters";
+import { Button } from "../../shared/ui/Button";
 import { compareValues } from "../../shared/lib/compareValues";
 import { normalizeForSearch } from "../../shared/lib/normalizeText";
 import { formatTime } from "../../shared/lib/formatTime";
 import { useRecipes, type Recipe } from "./useRecipes";
+import { RecipeForm } from "./RecipeForm";
 
 type FilterValue =
   | "all"
@@ -46,9 +48,9 @@ function matchesFilter(recipe: Recipe, filter: FilterValue): boolean {
     case "breakfast":
       return recipe.meal === "breakfast";
     case "fish":
-      return recipe.protein === "fish";
+      return recipe.proteinSource === "fish";
     case "chicken":
-      return recipe.protein === "chicken";
+      return recipe.proteinSource === "chicken";
     case "czech":
       return recipe.cuisine === "czech";
     case "italian":
@@ -69,9 +71,10 @@ function matchesSearch(recipe: Recipe, query: string): boolean {
   if (!query) return true;
   const haystack = [
     recipe.title,
+    recipe.description,
     recipe.meal,
     recipe.cuisine,
-    recipe.protein,
+    recipe.proteinSource,
     recipe.diet,
     recipe.source,
   ]
@@ -102,7 +105,7 @@ const columns: ColumnDef<Recipe>[] = [
     width: "180px",
     render: (r) => (
       <div className="flex flex-wrap gap-1">
-        {[r.cuisine, r.protein, r.diet]
+        {[r.cuisine, r.proteinSource, r.diet]
           .filter((tag): tag is string => Boolean(tag))
           .map((tag) => (
             <Pill key={tag}>{tag}</Pill>
@@ -119,12 +122,12 @@ const columns: ColumnDef<Recipe>[] = [
     render: (r) => formatTime(r.time),
   },
   {
-    key: "kcal",
-    header: "Kcal",
+    key: "kcalPerServing",
+    header: "Kcal/serving",
     align: "right",
     width: "70px",
     sortable: true,
-    render: (r) => r.kcal ?? "—",
+    render: (r) => r.kcalPerServing ?? "—",
   },
   {
     key: "cost",
@@ -149,6 +152,7 @@ export function RecipesPage() {
   const [filters, setFilters] = useState<FilterValue[]>(["all"]);
   const [sortKey, setSortKey] = useState("title");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [showForm, setShowForm] = useState(false);
 
   function handleFilterChange(next: FilterValue[]) {
     const justAddedAll = next.includes("all") && !filters.includes("all");
@@ -212,7 +216,21 @@ export function RecipesPage() {
           onChange={handleFilterChange}
           multiple
         />
+        <div className="ml-auto">
+          <Button
+            aria-expanded={showForm}
+            onClick={() => setShowForm((v) => !v)}
+          >
+            {showForm ? "Cancel" : "Add recipe"}
+          </Button>
+        </div>
       </div>
+      {showForm && (
+        <RecipeForm
+          onSaved={() => setShowForm(false)}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
       <Table
         rows={sorted}
         columns={columns}

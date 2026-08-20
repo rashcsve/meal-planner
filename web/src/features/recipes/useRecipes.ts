@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InferResponseType } from "hono/client";
+import type { CreateRecipeInput } from "shared";
 import { apiClient } from "../../app/apiClient";
 import { parseErrorResponse } from "../../shared/api/parseErrorResponse";
 
@@ -21,5 +22,23 @@ export function useRecipes() {
   return useQuery({
     queryKey: recipesKeys.list,
     queryFn: fetchRecipes,
+  });
+}
+
+async function postRecipe(data: CreateRecipeInput): Promise<Recipe> {
+  const res = await apiClient.api.recipes.$post({ json: data });
+  if (!res.ok) {
+    throw new Error(await parseErrorResponse(res));
+  }
+  return res.json();
+}
+
+export function useCreateRecipe() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: postRecipe,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recipesKeys.list });
+    },
   });
 }

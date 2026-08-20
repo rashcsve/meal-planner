@@ -6,7 +6,10 @@ interface ErrorStateProps {
 
 export function ErrorState({ title, message, requestId }: ErrorStateProps) {
   return (
-    <div className="rounded border border-l-2 border-promo bg-promo-tint/35 px-2.75 py-2.25 text-11 leading-normal text-ink">
+    <div
+      role="alert"
+      className="rounded border border-l-2 border-promo bg-promo-tint/35 px-2.75 py-2.25 text-11 leading-normal text-ink"
+    >
       <p className="font-bold">{title}</p>
       <p>{message}</p>
       {requestId && (
