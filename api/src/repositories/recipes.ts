@@ -8,5 +8,5 @@ export async function findAllRecipes() {
 
 export async function insertRecipe(data: CreateRecipeInput) {
   const [recipe] = await db.insert(recipes).values(data).returning()
-  return recipe
+  return recipe!
 }
