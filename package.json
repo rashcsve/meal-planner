@@ -10,9 +10,9 @@
   ],
   "scripts": {
     "dev": "npm run dev -w api",
-    "test": "npm run test -w api",
-    "typecheck": "npm run typecheck -w api",
-    "lint": "npm run lint -w api",
+    "test": "npm run test -w api && npm run test -w web",
+    "typecheck": "npm run typecheck -w api && npm run typecheck -w web",
+    "lint": "npm run lint -w api && npm run lint -w web",
     "migrate": "npm run migrate -w api"
   }
 }
