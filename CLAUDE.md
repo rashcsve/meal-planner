@@ -151,6 +151,17 @@ Lives in `web/`. Vite + React + TypeScript.
 | API client   | Hono `hc` typed RPC, importing AppType from the backend |
 | Forms        | react-hook-form + Zod (schemas imported from backend)   |
 | Styling      | Tailwind v4                                             |
+| Component tests | Storybook + `@storybook/addon-vitest` — every story runs as a real Vitest test in headless Chromium |
+
+Storybook: `npm run storybook -w web` to browse. Every story auto-generates a
+Docs tab (`@storybook/addon-docs` + `tags: ['autodocs']` in `preview.tsx`).
+`npm run test -w web` runs every story as a real Vitest test in headless
+Chromium — render crashes and accessibility violations (`@storybook/addon-a11y`,
+axe-core) both fail the run, not just flag for review (`preview.tsx`'s
+`a11y.test: 'error'`). Root `npm test` / `typecheck` / `lint` cover both `api`
+and `web`, so CI enforces all of this. `@storybook/addon-mcp` exposes the story
+catalog to AI agents over MCP at `/mcp` — call `get-storybook-story-instructions`
+before writing stories, `preview-stories` / `run-story-tests` after.
 
 Rules:
 
