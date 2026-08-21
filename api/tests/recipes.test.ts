@@ -26,9 +26,9 @@ describe('GET /api/recipes', () => {
 
     const res = await app.request('/api/recipes')
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = (await res.json()) as { title: string }[]
     expect(body).toHaveLength(2)
-    expect(body.map((r: { title: string }) => r.title).sort()).toEqual(['Pancakes', 'Waffles'])
+    expect(body.map((r) => r.title).sort()).toEqual(['Pancakes', 'Waffles'])
   })
 })
 
@@ -58,7 +58,7 @@ describe('POST /api/recipes', () => {
       body: JSON.stringify({ title: 'Pancakes', time: 20 }),
     })
     expect(postRes.status).toBe(201)
-    const created = await postRes.json()
+    const created = (await postRes.json()) as { id: number }
 
     const getRes = await app.request(`/api/recipes/${created.id}`)
     expect(getRes.status).toBe(200)
@@ -73,7 +73,7 @@ describe('POST /api/recipes', () => {
       body: JSON.stringify({ time: -5 }),
     })
     expect(res.status).toBe(422)
-    const body = await res.json()
+    const body = (await res.json()) as { error: { message: string; details: unknown } }
     expect(body.error.message).toBe('Validation failed')
     expect(body.error.details).toBeDefined()
   })
@@ -87,7 +87,7 @@ describe('POST /api/recipes', () => {
       body: JSON.stringify({ title: 'Pancakes', time: 15 }),
     })
     expect(res.status).toBe(409)
-    const body = await res.json()
+    const body = (await res.json()) as { error: { message: string } }
     expect(body.error.message).toBe('A recipe titled "Pancakes" already exists')
   })
 })
