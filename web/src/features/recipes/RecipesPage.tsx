@@ -232,6 +232,7 @@ export function RecipesPage() {
             />
             <div className="ml-auto">
               <Button
+                variant={showForm ? "ghost" : "primary"}
                 aria-expanded={showForm}
                 onClick={() => setShowForm((v) => !v)}
               >
