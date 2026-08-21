@@ -35,10 +35,12 @@ Node 22+, TypeScript (ESM), Hono, PostgreSQL 17, Drizzle ORM, Zod.
 
 ## Endpoints
 
-| Method | Path           | Description         |
-| ------ | -------------- | -------------------- |
-| GET    | `/health`      | Liveness check        |
-| GET    | `/api/recipes` | List all recipes      |
+| Method | Path                | Description                      |
+| ------ | ------------------- | --------------------------------- |
+| GET    | `/health`           | Liveness check                    |
+| GET    | `/api/recipes`      | List all recipes                  |
+| GET    | `/api/recipes/:id`  | Get a single recipe                |
+| POST   | `/api/recipes`      | Create a recipe                   |
 
 ## Structure
 
