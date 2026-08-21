@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createRecipeSchema } from "shared";
 import { idParamSchema } from "../lib/params.js";
 import { createRecipe, getRecipe, listRecipes } from "../services/recipes.js";
+import { DuplicateTitleError } from "../lib/errors.js";
 
 export const recipesRoute = new Hono()
   .get("/", async (c) => {
@@ -34,7 +35,7 @@ export const recipesRoute = new Hono()
     "/",
     zValidator("json", createRecipeSchema, (result) => {
       if (!result.success) {
-        throw new HTTPException(400, {
+        throw new HTTPException(422, {
           message: "Validation failed",
           cause: z.treeifyError(result.error),
         });
@@ -42,7 +43,14 @@ export const recipesRoute = new Hono()
     }),
     async (c) => {
       const data = c.req.valid("json");
-      const recipe = await createRecipe(data);
-      return c.json(recipe, 201);
+      try {
+        const recipe = await createRecipe(data);
+        return c.json(recipe, 201);
+      } catch (err) {
+        if (err instanceof DuplicateTitleError) {
+          throw new HTTPException(409, { message: err.message });
+        }
+        throw err;
+      }
     },
   );
