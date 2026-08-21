@@ -34,6 +34,8 @@ export const DIET_TYPES = [
   "keto",
 ] as const;
 
+export const BASE_UNITS = ["g", "ml", "pcs"] as const;
+
 export const createRecipeSchema = z.object({
   title: z
     .string({ error: "Title is required" })
@@ -75,22 +77,6 @@ export const createRecipeSchema = z.object({
     .number({ error: "Servings must be a number" })
     .int("Servings must be a whole number")
     .positive("Servings must be greater than 0")
-    .optional(),
-  kcalPer100g: z
-    .number({ error: "Kcal must be a number" })
-    .positive("Kcal must be greater than 0")
-    .optional(),
-  proteinPer100g: z
-    .number({ error: "Protein must be a number" })
-    .nonnegative("Protein can't be negative")
-    .optional(),
-  carbsPer100g: z
-    .number({ error: "Carbs must be a number" })
-    .nonnegative("Carbs can't be negative")
-    .optional(),
-  fatPer100g: z
-    .number({ error: "Fat must be a number" })
-    .nonnegative("Fat can't be negative")
     .optional(),
 });
 

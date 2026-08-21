@@ -124,14 +124,6 @@ const columns: ColumnDef<Recipe>[] = [
     render: (r) => formatTime(r.time),
   },
   {
-    key: "kcalPerServing",
-    header: "Kcal/serving",
-    align: "right",
-    width: "92px",
-    sortable: true,
-    render: (r) => r.kcalPerServing ?? "—",
-  },
-  {
     key: "cost",
     header: "Cost",
     align: "right",

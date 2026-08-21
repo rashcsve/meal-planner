@@ -28,7 +28,7 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
         (tag): tag is string => Boolean(tag),
       )
     : [];
-  const hasNutrition = recipe?.kcalPer100g != null;
+  const hasPortionInfo = recipe?.weightG != null || recipe?.servings != null;
 
   return (
     <DetailRail label="Recipe" onClose={onClose}>
@@ -62,23 +62,10 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
             </div>
           )}
 
-          {hasNutrition && (
+          {hasPortionInfo && (
             <div className="border-t border-hair pt-2.5">
-              <span className="type-label text-9 text-faint">Nutrition</span>
+              <span className="type-label text-9 text-faint">Portion</span>
               <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-2">
-                <Stat label="Kcal / serving" value={recipe.kcalPerServing} />
-                <Stat label="Kcal / 100g" value={recipe.kcalPer100g} />
-                <Stat
-                  label="Protein / 100g"
-                  value={recipe.proteinPer100g}
-                  unit="g"
-                />
-                <Stat
-                  label="Carbs / 100g"
-                  value={recipe.carbsPer100g}
-                  unit="g"
-                />
-                <Stat label="Fat / 100g" value={recipe.fatPer100g} unit="g" />
                 <Stat label="Weight" value={recipe.weightG} unit="g" />
                 <Stat label="Servings" value={recipe.servings} />
               </div>

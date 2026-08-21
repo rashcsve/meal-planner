@@ -150,7 +150,7 @@ export function RecipeForm({ onSaved, onCancel }: RecipeFormProps) {
 
         <div className="col-span-2 mt-1 border-t border-hair pt-2">
           <span className="type-label text-9 text-faint">
-            Nutrition, per 100g
+            Weight &amp; servings
           </span>
         </div>
 
@@ -171,60 +171,6 @@ export function RecipeForm({ onSaved, onCancel }: RecipeFormProps) {
             id="servings"
             type="number"
             {...register("servings", { setValueAs: emptyToUndefinedNumber })}
-          />
-        </FormField>
-
-        <FormField
-          id="kcalPer100g"
-          label="Kcal"
-          error={errors.kcalPer100g?.message}
-        >
-          <Input
-            id="kcalPer100g"
-            type="number"
-            {...register("kcalPer100g", {
-              setValueAs: emptyToUndefinedNumber,
-            })}
-          />
-        </FormField>
-
-        <FormField
-          id="proteinPer100g"
-          label="Protein (g)"
-          error={errors.proteinPer100g?.message}
-        >
-          <Input
-            id="proteinPer100g"
-            type="number"
-            {...register("proteinPer100g", {
-              setValueAs: emptyToUndefinedNumber,
-            })}
-          />
-        </FormField>
-
-        <FormField
-          id="carbsPer100g"
-          label="Carbs (g)"
-          error={errors.carbsPer100g?.message}
-        >
-          <Input
-            id="carbsPer100g"
-            type="number"
-            {...register("carbsPer100g", {
-              setValueAs: emptyToUndefinedNumber,
-            })}
-          />
-        </FormField>
-
-        <FormField
-          id="fatPer100g"
-          label="Fat (g)"
-          error={errors.fatPer100g?.message}
-        >
-          <Input
-            id="fatPer100g"
-            type="number"
-            {...register("fatPer100g", { setValueAs: emptyToUndefinedNumber })}
           />
         </FormField>
       </div>
