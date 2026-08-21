@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes } from "react";
 import { Input } from "./Input";
+import { cx } from "../lib/cx";
 
 type SearchInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
 
@@ -17,7 +18,7 @@ export function SearchInput({ className, ...props }: SearchInputProps) {
       <Input
         type="search"
         aria-label="Search"
-        className={["ps-6!", className].filter(Boolean).join(" ")}
+        className={cx("ps-6!", className)}
         {...props}
       />
     </div>

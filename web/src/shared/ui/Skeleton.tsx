@@ -1,12 +1,9 @@
+import { cx } from "../lib/cx";
+
 interface SkeletonProps {
   className?: string;
 }
 
 export function Skeleton({ className }: SkeletonProps) {
-  return (
-    <div
-      aria-hidden="true"
-      className={["skeleton rounded", className].filter(Boolean).join(" ")}
-    />
-  );
+  return <div aria-hidden="true" className={cx("skeleton rounded", className)} />;
 }
