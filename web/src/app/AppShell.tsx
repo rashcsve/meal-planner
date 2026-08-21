@@ -10,7 +10,7 @@ export function AppShell() {
       <Sidebar />
       <div className="grid grid-rows-[42px_1fr] overflow-hidden">
         <div className="border-b border-line" />
-        <main className="overflow-auto p-3.5">
+        <main className="overflow-hidden">
           <Outlet />
         </main>
       </div>

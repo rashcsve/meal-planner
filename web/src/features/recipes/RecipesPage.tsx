@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Table,
   type ColumnDef,
@@ -15,6 +16,7 @@ import { normalizeForSearch } from "../../shared/lib/normalizeText";
 import { formatTime } from "../../shared/lib/formatTime";
 import { useRecipes, type Recipe } from "./useRecipes";
 import { RecipeForm } from "./RecipeForm";
+import { RecipeDetail } from "./RecipeDetail";
 
 type FilterValue =
   | "all"
@@ -125,7 +127,7 @@ const columns: ColumnDef<Recipe>[] = [
     key: "kcalPerServing",
     header: "Kcal/serving",
     align: "right",
-    width: "70px",
+    width: "92px",
     sortable: true,
     render: (r) => r.kcalPerServing ?? "—",
   },
@@ -147,6 +149,10 @@ const columns: ColumnDef<Recipe>[] = [
 ];
 
 export function RecipesPage() {
+  const { id } = useParams<{ id: string }>();
+  const recipeId = id ? Number(id) : undefined;
+  const navigate = useNavigate();
+
   const { data, isLoading, error } = useRecipes();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterValue[]>(["all"]);
@@ -190,55 +196,73 @@ export function RecipesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-1.5">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-8" />
-        ))}
+      <div className="h-full overflow-auto p-3.5">
+        <div className="flex flex-col gap-1.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-8" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
-    return <ErrorState title="Couldn't load recipes" message={error.message} />;
+    return (
+      <div className="h-full overflow-auto p-3.5">
+        <ErrorState title="Couldn't load recipes" message={error.message} />
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <SearchInput
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search…"
-        />
-        <Filters
-          options={FILTER_OPTIONS}
-          value={filters}
-          onChange={handleFilterChange}
-          multiple
-        />
-        <div className="ml-auto">
-          <Button
-            aria-expanded={showForm}
-            onClick={() => setShowForm((v) => !v)}
-          >
-            {showForm ? "Cancel" : "Add recipe"}
-          </Button>
+    <div className="flex h-full">
+      <div className="flex-1 overflow-auto p-3.5">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <SearchInput
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search…"
+            />
+            <Filters
+              options={FILTER_OPTIONS}
+              value={filters}
+              onChange={handleFilterChange}
+              multiple
+            />
+            <div className="ml-auto">
+              <Button
+                aria-expanded={showForm}
+                onClick={() => setShowForm((v) => !v)}
+              >
+                {showForm ? "Cancel" : "Add recipe"}
+              </Button>
+            </div>
+          </div>
+          {showForm && (
+            <RecipeForm
+              onSaved={() => setShowForm(false)}
+              onCancel={() => setShowForm(false)}
+            />
+          )}
+          <div data-detail-rail-ignore>
+            <Table
+              rows={sorted}
+              columns={columns}
+              rowId={(r) => r.id}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSortChange={handleSortChange}
+              onRowClick={(r) =>
+                navigate(r.id === recipeId ? "/recipes" : `/recipes/${r.id}`)
+              }
+            />
+          </div>
         </div>
       </div>
-      {showForm && (
-        <RecipeForm
-          onSaved={() => setShowForm(false)}
-          onCancel={() => setShowForm(false)}
-        />
+      {recipeId != null && (
+        <RecipeDetail id={recipeId} onClose={() => navigate("/recipes")} />
       )}
-      <Table
-        rows={sorted}
-        columns={columns}
-        rowId={(r) => r.id}
-        sortKey={sortKey}
-        sortDirection={sortDirection}
-        onSortChange={handleSortChange}
-      />
     </div>
   );
 }

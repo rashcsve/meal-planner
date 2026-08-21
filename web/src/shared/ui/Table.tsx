@@ -32,9 +32,19 @@ function ariaSortValue(isSorted: boolean, direction: SortDirection | undefined):
   return direction === "asc" ? "ascending" : "descending";
 }
 
-function sortIndicator(isSorted: boolean, direction: SortDirection | undefined): string {
-  if (!isSorted) return "";
-  return direction === "asc" ? " ▲" : " ▼";
+function SortArrow({ visible, direction }: { visible: boolean; direction: SortDirection | undefined }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cx(
+        "ml-1 inline-block",
+        visible ? "opacity-100" : "opacity-0",
+        direction === "desc" && "rotate-180",
+      )}
+    >
+      ▲
+    </span>
+  );
 }
 
 export interface TableProps<T> {
@@ -47,6 +57,7 @@ export interface TableProps<T> {
   onSortChange?: (key: string, direction: SortDirection) => void;
   selectedIds?: Set<string | number>;
   onToggleSelect?: (id: string | number) => void;
+  onRowClick?: (row: T) => void;
 }
 
 const rowStateShadow: Record<RowState, string> = {
@@ -66,6 +77,7 @@ export function Table<T>({
   onSortChange,
   selectedIds,
   onToggleSelect,
+  onRowClick,
 }: TableProps<T>) {
   const showCheckbox = Boolean(selectedIds && onToggleSelect);
 
@@ -75,7 +87,7 @@ export function Table<T>({
   }
 
   return (
-    <table className="w-full rounded border-collapse border border-line bg-card text-12">
+    <table className="w-full table-fixed rounded border-collapse border border-line bg-card text-12">
       <thead className="sticky top-0 z-10 bg-rail">
         <tr>
           {showCheckbox && (
@@ -101,14 +113,16 @@ export function Table<T>({
                 aria-sort={col.sortable ? ariaSortValue(isSorted, sortDirection) : undefined}
                 style={{ width: col.width }}
                 className={cx(
-                  "border-b border-line px-2.25 py-1.75 text-9 font-bold font-stretch-88% tracking-[0.07em] text-faint uppercase",
+                  "whitespace-nowrap border-b border-line px-2.25 py-1.75 text-9 font-bold font-stretch-88% tracking-[0.07em] text-faint uppercase",
                   col.align === "right" ? "text-right" : "text-left",
                   col.sortable &&
                     "cursor-pointer select-none hover:text-ink focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
                 )}
               >
                 {col.header}
-                {sortIndicator(isSorted, sortDirection)}
+                {col.sortable && (
+                  <SortArrow visible={isSorted} direction={sortDirection} />
+                )}
               </th>
             );
           })}
@@ -136,11 +150,31 @@ export function Table<T>({
             );
           }
 
-          const id = rowId(row);
-          const state = getRowState?.(row) ?? "none";
+          const item: T = row;
+          const id = rowId(item);
+          const state = getRowState?.(item) ?? "none";
           const checked = selectedIds?.has(id) ?? false;
+
+          function handleRowKeyDown(e: KeyboardEvent) {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onRowClick?.(item);
+            }
+          }
+
           return (
-            <tr key={id} className="hover:bg-rail">
+            <tr
+              key={id}
+              onClick={onRowClick ? () => onRowClick(item) : undefined}
+              onKeyDown={onRowClick ? handleRowKeyDown : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              role={onRowClick ? "button" : undefined}
+              className={cx(
+                "hover:bg-rail",
+                onRowClick &&
+                  "cursor-pointer focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
+              )}
+            >
               {showCheckbox && (
                 <td className={cx("border-b border-hair px-2.25 py-1.5", rowStateShadow[state])}>
                   <label className="inline-flex cursor-pointer">
@@ -174,7 +208,14 @@ export function Table<T>({
                   )}
                 >
                   {col.primary ? (
-                    <span className={cx("type-name", checked && "text-faint line-through")}>{col.render(row)}</span>
+                    <span
+                      className={cx(
+                        "type-name block truncate",
+                        checked && "text-faint line-through",
+                      )}
+                    >
+                      {col.render(row)}
+                    </span>
                   ) : (
                     col.render(row)
                   )}

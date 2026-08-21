@@ -1,0 +1,97 @@
+import { DetailRail } from "../../shared/layout/DetailRail";
+import { Skeleton } from "../../shared/ui/Skeleton";
+import { ErrorState } from "../../shared/ui/ErrorState";
+import { Pill } from "../../shared/ui/Pill";
+import { Stat } from "../../shared/ui/Stat";
+import { formatTime } from "../../shared/lib/formatTime";
+import { useRecipe, type Recipe } from "./useRecipes";
+
+interface RecipeDetailProps {
+  id: number;
+  onClose: () => void;
+}
+
+function metaLine(recipe: Recipe): string {
+  return [
+    formatTime(recipe.time),
+    recipe.meal,
+    recipe.cost != null ? `${recipe.cost},-` : null,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(" · ");
+}
+
+export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
+  const { data: recipe, isLoading, error } = useRecipe(id);
+  const tags = recipe
+    ? [recipe.cuisine, recipe.proteinSource, recipe.diet].filter(
+        (tag): tag is string => Boolean(tag),
+      )
+    : [];
+  const hasNutrition = recipe?.kcalPer100g != null;
+
+  return (
+    <DetailRail label="Recipe" onClose={onClose}>
+      {isLoading && (
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-5" />
+          <Skeleton className="h-4" />
+        </div>
+      )}
+      {error && (
+        <ErrorState title="Couldn't load recipe" message={error.message} />
+      )}
+      {recipe && (
+        <div className="flex flex-col gap-3">
+          <div>
+            <h3 className="type-name text-15">{recipe.title}</h3>
+            <p className="mt-1 text-11 text-muted">{metaLine(recipe)}</p>
+          </div>
+
+          {recipe.description && (
+            <p className="text-11 leading-normal text-muted">
+              {recipe.description}
+            </p>
+          )}
+
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <Pill key={tag}>{tag}</Pill>
+              ))}
+            </div>
+          )}
+
+          {hasNutrition && (
+            <div className="border-t border-hair pt-2.5">
+              <span className="type-label text-9 text-faint">Nutrition</span>
+              <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-2">
+                <Stat label="Kcal / serving" value={recipe.kcalPerServing} />
+                <Stat label="Kcal / 100g" value={recipe.kcalPer100g} />
+                <Stat
+                  label="Protein / 100g"
+                  value={recipe.proteinPer100g}
+                  unit="g"
+                />
+                <Stat
+                  label="Carbs / 100g"
+                  value={recipe.carbsPer100g}
+                  unit="g"
+                />
+                <Stat label="Fat / 100g" value={recipe.fatPer100g} unit="g" />
+                <Stat label="Weight" value={recipe.weightG} unit="g" />
+                <Stat label="Servings" value={recipe.servings} />
+              </div>
+            </div>
+          )}
+
+          {recipe.source && (
+            <p className="border-t border-hair pt-2 text-10 text-faint">
+              Source: {recipe.source}
+            </p>
+          )}
+        </div>
+      )}
+    </DetailRail>
+  );
+}
