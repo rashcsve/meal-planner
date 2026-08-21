@@ -36,6 +36,13 @@
       "when": 1787253871928,
       "tag": "0004_add_recipe_nutrition_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787298611673,
+      "tag": "0005_add_recipes_title_unique",
+      "breakpoints": true
     }
   ]
 }

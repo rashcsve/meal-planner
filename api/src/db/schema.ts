@@ -2,7 +2,7 @@ import { integer, numeric, pgTable, serial, text, timestamp } from 'drizzle-orm/
 
 export const recipes = pgTable('recipes', {
   id: serial('id').primaryKey(),
-  title: text('title').notNull(),
+  title: text('title').notNull().unique(),
   description: text('description'),
   time: integer('time').notNull(),
   cost: numeric('cost', { mode: 'number' }),
