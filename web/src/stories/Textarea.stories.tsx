@@ -10,24 +10,28 @@ const meta: Meta<typeof Textarea> = {
 export default meta;
 type Story = StoryObj<typeof Textarea>;
 
+function DefaultStory() {
+  const [value, setValue] = useState("");
+  return (
+    <Textarea
+      aria-label="Description"
+      rows={3}
+      placeholder="Add a description…"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      style={{ width: 260 }}
+    />
+  );
+}
+
 export const Default: Story = {
-  render: () => {
-    const [value, setValue] = useState("");
-    return (
-      <Textarea
-        rows={3}
-        placeholder="Add a description…"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        style={{ width: 260 }}
-      />
-    );
-  },
+  render: () => <DefaultStory />,
 };
 
 export const Disabled: Story = {
   render: () => (
     <Textarea
+      aria-label="Description"
       rows={3}
       value="Weeknight curry with rice."
       disabled

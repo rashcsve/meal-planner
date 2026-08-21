@@ -11,19 +11,21 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
+function DefaultStory() {
+  const [value, setValue] = useState<FilterValue>("all");
+  return (
+    <Filters
+      value={value}
+      onChange={setValue}
+      options={[
+        { value: "all", label: "All" },
+        { value: "needsCheck", label: "Needs check" },
+        { value: "linked", label: "Linked" },
+      ]}
+    />
+  );
+}
+
 export const Default: Story = {
-  render: () => {
-    const [value, setValue] = useState<FilterValue>("all");
-    return (
-      <Filters
-        value={value}
-        onChange={setValue}
-        options={[
-          { value: "all", label: "All" },
-          { value: "needsCheck", label: "Needs check" },
-          { value: "linked", label: "Linked" },
-        ]}
-      />
-    );
-  },
+  render: () => <DefaultStory />,
 };

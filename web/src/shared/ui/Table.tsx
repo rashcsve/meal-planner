@@ -91,37 +91,34 @@ export function Table<T>({
       <thead className="sticky top-0 z-10 bg-rail">
         <tr>
           {showCheckbox && (
-            <th className="border-b border-line px-2.25 py-1.75" style={{ width: "26px" }} />
+            <th className="border-b border-line px-2.25 py-1.75" style={{ width: "26px" }}>
+              <span className="sr-only">Select</span>
+            </th>
           )}
           {columns.map((col) => {
             const isSorted = sortKey === col.key;
 
-            function handleKeyDown(e: KeyboardEvent) {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleHeaderClick(col.key);
-              }
-            }
-
             return (
               <th
                 key={col.key}
-                onClick={col.sortable ? () => handleHeaderClick(col.key) : undefined}
-                onKeyDown={col.sortable ? handleKeyDown : undefined}
-                tabIndex={col.sortable ? 0 : undefined}
-                role={col.sortable ? "button" : undefined}
                 aria-sort={col.sortable ? ariaSortValue(isSorted, sortDirection) : undefined}
                 style={{ width: col.width }}
                 className={cx(
                   "whitespace-nowrap border-b border-line px-2.25 py-1.75 text-9 font-bold font-stretch-88% tracking-[0.07em] text-faint uppercase",
                   col.align === "right" ? "text-right" : "text-left",
-                  col.sortable &&
-                    "cursor-pointer select-none hover:text-ink focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
                 )}
               >
-                {col.header}
-                {col.sortable && (
-                  <SortArrow visible={isSorted} direction={sortDirection} />
+                {col.sortable ? (
+                  <button
+                    type="button"
+                    onClick={() => handleHeaderClick(col.key)}
+                    className="cursor-pointer select-none uppercase hover:text-ink focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1"
+                  >
+                    {col.header}
+                    <SortArrow visible={isSorted} direction={sortDirection} />
+                  </button>
+                ) : (
+                  col.header
                 )}
               </th>
             );

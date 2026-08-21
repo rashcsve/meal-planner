@@ -10,34 +10,48 @@ const meta: Meta<typeof Input> = {
 export default meta;
 type Story = StoryObj<typeof Input>;
 
+function TextStory() {
+  const [value, setValue] = useState("");
+  return (
+    <Input
+      aria-label="Search"
+      placeholder="Search…"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      style={{ width: 170 }}
+    />
+  );
+}
+
 export const Text: Story = {
-  render: () => {
-    const [value, setValue] = useState("");
-    return (
-      <Input
-        placeholder="Search…"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        style={{ width: 170 }}
-      />
-    );
-  },
+  render: () => <TextStory />,
 };
 
+function NumericStory() {
+  const [value, setValue] = useState("1400");
+  return (
+    <Input
+      aria-label="Time in minutes"
+      type="number"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      style={{ width: 80 }}
+    />
+  );
+}
+
 export const Numeric: Story = {
-  render: () => {
-    const [value, setValue] = useState("1400");
-    return (
-      <Input
-        type="number"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        style={{ width: 80 }}
-      />
-    );
-  },
+  render: () => <NumericStory />,
 };
 
 export const Disabled: Story = {
-  render: () => <Input value="129" disabled onChange={() => {}} style={{ width: 80 }} />,
+  render: () => (
+    <Input
+      aria-label="Time in minutes"
+      value="129"
+      disabled
+      onChange={() => {}}
+      style={{ width: 80 }}
+    />
+  ),
 };

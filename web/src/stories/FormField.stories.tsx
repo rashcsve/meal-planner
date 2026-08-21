@@ -11,24 +11,26 @@ const meta: Meta<typeof FormField> = {
 export default meta;
 type Story = StoryObj<typeof FormField>;
 
+function DefaultStory() {
+  const [value, setValue] = useState("");
+  return (
+    <div
+      className="grid items-center gap-x-3 gap-y-2"
+      style={{ gridTemplateColumns: "130px 1fr", width: 320 }}
+    >
+      <FormField id="title" label="Title">
+        <Input
+          id="title"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </FormField>
+    </div>
+  );
+}
+
 export const Default: Story = {
-  render: () => {
-    const [value, setValue] = useState("");
-    return (
-      <div
-        className="grid items-center gap-x-3 gap-y-2"
-        style={{ gridTemplateColumns: "130px 1fr", width: 320 }}
-      >
-        <FormField id="title" label="Title">
-          <Input
-            id="title"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        </FormField>
-      </div>
-    );
-  },
+  render: () => <DefaultStory />,
 };
 
 export const WithError: Story = {
