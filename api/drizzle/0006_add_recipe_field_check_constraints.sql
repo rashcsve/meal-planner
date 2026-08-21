@@ -1,0 +1,3 @@
+ALTER TABLE "recipes" ADD CONSTRAINT "recipes_meal_check" CHECK ("recipes"."meal" IN ('lunch', 'dinner', 'breakfast', 'dessert', 'drink', 'snack', 'soup', 'salad'));--> statement-breakpoint
+ALTER TABLE "recipes" ADD CONSTRAINT "recipes_protein_source_check" CHECK ("recipes"."protein_source" IN ('chicken', 'beef', 'pork', 'fish', 'seafood', 'tofu', 'legumes', 'eggs', 'protein powder', 'cottage cheese', 'greek yogurt'));--> statement-breakpoint
+ALTER TABLE "recipes" ADD CONSTRAINT "recipes_diet_check" CHECK ("recipes"."diet" IN ('vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'pescatarian', 'keto'));

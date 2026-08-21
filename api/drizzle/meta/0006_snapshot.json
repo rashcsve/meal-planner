@@ -1,0 +1,163 @@
+{
+  "id": "b983f4a3-9b01-44ad-967e-7f970515eb89",
+  "prevId": "f7c17ebb-3939-4db1-b5f9-e64b07f0df3e",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.recipes": {
+      "name": "recipes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time": {
+          "name": "time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost": {
+          "name": "cost",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meal": {
+          "name": "meal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cuisine": {
+          "name": "cuisine",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "protein_source": {
+          "name": "protein_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "diet": {
+          "name": "diet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weight_g": {
+          "name": "weight_g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "servings": {
+          "name": "servings",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kcal_per_100g": {
+          "name": "kcal_per_100g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "protein_per_100g": {
+          "name": "protein_per_100g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "carbs_per_100g": {
+          "name": "carbs_per_100g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fat_per_100g": {
+          "name": "fat_per_100g",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "recipes_title_unique": {
+          "name": "recipes_title_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "title"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "recipes_meal_check": {
+          "name": "recipes_meal_check",
+          "value": "\"recipes\".\"meal\" IN ('lunch', 'dinner', 'breakfast', 'dessert', 'drink', 'snack', 'soup', 'salad')"
+        },
+        "recipes_protein_source_check": {
+          "name": "recipes_protein_source_check",
+          "value": "\"recipes\".\"protein_source\" IN ('chicken', 'beef', 'pork', 'fish', 'seafood', 'tofu', 'legumes', 'eggs', 'protein powder', 'cottage cheese', 'greek yogurt')"
+        },
+        "recipes_diet_check": {
+          "name": "recipes_diet_check",
+          "value": "\"recipes\".\"diet\" IN ('vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'pescatarian', 'keto')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
