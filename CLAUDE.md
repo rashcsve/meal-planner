@@ -203,6 +203,10 @@ tints promo #FBE7E2 · check #FDF3D6 · ok #E3F0E9 · lock #E7E9EE
 promo and check are opposites: promo is good news needing no action, check is
 "look at this". Never use promo for warnings or check for savings.
 
+Destructive actions (delete, remove) currently borrow promo's red for visual
+weight without claiming its meaning — this is a deliberate exception, not a
+fifth semantic colour.
+
 ### Type scale
 
 9 · 10 · 11 · 12 · 13 · 15 · 18 · 25 · 34. Nothing between.
