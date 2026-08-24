@@ -10,6 +10,8 @@ export const recipesKeys = {
 };
 
 export type Recipe = InferResponseType<typeof apiClient.api.recipes.$get>[number];
+export type RecipeWithIngredients = InferResponseType<(typeof apiClient.api.recipes)[":id"]["$get"]>;
+export type RecipeIngredient = RecipeWithIngredients["ingredients"][number];
 
 async function fetchRecipes(): Promise<Recipe[]> {
   const res = await apiClient.api.recipes.$get();
@@ -26,7 +28,7 @@ export function useRecipes() {
   });
 }
 
-async function fetchRecipe(id: number): Promise<Recipe> {
+async function fetchRecipe(id: number): Promise<RecipeWithIngredients> {
   const res = await apiClient.api.recipes[":id"].$get({ param: { id: String(id) } });
   if (!res.ok) {
     throw new Error(await parseErrorResponse(res));
@@ -42,7 +44,7 @@ export function useRecipe(id: number | undefined) {
   });
 }
 
-async function postRecipe(data: CreateRecipeInput): Promise<Recipe> {
+async function postRecipe(data: CreateRecipeInput): Promise<RecipeWithIngredients> {
   const res = await apiClient.api.recipes.$post({ json: data });
   if (!res.ok) {
     throw new Error(await parseErrorResponse(res));

@@ -60,7 +60,7 @@ export interface TableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
-const rowStateShadow: Record<RowState, string> = {
+export const rowStateShadow: Record<RowState, string> = {
   none: "",
   check: "shadow-[inset_2px_0_0_0_var(--color-check)]",
   promo: "shadow-[inset_2px_0_0_0_var(--color-promo)]",

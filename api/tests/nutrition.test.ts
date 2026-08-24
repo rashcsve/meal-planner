@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeKcal } from '../src/services/nutrition.js'
+import { computeKcalPerServing, summarizeKcal } from '../src/services/nutrition.js'
 
 describe('summarizeKcal', () => {
   it('sums amount_base / 100 * kcal_per_100g across lines', () => {
@@ -37,5 +37,19 @@ describe('summarizeKcal', () => {
 
   it('returns zero total for no lines', () => {
     expect(summarizeKcal([])).toEqual({ kcalTotal: 0 })
+  })
+})
+
+describe('computeKcalPerServing', () => {
+  it('divides the total by servings', () => {
+    expect(computeKcalPerServing(800, 4)).toBe(200)
+  })
+
+  it('returns null when servings is null', () => {
+    expect(computeKcalPerServing(800, null)).toBeNull()
+  })
+
+  it('returns null instead of dividing by zero', () => {
+    expect(computeKcalPerServing(800, 0)).toBeNull()
   })
 })

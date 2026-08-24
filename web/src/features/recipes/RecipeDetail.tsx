@@ -3,15 +3,21 @@ import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
 import { Pill } from "../../shared/ui/Pill";
 import { Stat } from "../../shared/ui/Stat";
+import { rowStateShadow } from "../../shared/ui/Table";
+import { cx } from "../../shared/lib/cx";
 import { formatTime } from "../../shared/lib/formatTime";
-import { useRecipe, type Recipe } from "./useRecipes";
+import {
+  useRecipe,
+  type RecipeIngredient,
+  type RecipeWithIngredients,
+} from "./useRecipes";
 
 interface RecipeDetailProps {
   id: number;
   onClose: () => void;
 }
 
-function metaLine(recipe: Recipe): string {
+function metaLine(recipe: RecipeWithIngredients): string {
   return [
     formatTime(recipe.time),
     recipe.meal,
@@ -19,6 +25,14 @@ function metaLine(recipe: Recipe): string {
   ]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
+}
+
+function ingredientLabel(line: RecipeIngredient): string {
+  const amount =
+    line.displayAmount != null
+      ? [line.displayAmount, line.displayUnit].filter(Boolean).join(" ")
+      : null;
+  return [amount, line.ingredientName].filter(Boolean).join(" ");
 }
 
 export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
@@ -69,6 +83,25 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
                 <Stat label="Weight" value={recipe.weightG} unit="g" />
                 <Stat label="Servings" value={recipe.servings} />
               </div>
+            </div>
+          )}
+
+          {recipe.ingredients.length > 0 && (
+            <div className="border-t border-hair pt-2.5">
+              <span className="type-label text-9 text-faint">Ingredients</span>
+              <ul className="mt-1.5 flex flex-col gap-1">
+                {recipe.ingredients.map((line) => (
+                  <li
+                    key={line.id}
+                    className={cx(
+                      "pl-1.5 text-11",
+                      line.amountBase == null && rowStateShadow.check,
+                    )}
+                  >
+                    {ingredientLabel(line)}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

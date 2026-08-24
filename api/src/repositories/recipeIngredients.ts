@@ -5,6 +5,10 @@ import { ingredients, recipeIngredients } from "../db/schema.js";
 export async function findIngredientLinesForRecipe(recipeId: number) {
   return db
     .select({
+      id: recipeIngredients.id,
+      ingredientName: ingredients.name,
+      displayAmount: recipeIngredients.displayAmount,
+      displayUnit: recipeIngredients.displayUnit,
       amountBase: recipeIngredients.amountBase,
       kcalPer100g: ingredients.kcalPer100g,
     })

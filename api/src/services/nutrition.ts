@@ -1,7 +1,4 @@
-import {
-  findIngredientLinesForAllRecipes,
-  findIngredientLinesForRecipe,
-} from "../repositories/recipeIngredients.js";
+import { findIngredientLinesForAllRecipes } from "../repositories/recipeIngredients.js";
 
 export interface KcalSummary {
   kcalTotal: number;
@@ -29,9 +26,12 @@ export function summarizeKcal(lines: IngredientLine[]): KcalSummary {
   return { kcalTotal };
 }
 
-export async function getKcalSummary(recipeId: number): Promise<KcalSummary> {
-  const lines = await findIngredientLinesForRecipe(recipeId);
-  return summarizeKcal(lines);
+export function computeKcalPerServing(
+  kcalTotal: number,
+  servings: number | null,
+): number | null {
+  if (!servings) return null;
+  return kcalTotal / servings;
 }
 
 export async function getKcalSummariesByRecipe(): Promise<

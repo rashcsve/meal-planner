@@ -12,7 +12,7 @@ afterEach(async () => {
   await db.delete(ingredients)
 })
 
-async function seedRecipe(overrides: Partial<{ title: string; time: number }> = {}) {
+async function seedRecipe(overrides: Partial<{ title: string; time: number; servings: number }> = {}) {
   const [recipe] = await db
     .insert(recipes)
     .values({ title: 'Pancakes', time: 20, ...overrides })
@@ -34,6 +34,8 @@ async function seedRecipeIngredient(overrides: {
   recipeId: number
   ingredientId: number
   amountBase?: number | null
+  displayAmount?: number | null
+  displayUnit?: string | null
   isOptional?: boolean
 }) {
   const [line] = await db
@@ -73,6 +75,16 @@ describe('GET /api/recipes', () => {
     const body = (await res.json()) as { title: string; kcalTotal: number }[]
     expect(body.find((r) => r.title === 'Pancakes')).toMatchObject({ kcalTotal: 330 })
     expect(body.find((r) => r.title === 'Waffles')).toMatchObject({ kcalTotal: 0 })
+  })
+
+  it('divides kcal by servings for kcalPerServing', async () => {
+    const pancakes = await seedRecipe({ title: 'Pancakes', servings: 2 })
+    const chicken = await seedIngredient({ name: 'Chicken breast', kcalPer100g: 165 })
+    await seedRecipeIngredient({ recipeId: pancakes.id, ingredientId: chicken.id, amountBase: 200 })
+
+    const res = await app.request('/api/recipes')
+    const body = (await res.json()) as { title: string; kcalPerServing: number | null }[]
+    expect(body.find((r) => r.title === 'Pancakes')).toMatchObject({ kcalPerServing: 165 })
   })
 })
 
@@ -119,6 +131,36 @@ describe('GET /api/recipes/:id', () => {
     const res = await app.request(`/api/recipes/${recipe.id}`)
     const body = (await res.json()) as { kcalTotal: number }
     expect(body.kcalTotal).toBeCloseTo(14.1)
+  })
+
+  it('includes the ingredient lines with their display amount and unit', async () => {
+    const recipe = await seedRecipe({ title: 'Pancakes' })
+    const oliveOil = await seedIngredient({ name: 'Olive oil', baseUnit: 'g', kcalPer100g: 884 })
+    const line = await seedRecipeIngredient({
+      recipeId: recipe.id,
+      ingredientId: oliveOil.id,
+      amountBase: 27.6,
+      displayAmount: 2,
+      displayUnit: 'lžíce',
+    })
+
+    const res = await app.request(`/api/recipes/${recipe.id}`)
+    const body = (await res.json()) as {
+      ingredients: { ingredientName: string; displayAmount: number; displayUnit: string; amountBase: number }[]
+    }
+    expect(body.ingredients).toEqual([
+      { id: line.id, ingredientName: 'Olive oil', displayAmount: 2, displayUnit: 'lžíce', amountBase: 27.6 },
+    ])
+  })
+
+  it('reports a null amount_base on an ingredient line rather than guessing', async () => {
+    const recipe = await seedRecipe({ title: 'Pancakes' })
+    const saltToTaste = await seedIngredient({ name: 'Salt', kcalPer100g: 0 })
+    await seedRecipeIngredient({ recipeId: recipe.id, ingredientId: saltToTaste.id, amountBase: null })
+
+    const res = await app.request(`/api/recipes/${recipe.id}`)
+    const body = (await res.json()) as { ingredients: { amountBase: number | null }[] }
+    expect(body.ingredients[0]?.amountBase).toBeNull()
   })
 
   it('excludes a line with no amount_base from the total', async () => {
