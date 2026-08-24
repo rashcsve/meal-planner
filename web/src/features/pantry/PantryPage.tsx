@@ -1,6 +1,7 @@
 import { Table, type ColumnDef, type RowState } from "../../shared/ui/Table";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
+import { EmptyState } from "../../shared/ui/EmptyState";
 import { CloseButton } from "../../shared/ui/CloseButton";
 import { daysUntil, expiryRowState, formatExpiry } from "../../shared/lib/expiry";
 import { usePantryItems, useRemovePantryItem, type PantryItem } from "./usePantry";
@@ -77,10 +78,18 @@ export function PantryPage() {
     );
   }
 
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-full overflow-auto p-3.5">
+        <EmptyState message="No items in your pantry yet." action={null} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full overflow-auto p-3.5">
       <Table
-        rows={data ?? []}
+        rows={data}
         columns={columns}
         rowId={(i) => i.id}
         getRowState={rowState}
