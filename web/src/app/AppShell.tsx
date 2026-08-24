@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { Sidebar } from "./Sidebar";
 import { useNavShortcuts } from "./useNavShortcuts";
 
@@ -11,7 +12,9 @@ export function AppShell() {
       <div className="grid grid-rows-[42px_1fr] overflow-hidden">
         <div className="border-b border-line" />
         <main className="overflow-hidden">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>
