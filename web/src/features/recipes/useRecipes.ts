@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InferResponseType } from "hono/client";
 import type { CreateRecipeInput } from "shared";
 import { apiClient } from "../../app/apiClient";
-import { parseErrorResponse } from "../../shared/api/parseErrorResponse";
+import { unwrapResponse } from "../../shared/api/unwrapResponse";
 
 export const recipesKeys = {
   list: ["recipes"] as const,
@@ -15,10 +15,7 @@ export type RecipeIngredient = RecipeWithIngredients["ingredients"][number];
 
 async function fetchRecipes(): Promise<Recipe[]> {
   const res = await apiClient.api.recipes.$get();
-  if (!res.ok) {
-    throw new Error(await parseErrorResponse(res));
-  }
-  return res.json();
+  return unwrapResponse(res);
 }
 
 export function useRecipes() {
@@ -30,10 +27,7 @@ export function useRecipes() {
 
 async function fetchRecipe(id: number): Promise<RecipeWithIngredients> {
   const res = await apiClient.api.recipes[":id"].$get({ param: { id: String(id) } });
-  if (!res.ok) {
-    throw new Error(await parseErrorResponse(res));
-  }
-  return res.json();
+  return unwrapResponse(res);
 }
 
 export function useRecipe(id: number | undefined) {
@@ -46,10 +40,7 @@ export function useRecipe(id: number | undefined) {
 
 async function postRecipe(data: CreateRecipeInput): Promise<RecipeWithIngredients> {
   const res = await apiClient.api.recipes.$post({ json: data });
-  if (!res.ok) {
-    throw new Error(await parseErrorResponse(res));
-  }
-  return res.json();
+  return unwrapResponse(res);
 }
 
 export function useCreateRecipe() {
