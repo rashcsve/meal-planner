@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createPantryItemSchema } from "shared";
 import { idParamSchema } from "../lib/params.js";
 import {
-  addPantryItem,
+  createPantryItem,
   listPantryItems,
   removePantryItem,
 } from "../services/pantry.js";
@@ -29,7 +29,7 @@ export const pantryRoute = new Hono()
     async (c) => {
       const data = c.req.valid("json");
       try {
-        const item = await addPantryItem(data);
+        const item = await createPantryItem(data);
         return c.json(item, 201);
       } catch (err) {
         if (err instanceof IngredientNotFoundError) {

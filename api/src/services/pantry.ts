@@ -9,7 +9,7 @@ export async function listPantryItems() {
   return findAllPantryItems();
 }
 
-export async function addPantryItem(data: CreatePantryItemInput) {
+export async function createPantryItem(data: CreatePantryItemInput) {
   return insertPantryItem(data);
 }
 
