@@ -183,7 +183,7 @@ export function Table<T>({
                     />
                     <span
                       className={cx(
-                        "grid h-4 w-4 place-items-center rounded border-[1.5px] border-ink text-10 text-transparent",
+                        "grid h-4 w-4 place-items-center rounded border-thin border-ink text-10 text-transparent",
                         "peer-checked:bg-ink peer-checked:text-paper",
                         "peer-focus-visible:outline-[1.5px] peer-focus-visible:outline-lock peer-focus-visible:-outline-offset-1",
                       )}

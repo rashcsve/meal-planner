@@ -43,6 +43,7 @@
   --tracking-flag: 0.06em;
 
   --outline-width-thin: 1.5px;
+  --border-width-thin: 1.5px;
 }
 
 html {
