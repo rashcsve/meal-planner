@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { recipesRoute } from "./routes/recipes.js";
+import { pantryRoute } from "./routes/pantry.js";
 import { requestLogger } from "./lib/requestLogger.js";
 import { errorHandler } from "./lib/errorHandler.js";
 import { config } from "./config/index.js";
@@ -16,7 +17,8 @@ const routes = app
   .get("/health", (c) => {
     return c.json({ status: "ok" });
   })
-  .route("/api/recipes", recipesRoute);
+  .route("/api/recipes", recipesRoute)
+  .route("/api/pantry", pantryRoute);
 
 export type AppType = typeof routes;
 

@@ -18,3 +18,10 @@ export class UnsupportedUnitConversionError extends Error {
     this.name = "UnsupportedUnitConversionError";
   }
 }
+
+export class IngredientNotFoundError extends Error {
+  constructor(ingredientId: number) {
+    super(`No ingredient with id ${ingredientId}`);
+    this.name = "IngredientNotFoundError";
+  }
+}

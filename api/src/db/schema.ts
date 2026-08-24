@@ -1,6 +1,7 @@
 import {
   boolean,
   check,
+  date,
   index,
   integer,
   numeric,
@@ -79,6 +80,23 @@ export const recipeIngredients = pgTable(
     index('recipe_ingredients_recipe_id_idx').on(table.recipeId),
     index('recipe_ingredients_ingredient_id_idx').on(table.ingredientId),
   ],
+)
+
+export const pantryItems = pgTable(
+  'pantry_items',
+  {
+    id: serial('id').primaryKey(),
+    ingredientId: integer('ingredient_id')
+      .notNull()
+      .references(() => ingredients.id, { onDelete: 'restrict' }),
+    amountBase: numeric('amount_base', { mode: 'number' }).notNull(),
+    displayAmount: numeric('display_amount', { mode: 'number' }),
+    displayUnit: text('display_unit'),
+    expiresOn: date('expires_on'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [index('pantry_items_ingredient_id_idx').on(table.ingredientId)],
 )
 
 export const unitConversions = pgTable(
