@@ -100,7 +100,7 @@ test.
 Conventional Commits: `type(scope): short description`
 
 Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`
-Scopes: `recipes`, `db`, `api`, `planner`, `config`, `deps`, `ci`
+Scopes: `recipes`, `pantry`, `db`, `api`, `planner`, `config`, `deps`, `ci`
 
 Imperative mood, lowercase, no trailing period, under 72 characters.
 

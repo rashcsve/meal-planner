@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./app/AppShell";
 import { RecipesPage } from "./features/recipes/RecipesPage";
+import { PantryPage } from "./features/pantry/PantryPage";
 import { Button } from "./shared/ui/Button";
 import { EmptyState } from "./shared/ui/EmptyState";
 
@@ -27,7 +28,7 @@ function App() {
         <Route path="/shopping" element={<ComingSoon label="Shopping" />} />
         <Route path="/recipes" element={<RecipesPage />} />
         <Route path="/recipes/:id" element={<RecipesPage />} />
-        <Route path="/pantry" element={<ComingSoon label="Pantry" />} />
+        <Route path="/pantry" element={<PantryPage />} />
         <Route path="/household" element={<ComingSoon label="Household" />} />
         <Route path="/import" element={<ComingSoon label="Import" />} />
         <Route path="*" element={<Navigate to="/recipes" replace />} />
