@@ -7,6 +7,7 @@ import {
 } from "../../shared/ui/Table";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
+import { EmptyState } from "../../shared/ui/EmptyState";
 import { Pill } from "../../shared/ui/Pill";
 import { SearchInput } from "../../shared/ui/SearchInput";
 import { Filters } from "../../shared/ui/Filters";
@@ -247,17 +248,28 @@ export function RecipesPage() {
             />
           )}
           <div data-detail-rail-ignore>
-            <Table
-              rows={sorted}
-              columns={columns}
-              rowId={(r) => r.id}
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSortChange={handleSortChange}
-              onRowClick={(r) =>
-                navigate(r.id === recipeId ? "/recipes" : `/recipes/${r.id}`)
-              }
-            />
+            {sorted.length === 0 ? (
+              <EmptyState
+                message={
+                  data && data.length > 0
+                    ? "No recipes match your search."
+                    : "No recipes yet."
+                }
+                action={null}
+              />
+            ) : (
+              <Table
+                rows={sorted}
+                columns={columns}
+                rowId={(r) => r.id}
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSortChange={handleSortChange}
+                onRowClick={(r) =>
+                  navigate(r.id === recipeId ? "/recipes" : `/recipes/${r.id}`)
+                }
+              />
+            )}
           </div>
         </div>
       </div>
