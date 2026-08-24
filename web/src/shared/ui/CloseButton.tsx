@@ -10,7 +10,7 @@ export function CloseButton({
       type="button"
       aria-label="Close"
       className={cx(
-        "grid h-5 w-5 place-items-center rounded text-faint hover:text-ink",
+        "grid h-5 w-5 cursor-pointer place-items-center rounded text-faint hover:text-ink",
         "focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
         className,
       )}
