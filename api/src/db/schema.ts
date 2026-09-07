@@ -12,7 +12,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
-import { MEAL_TYPES, PROTEIN_SOURCES, DIET_TYPES, BASE_UNITS } from 'shared'
+import { MEAL_TYPES, PROTEIN_SOURCES, DIET_TYPES, BASE_UNITS, INGREDIENT_PREFERENCE_RULES } from 'shared'
 
 function sqlInList(values: readonly string[]) {
   return sql.raw(values.map((v) => `'${v.replace(/'/g, "''")}'`).join(', '))
@@ -97,6 +97,56 @@ export const pantryItems = pgTable(
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
   (table) => [index('pantry_items_ingredient_id_idx').on(table.ingredientId)],
+)
+
+export const householdMembers = pgTable('household_members', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  dailyCalorieTarget: numeric('daily_calorie_target', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const ingredientPreferences = pgTable(
+  'ingredient_preferences',
+  {
+    id: serial('id').primaryKey(),
+    ingredientId: integer('ingredient_id')
+      .notNull()
+      .references(() => ingredients.id, { onDelete: 'cascade' }),
+    rule: text('rule').notNull(),
+    memberId: integer('member_id').references(() => householdMembers.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    check('ingredient_preferences_rule_check', sql`${table.rule} IN (${sqlInList(INGREDIENT_PREFERENCE_RULES)})`),
+    uniqueIndex('ingredient_preferences_ingredient_member_idx').on(table.ingredientId, table.memberId),
+    uniqueIndex('ingredient_preferences_household_idx')
+      .on(table.ingredientId)
+      .where(sql`${table.memberId} IS NULL`),
+    index('ingredient_preferences_member_id_idx').on(table.memberId),
+  ],
+)
+
+export const ingredientPrices = pgTable(
+  'ingredient_prices',
+  {
+    id: serial('id').primaryKey(),
+    ingredientId: integer('ingredient_id')
+      .notNull()
+      .references(() => ingredients.id, { onDelete: 'cascade' }),
+    store: text('store').notNull(),
+    amount: numeric('amount', { mode: 'number' }).notNull(),
+    unit: text('unit').notNull(),
+    price: numeric('price', { mode: 'number' }).notNull(),
+    validFrom: date('valid_from').notNull(),
+    validTo: date('valid_to'),
+    isPromo: boolean('is_promo').notNull().default(false),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [index('ingredient_prices_ingredient_validity_idx').on(table.ingredientId, table.validFrom, table.validTo)],
 )
 
 export const unitConversions = pgTable(
