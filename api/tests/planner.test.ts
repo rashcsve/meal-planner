@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plan } from '../src/services/planner.js'
+import { EmptyPreferencesError, EmptyPriceCatalogError } from '../src/lib/errors.js'
 import {
   FIXTURE_PANTRY,
   FIXTURE_PREFERENCES,
@@ -130,6 +131,28 @@ describe('infeasible input', () => {
     // Still a complete plan, not an empty/half-filled one masquerading as success.
     expect(result.slots).toHaveLength(28)
     expect(result.slots.every((slot) => slot.recipeId !== null)).toBe(true)
+  })
+})
+
+describe('rejects unevaluable hard constraints instead of running with defaults', () => {
+  it('throws EmptyPriceCatalogError when prices is empty', () => {
+    expect(() =>
+      plan(FIXTURE_RECIPES, [], FIXTURE_PANTRY, FIXTURE_PREFERENCES, [], FIXTURE_TARGETS, 1),
+    ).toThrow(EmptyPriceCatalogError)
+  })
+
+  it('throws EmptyPreferencesError when neverIngredientIds is empty', () => {
+    expect(() =>
+      plan(
+        FIXTURE_RECIPES,
+        FIXTURE_PRICES,
+        FIXTURE_PANTRY,
+        { neverIngredientIds: [] },
+        [],
+        FIXTURE_TARGETS,
+        1,
+      ),
+    ).toThrow(EmptyPreferencesError)
   })
 })
 
