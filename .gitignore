@@ -3,3 +3,4 @@ meal.db
 dist/
 .env
 *.tsbuildinfo
+api/scripts/
