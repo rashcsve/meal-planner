@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { MealSlot } from "shared";
-import { db } from "../db/index.js";
+import { db, type DbClient } from "../db/index.js";
 import { planSlots } from "../db/schema.js";
 import { RecipeNotFoundError } from "../lib/errors.js";
 import { PG_FOREIGN_KEY_VIOLATION, pgErrorCode } from "../lib/db.js";
@@ -40,8 +40,9 @@ export async function findLockedSlotsByWeekId(planWeekId: number) {
 export async function upsertPlanSlots(
   planWeekId: number,
   slots: PlanSlotInput[],
+  client: DbClient = db,
 ) {
-  return db
+  return client
     .insert(planSlots)
     .values(slots.map((slot) => ({ planWeekId, ...slot })))
     .onConflictDoUpdate({

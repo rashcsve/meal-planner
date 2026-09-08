@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db } from "../db/index.js";
+import { db, type DbClient } from "../db/index.js";
 import { planWeeks } from "../db/schema.js";
 import { WeekAlreadyGeneratedError } from "../lib/errors.js";
 import { PG_UNIQUE_VIOLATION, pgErrorCode } from "../lib/db.js";
@@ -18,9 +18,9 @@ export async function findPlanWeekByDate(weekStartDate: string) {
   return week;
 }
 
-export async function insertPlanWeek(data: PlanWeekInput) {
+export async function insertPlanWeek(data: PlanWeekInput, client: DbClient = db) {
   try {
-    const [week] = await db.insert(planWeeks).values(data).returning();
+    const [week] = await client.insert(planWeeks).values(data).returning();
     return week!;
   } catch (err) {
     if (pgErrorCode(err) === PG_UNIQUE_VIOLATION) {
@@ -33,8 +33,9 @@ export async function insertPlanWeek(data: PlanWeekInput) {
 export async function updatePlanWeek(
   id: number,
   data: Pick<PlanWeekInput, "seed" | "plannerVersion">,
+  client: DbClient = db,
 ) {
-  const [week] = await db
+  const [week] = await client
     .update(planWeeks)
     .set({ ...data, updatedAt: new Date() })
     .where(eq(planWeeks.id, id))

@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { recipesRoute } from "./routes/recipes.js";
 import { pantryRoute } from "./routes/pantry.js";
+import { plansRoute } from "./routes/plans.js";
 import { requestLogger } from "./lib/requestLogger.js";
 import { errorHandler } from "./lib/errorHandler.js";
 import { config } from "./config/index.js";
@@ -18,7 +19,8 @@ const routes = app
     return c.json({ status: "ok" });
   })
   .route("/api/recipes", recipesRoute)
-  .route("/api/pantry", pantryRoute);
+  .route("/api/pantry", pantryRoute)
+  .route("/api/plans", plansRoute);
 
 export type AppType = typeof routes;
 
