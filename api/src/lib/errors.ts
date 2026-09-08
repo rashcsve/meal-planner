@@ -43,3 +43,47 @@ export class EmptyPreferencesError extends Error {
     this.name = "EmptyPreferencesError";
   }
 }
+
+export class WeekAlreadyGeneratedError extends Error {
+  constructor(weekStartDate: string) {
+    super(`A plan for the week of ${weekStartDate} was already generated`);
+    this.name = "WeekAlreadyGeneratedError";
+  }
+}
+
+export class PlanWeekNotFoundError extends Error {
+  constructor(weekStartDate: string) {
+    super(`No plan exists for the week of ${weekStartDate}`);
+    this.name = "PlanWeekNotFoundError";
+  }
+}
+
+export class PlanSlotNotFoundError extends Error {
+  constructor(day: number, mealSlot: string) {
+    super(`No slot for day ${day}, ${mealSlot}`);
+    this.name = "PlanSlotNotFoundError";
+  }
+}
+
+export class RecipeNotFoundError extends Error {
+  constructor(recipeId: number) {
+    super(`No recipe with id ${recipeId}`);
+    this.name = "RecipeNotFoundError";
+  }
+}
+
+export class HouseholdSettingsNotConfiguredError extends Error {
+  constructor() {
+    super(
+      "Cannot plan without household settings: weekly budget and start day of week are not set",
+    );
+    this.name = "HouseholdSettingsNotConfiguredError";
+  }
+}
+
+export class NoHouseholdMembersError extends Error {
+  constructor() {
+    super("Cannot plan with no household members: there is no calorie target to plan against");
+    this.name = "NoHouseholdMembersError";
+  }
+}

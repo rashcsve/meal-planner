@@ -1,0 +1,1 @@
+ALTER TABLE "household_settings" ADD CONSTRAINT "household_settings_weekly_budget_czk_check" CHECK ("household_settings"."weekly_budget_czk" >= 0);

@@ -85,6 +85,27 @@
       "when": 1788780440134,
       "tag": "0011_add_ingredient_prices_table",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788781056550,
+      "tag": "0012_add_plan_weeks_and_plan_slots_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788783877714,
+      "tag": "0013_add_household_settings_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788853610634,
+      "tag": "0014_add_household_settings_weekly_budget_check",
+      "breakpoints": true
     }
   ]
 }

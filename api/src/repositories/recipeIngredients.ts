@@ -17,6 +17,15 @@ export async function findIngredientLinesForRecipe(recipeId: number) {
     .where(eq(recipeIngredients.recipeId, recipeId));
 }
 
+export async function findIngredientIdsForAllRecipes() {
+  return db
+    .select({
+      recipeId: recipeIngredients.recipeId,
+      ingredientId: recipeIngredients.ingredientId,
+    })
+    .from(recipeIngredients);
+}
+
 export async function findIngredientLinesForAllRecipes() {
   return db
     .select({
