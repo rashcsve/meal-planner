@@ -13,18 +13,14 @@ import { findAllHouseholdMembers } from "../repositories/householdMembers.js";
 import { findAllIngredientPreferences } from "../repositories/ingredientPreferences.js";
 import { listIngredientPreferencesForMember } from "./ingredientPreferences.js";
 import { getHouseholdSettings } from "./householdSettings.js";
-import {
-  getKcalSummariesByRecipe,
-  computeKcalPerServing,
-} from "./nutrition.js";
+import { getKcalSummariesByRecipe, computeKcalPerServing } from "./nutrition.js";
 import {
   HouseholdSettingsNotConfiguredError,
   NoHouseholdMembersError,
+  HouseholdMemberMissingDinnerTargetError,
 } from "../lib/errors.js";
 
-type HouseholdMember = Awaited<
-  ReturnType<typeof findAllHouseholdMembers>
->[number];
+type HouseholdMember = Awaited<ReturnType<typeof findAllHouseholdMembers>>[number];
 
 export interface PlanInputs {
   recipes: PlannerRecipe[];
@@ -37,9 +33,7 @@ export interface PlanInputs {
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 function daysBetween(from: string, to: string): number {
-  return Math.round(
-    (new Date(to).getTime() - new Date(from).getTime()) / MS_PER_DAY,
-  );
+  return Math.round((new Date(to).getTime() - new Date(from).getTime()) / MS_PER_DAY);
 }
 
 async function buildPlannerRecipes(): Promise<PlannerRecipe[]> {
@@ -60,15 +54,14 @@ async function buildPlannerRecipes(): Promise<PlannerRecipe[]> {
   for (const recipe of recipes) {
     const kcalTotal = kcalSummaries.get(recipe.id)?.kcalTotal ?? null;
     const kcalPerServing =
-      kcalTotal === null
-        ? null
-        : computeKcalPerServing(kcalTotal, recipe.servings);
+      kcalTotal === null ? null : computeKcalPerServing(kcalTotal, recipe.servings);
 
-    // A recipe missing its meal type, cost, or per-serving calories can't be
-    // scored against a meal slot or a budget
+    // A recipe missing its meal type, cost, servings, or per-serving calories
+    // can't be scored against a meal slot or a budget
     if (
       recipe.meal === null ||
       recipe.cost === null ||
+      recipe.servings === null ||
       kcalPerServing === null
     ) {
       continue;
@@ -81,6 +74,7 @@ async function buildPlannerRecipes(): Promise<PlannerRecipe[]> {
       timeMinutes: recipe.time,
       costCzk: recipe.cost,
       calories: kcalPerServing,
+      baseServings: recipe.servings,
       ingredientIds: ingredientIdsByRecipe.get(recipe.id) ?? [],
     });
   }
@@ -88,9 +82,7 @@ async function buildPlannerRecipes(): Promise<PlannerRecipe[]> {
   return plannerRecipes;
 }
 
-async function buildPlannerPrices(
-  weekStartDate: string,
-): Promise<PlannerIngredientPrice[]> {
+async function buildPlannerPrices(weekStartDate: string): Promise<PlannerIngredientPrice[]> {
   const rows = await findCurrentIngredientPrices(weekStartDate);
 
   return rows.map((row) => ({
@@ -102,62 +94,51 @@ async function buildPlannerPrices(
   }));
 }
 
-async function buildPlannerPantry(
-  weekStartDate: string,
-): Promise<PlannerPantryItem[]> {
+async function buildPlannerPantry(weekStartDate: string): Promise<PlannerPantryItem[]> {
   const items = await findAllPantryItems();
 
   return items.map((item) => ({
     ingredientId: item.ingredientId,
-    daysUntilExpiry: item.expiresOn
-      ? daysBetween(weekStartDate, item.expiresOn)
-      : null,
+    daysUntilExpiry: item.expiresOn ? daysBetween(weekStartDate, item.expiresOn) : null,
   }));
 }
 
-async function buildPlannerPreferences(
-  members: HouseholdMember[],
-): Promise<PlannerPreferences> {
+async function buildPlannerPreferences(members: HouseholdMember[]): Promise<PlannerPreferences> {
   const neverIngredientIds = new Set<number>();
 
   const allPreferences = await findAllIngredientPreferences();
   const perMemberPreferences = await Promise.all(
-    members.map((member) =>
-      listIngredientPreferencesForMember(member.id, allPreferences),
-    ),
+    members.map((member) => listIngredientPreferencesForMember(member.id, allPreferences)),
   );
 
   for (const preferences of perMemberPreferences) {
     for (const preference of preferences) {
-      if (preference.rule === "never")
-        neverIngredientIds.add(preference.ingredientId);
+      if (preference.rule === "never") neverIngredientIds.add(preference.ingredientId);
     }
   }
 
   return { neverIngredientIds: [...neverIngredientIds] };
 }
 
-async function buildPlannerTargets(
-  members: HouseholdMember[],
-): Promise<PlannerTargets> {
+async function buildPlannerTargets(members: HouseholdMember[]): Promise<PlannerTargets> {
   const settings = await getHouseholdSettings();
   if (!settings) throw new HouseholdSettingsNotConfiguredError();
 
-  const dailyCalories = members.reduce(
-    (sum, member) => sum + member.dailyCalorieTarget,
-    0,
-  );
+  const memberTargets = members.map((member) => {
+    if (member.dinnerCalorieTarget === null) {
+      throw new HouseholdMemberMissingDinnerTargetError(member.name);
+    }
+    return { memberId: member.id, dinnerCalorieTarget: member.dinnerCalorieTarget };
+  });
 
   return {
-    dailyCalories,
+    memberTargets,
     weeklyBudgetCzk: settings.weeklyBudgetCzk,
     startDayOfWeek: settings.startDayOfWeek,
   };
 }
 
-export async function getPlanInputs(
-  weekStartDate: string,
-): Promise<PlanInputs> {
+export async function getPlanInputs(weekStartDate: string): Promise<PlanInputs> {
   const members = await findAllHouseholdMembers();
   if (members.length === 0) throw new NoHouseholdMembersError();
 

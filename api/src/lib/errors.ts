@@ -105,3 +105,10 @@ export class NoHouseholdMembersError extends Error {
     this.name = "NoHouseholdMembersError";
   }
 }
+
+export class HouseholdMemberMissingDinnerTargetError extends Error {
+  constructor(memberName: string) {
+    super(`Cannot plan: household member "${memberName}" has no dinner calorie target set`);
+    this.name = "HouseholdMemberMissingDinnerTargetError";
+  }
+}

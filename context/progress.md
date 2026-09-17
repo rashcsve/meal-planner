@@ -219,5 +219,100 @@ existing tests with error-code assertions); `npm run test -w web` → 17 files
 confirm rather than assumed). Ran the api suite three times in a row with no
 flake in the concurrency tests.
 
-**Next step: 30** (Week grid and planning settings) — no longer blocked on
-anything; 29.1 cleared the dependency for its later siblings (32, 33) too.
+**Next step: 27.1**, then 30 — see below.
+
+## Step 27.1 — Per-member dinner-only calorie targets and portion scaling — `complete`
+
+Decision (2026-09-17), by user request, not an audit finding: household is one
+user (1500 kcal/day) plus one member (2200 kcal/day); the app is needed for
+dinner only right now. Step 27's implemented calorie model — sum every member's
+`dailyCalorieTarget` into one combined household figure and check the day's
+total against it (`api/src/services/planner.ts`, `ctx.targets.dailyCalories`) —
+never matched build-plan's own step 27 text ("planned-meal calorie target, not
+an implied whole-day target") and does not support the actual need: one shared
+dinner recipe with each member's portion scaled to their own per-meal target
+(500 kcal / 800 kcal). Recorded as a new step rather than rewritten into step
+27's history, following the 29.1 precedent for a scope correction discovered
+after a step was marked complete.
+
+An in-progress, uncommitted attempt at a partial fix (single shared
+`mealCalorieTarget`/`calorieTolerance` on `household_settings`, replacing
+per-member targets entirely) was reverted 2026-09-17 before this step began —
+it moved further from per-member targets, not closer. See step 27.1's
+requirements in `context/build-plan.md` for the agreed design: dinner-only
+generation (seven slots, not fourteen), a new per-member per-dinner calorie
+target field, and per-member serving-count scaling from one recipe's
+kcal-per-serving.
+
+Migration `0016_add_household_member_dinner_calorie_target.sql` landed:
+nullable `dinner_calorie_target` numeric column plus a `> 0` check constraint
+on `household_members`. Nullable deliberately, not backfilled — an
+unconfigured member must block planning, not default to 0 (see algorithm
+approval below).
+
+Algorithm design presented to the user for review before implementation
+(2026-09-17); approved:
+
+- Calorie fit moves out of recipe *selection* entirely — since any recipe's
+  calories can be absorbed by scaling a member's portion, `fillRemainingSlots`
+  no longer scores candidates by calorie-closeness (removing that heuristic
+  from `api/src/services/planner.ts:369-376`); the dinner slot is chosen by
+  the existing soft preferences (promo, protein variety, speed, store count),
+  same as `localSearch` already applies.
+- Per-member servings are computed after a recipe is chosen for a slot:
+  `servings = memberTarget / recipe.caloriesPerServing`, rounded to the
+  nearest 0.25. A recipe is ineligible for a dinner slot if any configured
+  member's servings would round outside roughly 0.25–4 (filtered at
+  eligibility time, same pattern as the existing `neverIngredientIds` filter —
+  not generated then reported as a violation).
+- Cost and (later, step 34's) shopping quantities scale from total servings
+  needed for the slot vs. the recipe's own base yield, not a flat per-slot
+  recipe cost. `PlannerRecipe` needs its base `servings` count back — it is
+  currently discarded in `plan-inputs.ts` right after computing per-serving
+  calories.
+- A member with no `dinnerCalorieTarget` configured throws a new
+  configuration error before planning starts, same pattern as
+  `HouseholdSettingsNotConfiguredError` — never silently excluded from the
+  calorie check.
+
+**Implemented** (2026-09-17): `shared/src/planner.ts` (`MemberDinnerTarget`,
+`MemberServing`, `PlannerTargets.memberTargets` replacing `dailyCalories`,
+`PlannerRecipe.baseServings`, `PlannedSlot.memberServings`);
+`plan-inputs.ts` (`baseServings` threaded through, `memberTargets` built
+from each member's `dinnerCalorieTarget`, throwing
+`HouseholdMemberMissingDinnerTargetError` — mapped to 422 in
+`routes/plans.ts`, same pattern as the other household-configuration
+errors — for a member with none set); `api/src/services/planner.ts`:
+`PLANNED_MEAL_SLOTS = ["dinner"]` restricts generation/placement/final
+assembly to one slot per day; `computeMemberServings`/
+`roundToNearestServing`/`isServingsPlausible` (quarter-serving rounding,
+0.25–4 plausible range) filter dinner eligibility per member;
+`fillRemainingSlots` now picks the best-`scoreSlot` eligible candidate
+instead of the closest-calorie one; `validateDailyCalories` replaced by
+`validateMemberDinnerCalories` (per-member, ±10%); `validateWeeklyBudget`
+scales cost by total servings needed versus each recipe's `baseServings`.
+
+Test fixtures (`tests/fixtures/plannerFixtures.ts`) and
+`tests/planner.test.ts` rewritten for the dinner-only/per-member model:
+fixture recipes are dinner-only, calories chosen (400/serving) so both
+fixture members' targets (500, 800) hit exactly with no rounding
+deviation; added tests for the implausible-servings eligibility exclusion
+and the quarter-rounding tolerance-breach edge case. `tests/plans.test.ts`
+needed two fixes as a direct consequence: `seedPlannableHousehold`'s
+household member now sets `dinnerCalorieTarget`, and three tests that
+locked a real generated plan's `slots/0/lunch` now use `slots/0/dinner`
+(lunch slots no longer exist in a generated plan; tests that seed a
+`plan_slot` row directly, bypassing the real planner, were unaffected).
+
+Verified 2026-09-17: root `npm run typecheck` clean (api+web); root
+`npm run lint` clean (same 2 pre-existing `web` warnings); `npm run test
+-w api` → 6 files / 64 tests pass.
+
+Not yet done, left for step 34 (Shopping derivation API, not yet started):
+shopping-list quantity derivation should assume scaled per-member portions
+rather than a recipe's raw serving count, following the same
+`baseServings`-ratio pattern used in `validateWeeklyBudget`.
+
+**Next step: 30** (Week grid and planning settings); 29.1 already cleared
+the unrelated optimistic-locking dependency for step 30's later siblings
+(32, 33).

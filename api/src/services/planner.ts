@@ -6,6 +6,8 @@ import type {
   PlannerPreferences,
   LockedSlot,
   PlannerTargets,
+  MemberDinnerTarget,
+  MemberServing,
   PlanResult,
   PlanViolation,
   PlannedSlot,
@@ -21,6 +23,13 @@ import { EmptyPreferencesError, EmptyPriceCatalogError } from "../lib/errors.js"
 // ---------------------------------------------------------------------------
 
 const DAYS_PER_WEEK = 7;
+
+/**
+ * Only dinner is generated for now; breakfast/lunch/snack_or_dessert stay in
+ * the shared MealSlot type for a later phase but are never filled or
+ * validated (see context/build-plan.md step 27.1).
+ */
+const PLANNED_MEAL_SLOTS: readonly MealSlot[] = ["dinner"];
 
 /**
  * Pantry items expiring within this many days are a hard "must be used by"
@@ -42,8 +51,7 @@ export const MEAL_SLOT_TYPES: Record<MealSlot, string[]> = {
 
 export type SlotKey = `${number}:${MealSlot}`;
 
-export const slotKey = (day: number, mealSlot: MealSlot): SlotKey =>
-  `${day}:${mealSlot}`;
+export const slotKey = (day: number, mealSlot: MealSlot): SlotKey => `${day}:${mealSlot}`;
 
 export function parseSlotKey(key: SlotKey): {
   day: number;
@@ -109,9 +117,60 @@ function indexPricesByIngredient(
   return index;
 }
 
+const MIN_PLAUSIBLE_SERVINGS = 0.25;
+const MAX_PLAUSIBLE_SERVINGS = 4;
+const SERVING_ROUNDING = 0.25;
+
+/**
+ * Rounds to the nearest quarter-serving - closer to how a portion would
+ * actually be measured out than a continuous fraction.
+ *
+ * @example
+ * roundToNearestServing(1.19) -> 1.25
+ */
+function roundToNearestServing(servings: number): number {
+  return Math.round(servings / SERVING_ROUNDING) * SERVING_ROUNDING;
+}
+
+/**
+ * Each member's portion of one recipe: how many (quarter-rounded) servings
+ * they need to hit their own dinner calorie target from this recipe's
+ * kcal-per-serving. Used both to decide whether a recipe is eligible for a
+ * dinner slot (see isServingsPlausible) and to record the actual portions
+ * once a recipe has been picked for a slot.
+ *
+ * @example
+ * recipe.calories=420, memberTargets=[{memberId:1,dinnerCalorieTarget:500}]
+ * -> [{memberId:1, servings:1.25}] (500/420 rounded to the nearest 0.25).
+ */
+function computeMemberServings(
+  recipe: PlannerRecipe,
+  memberTargets: MemberDinnerTarget[],
+): MemberServing[] {
+  return memberTargets.map((target) => ({
+    memberId: target.memberId,
+    servings: roundToNearestServing(target.dinnerCalorieTarget / recipe.calories),
+  }));
+}
+
+/**
+ * A recipe can't fill a dinner slot if scaling it to any member's target
+ * would need an unrealistic portion (a sliver or several platefuls) - see
+ * context/build-plan.md step 27.1.
+ */
+function isServingsPlausible(recipe: PlannerRecipe, memberTargets: MemberDinnerTarget[]): boolean {
+  return computeMemberServings(recipe, memberTargets).every(
+    (member) =>
+      member.servings >= MIN_PLAUSIBLE_SERVINGS && member.servings <= MAX_PLAUSIBLE_SERVINGS,
+  );
+}
+
 /**
  * Eligibility per slot never changes during one run, so this is computed
  * once (only 4 slots) instead of re-filtering every time localSearch asks.
+ * For dinner - the only slot currently generated - a recipe also has to
+ * clear isServingsPlausible for every member; breakfast/lunch/snack aren't
+ * planned yet, so they skip that check.
  *
  * @example
  * A "lunch" recipe containing a never-ingredient is excluded from the
@@ -120,16 +179,19 @@ function indexPricesByIngredient(
 function indexEligibleRecipesBySlot(
   recipes: PlannerRecipe[],
   neverIngredientIds: Set<number>,
+  targets: PlannerTargets,
 ): Map<MealSlot, PlannerRecipe[]> {
   const index = new Map<MealSlot, PlannerRecipe[]>();
   for (const mealSlot of MEAL_SLOTS) {
     const allowedTypes = MEAL_SLOT_TYPES[mealSlot];
+    const isPlannedSlot = PLANNED_MEAL_SLOTS.includes(mealSlot);
     index.set(
       mealSlot,
       recipes.filter(
         (recipe) =>
           allowedTypes.includes(recipe.mealType) &&
-          !recipe.ingredientIds.some((id) => neverIngredientIds.has(id)),
+          !recipe.ingredientIds.some((id) => neverIngredientIds.has(id)) &&
+          (!isPlannedSlot || isServingsPlausible(recipe, targets.memberTargets)),
       ),
     );
   }
@@ -150,23 +212,15 @@ export function buildPlannerContext(
     prices,
     pricesByIngredient: indexPricesByIngredient(prices),
     promoIngredientIds: new Set(
-      prices
-        .filter((price) => price.isPromo)
-        .map((price) => price.ingredientId),
+      prices.filter((price) => price.isPromo).map((price) => price.ingredientId),
     ),
     neverIngredientIds,
-    eligibleRecipesBySlot: indexEligibleRecipesBySlot(
-      recipes,
-      neverIngredientIds,
-    ),
+    eligibleRecipesBySlot: indexEligibleRecipesBySlot(recipes, neverIngredientIds, targets),
     targets,
   };
 }
 
-export function eligibleRecipes(
-  mealSlot: MealSlot,
-  ctx: PlannerContext,
-): PlannerRecipe[] {
+export function eligibleRecipes(mealSlot: MealSlot, ctx: PlannerContext): PlannerRecipe[] {
   return ctx.eligibleRecipesBySlot.get(mealSlot) ?? [];
 }
 
@@ -188,10 +242,7 @@ export function resolveExpiryConstraints(
   const violations: PlanViolation[] = [];
 
   for (const item of pantry) {
-    if (
-      item.daysUntilExpiry === null ||
-      item.daysUntilExpiry > EXPIRY_MUST_USE_WINDOW_DAYS
-    )
+    if (item.daysUntilExpiry === null || item.daysUntilExpiry > EXPIRY_MUST_USE_WINDOW_DAYS)
       continue;
 
     const candidateRecipeIds = recipes
@@ -252,7 +303,7 @@ function findPlacementOptions(
   const options: { key: SlotKey; recipeId: number }[] = [];
 
   for (let day = 0; day <= constraint.deadlineDay; day++) {
-    for (const mealSlot of MEAL_SLOTS) {
+    for (const mealSlot of PLANNED_MEAL_SLOTS) {
       const key = slotKey(day, mealSlot);
       if (assigned.has(key)) continue;
 
@@ -293,18 +344,13 @@ export function placeMustUseConstraints(
 ): { assigned: Map<SlotKey, number>; violations: PlanViolation[] } {
   const assigned = new Map<SlotKey, number>();
   for (const lockedSlot of locked) {
-    assigned.set(
-      slotKey(lockedSlot.day, lockedSlot.mealSlot),
-      lockedSlot.recipeId,
-    );
+    assigned.set(slotKey(lockedSlot.day, lockedSlot.mealSlot), lockedSlot.recipeId);
   }
 
   const violations: PlanViolation[] = [];
   // Tightest deadline first: a constraint with 1 day left has fewer valid
   // slots than one with 3, so it should claim its slot before options narrow.
-  const sortedByDeadline = [...constraints].sort(
-    (a, b) => a.deadlineDay - b.deadlineDay,
-  );
+  const sortedByDeadline = [...constraints].sort((a, b) => a.deadlineDay - b.deadlineDay);
 
   for (const constraint of sortedByDeadline) {
     const options = findPlacementOptions(constraint, assigned, recipesById);
@@ -327,15 +373,18 @@ export function placeMustUseConstraints(
 }
 
 // ---------------------------------------------------------------------------
-// 3. Fill the empty slots, picking recipes that add up to each day's
-//    calorie goal.
+// 3. Fill the empty slots. Calorie fit no longer picks the recipe - any
+//    recipe's calories can be absorbed by scaling each member's portion
+//    (see computeMemberServings) - so the best-scoring eligible candidate
+//    wins instead (same soft preferences localSearch applies later: promo,
+//    protein variety, speed, store count).
 // ---------------------------------------------------------------------------
 
 /**
  * @example
- * Day 0 already has 400 kcal from breakfast, target is 2000 kcal,
- * 3 slots left -> lunch aims for (2000-400)/3 = 533 kcal and picks
- * whichever eligible recipe's calories are closest to that.
+ * Day 2's dinner is still empty; among the eligible recipes, the one with
+ * the highest scoreSlot (say, an on-promo, no-recent-repeat, quick weekday
+ * dinner) is picked.
  */
 export function fillRemainingSlots(
   ctx: PlannerContext,
@@ -344,16 +393,9 @@ export function fillRemainingSlots(
   const violations: PlanViolation[] = [];
 
   for (let day = 0; day < DAYS_PER_WEEK; day++) {
-    let runningCalories = 0;
-
-    for (const [slotsSoFar, mealSlot] of MEAL_SLOTS.entries()) {
+    for (const mealSlot of PLANNED_MEAL_SLOTS) {
       const key = slotKey(day, mealSlot);
-      const existingId = assigned.get(key);
-
-      if (existingId !== undefined) {
-        runningCalories += ctx.recipesById.get(existingId)?.calories ?? 0;
-        continue;
-      }
+      if (assigned.has(key)) continue;
 
       const candidates = eligibleRecipes(mealSlot, ctx);
       if (candidates.length === 0) {
@@ -365,18 +407,14 @@ export function fillRemainingSlots(
         continue;
       }
 
-      const remainingSlotsToday = MEAL_SLOTS.length - slotsSoFar;
-      const perSlotTarget =
-        (ctx.targets.dailyCalories - runningCalories) / remainingSlotsToday;
       const choice = candidates.reduce((best, candidate) =>
-        Math.abs(candidate.calories - perSlotTarget) <
-        Math.abs(best.calories - perSlotTarget)
+        scoreSlot(day, mealSlot, candidate.id, assigned, ctx) >
+        scoreSlot(day, mealSlot, best.id, assigned, ctx)
           ? candidate
           : best,
       );
 
       assigned.set(key, choice.id);
-      runningCalories += choice.calories;
     }
   }
 
@@ -384,35 +422,49 @@ export function fillRemainingSlots(
 }
 
 // ---------------------------------------------------------------------------
-// 4. Check the whole finished plan: daily calories and weekly budget.
+// 4. Check the whole finished plan: each member's dinner calories, and the
+//    weekly budget.
 // ---------------------------------------------------------------------------
 
-export function validateDailyCalories(
+const CALORIE_TOLERANCE = 0.1;
+
+/**
+ * Quarter-serving rounding can still land outside tolerance for a recipe
+ * whose calories-per-serving is far from a member's target (e.g. a
+ * low-calorie recipe where one quarter-serving already overshoots) - that's
+ * a real violation, not a rounding artifact to hide.
+ *
+ * @example
+ * memberTarget=500, recipe.calories=420 -> 1.25 servings -> 525 kcal,
+ * within ±10% of 500 -> no violation.
+ */
+export function validateMemberDinnerCalories(
   ctx: PlannerContext,
   assigned: Map<SlotKey, number>,
 ): PlanViolation[] {
-  const CALORIE_TOLERANCE = 0.1;
-  const lowerBound = ctx.targets.dailyCalories * (1 - CALORIE_TOLERANCE);
-  const upperBound = ctx.targets.dailyCalories * (1 + CALORIE_TOLERANCE);
   const violations: PlanViolation[] = [];
 
   for (let day = 0; day < DAYS_PER_WEEK; day++) {
-    const total = MEAL_SLOTS.reduce((sum, mealSlot) => {
-      const recipeId = assigned.get(slotKey(day, mealSlot));
-      return (
-        sum +
-        (recipeId !== undefined
-          ? (ctx.recipesById.get(recipeId)?.calories ?? 0)
-          : 0)
-      );
-    }, 0);
+    const recipeId = assigned.get(slotKey(day, "dinner"));
+    if (recipeId === undefined) continue;
+    const recipe = ctx.recipesById.get(recipeId);
+    if (!recipe) continue;
 
-    if (total < lowerBound || total > upperBound) {
-      violations.push({
-        slot: null,
-        constraint: "daily_calories",
-        detail: `day ${day} totals ${total} kcal, outside ±10% of ${ctx.targets.dailyCalories}`,
-      });
+    for (const memberServing of computeMemberServings(recipe, ctx.targets.memberTargets)) {
+      const memberTarget = ctx.targets.memberTargets.find(
+        (target) => target.memberId === memberServing.memberId,
+      )!;
+      const actualCalories = memberServing.servings * recipe.calories;
+      const lowerBound = memberTarget.dinnerCalorieTarget * (1 - CALORIE_TOLERANCE);
+      const upperBound = memberTarget.dinnerCalorieTarget * (1 + CALORIE_TOLERANCE);
+
+      if (actualCalories < lowerBound || actualCalories > upperBound) {
+        violations.push({
+          slot: { day, mealSlot: "dinner" },
+          constraint: "member_dinner_calories",
+          detail: `day ${day} dinner gives member ${memberServing.memberId} ${actualCalories} kcal (${memberServing.servings} servings), outside ±10% of ${memberTarget.dinnerCalorieTarget}`,
+        });
+      }
     }
   }
 
@@ -420,21 +472,28 @@ export function validateDailyCalories(
 }
 
 /**
- * Sums each recipe's costCzk. Doesn't account for ingredients shared
- * across recipes and bought only once - a simplification, not a bug.
+ * Scales each recipe's costCzk by the total servings needed for that slot
+ * (summed across members) versus the recipe's own base yield. Doesn't
+ * account for ingredients shared across recipes and bought only once - a
+ * simplification, not a bug.
  *
  * @example
- * Two assigned recipes costing 500 Kč and 700 Kč against an 1000 Kč
- * budget -> one violation ("week totals 1200 Kč, over budget of 1000 Kč").
+ * A 4-serving, 400 Kč recipe scaled to 2.25 total servings this slot ->
+ * 400 * (2.25/4) = 225 Kč counted toward the week's budget.
  */
 export function validateWeeklyBudget(
   ctx: PlannerContext,
   assigned: Map<SlotKey, number>,
 ): PlanViolation[] {
-  const total = [...assigned.values()].reduce(
-    (sum, recipeId) => sum + (ctx.recipesById.get(recipeId)?.costCzk ?? 0),
-    0,
-  );
+  const total = [...assigned.values()].reduce((sum, recipeId) => {
+    const recipe = ctx.recipesById.get(recipeId);
+    if (!recipe) return sum;
+    const totalServings = computeMemberServings(recipe, ctx.targets.memberTargets).reduce(
+      (servingsSum, member) => servingsSum + member.servings,
+      0,
+    );
+    return sum + recipe.costCzk * (totalServings / recipe.baseServings);
+  }, 0);
 
   if (total <= ctx.targets.weeklyBudgetCzk) return [];
 
@@ -477,8 +536,7 @@ export function buildReasons(
   const reasons: string[] = [];
   for (const ingredientId of recipe.ingredientIds) {
     const priceEntries = pricesByIngredient.get(ingredientId) ?? [];
-    const name =
-      priceEntries[0]?.ingredientName ?? `ingredient ${ingredientId}`;
+    const name = priceEntries[0]?.ingredientName ?? `ingredient ${ingredientId}`;
 
     const promo = priceEntries.find((price) => price.isPromo);
     if (promo) reasons.push(`promo: ${name} on sale at ${promo.store}`);
@@ -489,10 +547,7 @@ export function buildReasons(
         item.daysUntilExpiry !== null &&
         item.daysUntilExpiry <= EXPIRY_MUST_USE_WINDOW_DAYS,
     );
-    if (expiring)
-      reasons.push(
-        `uses ${name} expiring in ${expiring.daysUntilExpiry} day(s)`,
-      );
+    if (expiring) reasons.push(`uses ${name} expiring in ${expiring.daysUntilExpiry} day(s)`);
   }
 
   return reasons;
@@ -526,11 +581,7 @@ function findProteinRepeatDay(
   if (!protein) return null;
 
   let repeatDay: number | null = null;
-  for (
-    let otherDay = Math.max(0, day - VARIETY_WINDOW_DAYS);
-    otherDay < day;
-    otherDay++
-  ) {
+  for (let otherDay = Math.max(0, day - VARIETY_WINDOW_DAYS); otherDay < day; otherDay++) {
     for (const otherSlot of PROTEIN_TRACKED_SLOTS) {
       const otherRecipeId = assigned.get(slotKey(otherDay, otherSlot));
       if (
@@ -557,13 +608,7 @@ export function buildProteinVarietyReason(
   const protein = recipesById.get(recipeId)?.proteinSource;
   if (!protein) return null;
 
-  const repeatDay = findProteinRepeatDay(
-    day,
-    mealSlot,
-    recipeId,
-    assigned,
-    recipesById,
-  );
+  const repeatDay = findProteinRepeatDay(day, mealSlot, recipeId, assigned, recipesById);
 
   return repeatDay === null
     ? `no ${protein} in ${VARIETY_WINDOW_DAYS + 1} days`
@@ -599,10 +644,7 @@ export function weekdaySpeedScore(
   return (REFERENCE_MINUTES - recipe.timeMinutes) / REFERENCE_MINUTES;
 }
 
-function promoCount(
-  recipe: PlannerRecipe,
-  promoIngredientIds: Set<number>,
-): number {
+function promoCount(recipe: PlannerRecipe, promoIngredientIds: Set<number>): number {
   return recipe.ingredientIds.filter((id) => promoIngredientIds.has(id)).length;
 }
 
@@ -628,13 +670,7 @@ export function scoreSlot(
   const recipe = ctx.recipesById.get(recipeId);
   if (!recipe) return 0;
 
-  const repeatDay = findProteinRepeatDay(
-    day,
-    mealSlot,
-    recipeId,
-    assigned,
-    ctx.recipesById,
-  );
+  const repeatDay = findProteinRepeatDay(day, mealSlot, recipeId, assigned, ctx.recipesById);
   const proteinScore = PROTEIN_TRACKED_SLOTS.includes(mealSlot)
     ? (repeatDay === null ? 1 : -1) * WEIGHTS.proteinVariety
     : 0;
@@ -654,14 +690,10 @@ export function scoreSlot(
  * Every needed ingredient is sold at "Albert" -> returns 1, even if
  * some of them are also sold elsewhere.
  */
-export function countDistinctStores(
-  assigned: Map<SlotKey, number>,
-  ctx: PlannerContext,
-): number {
+export function countDistinctStores(assigned: Map<SlotKey, number>, ctx: PlannerContext): number {
   const neededIngredients = new Set<number>();
   for (const recipeId of assigned.values()) {
-    for (const ingredientId of ctx.recipesById.get(recipeId)?.ingredientIds ??
-      []) {
+    for (const ingredientId of ctx.recipesById.get(recipeId)?.ingredientIds ?? []) {
       neededIngredients.add(ingredientId);
     }
   }
@@ -669,8 +701,7 @@ export function countDistinctStores(
   const storeToIngredients = new Map<string, Set<number>>();
   for (const ingredientId of neededIngredients) {
     for (const price of ctx.pricesByIngredient.get(ingredientId) ?? []) {
-      const ingredients =
-        storeToIngredients.get(price.store) ?? new Set<number>();
+      const ingredients = storeToIngredients.get(price.store) ?? new Set<number>();
       ingredients.add(ingredientId);
       storeToIngredients.set(price.store, ingredients);
     }
@@ -712,10 +743,7 @@ export function countDistinctStores(
  * 28 scoreSlot values summed, minus (countDistinctStores *
  * WEIGHTS.storeCount) once for the whole plan.
  */
-export function scorePlan(
-  assigned: Map<SlotKey, number>,
-  ctx: PlannerContext,
-): number {
+export function scorePlan(assigned: Map<SlotKey, number>, ctx: PlannerContext): number {
   let total = 0;
   for (const [key, recipeId] of assigned) {
     const { day, mealSlot } = parseSlotKey(key);
@@ -742,13 +770,9 @@ interface PlanQuality {
   score: number;
 }
 
-function evaluatePlan(
-  assigned: Map<SlotKey, number>,
-  ctx: PlannerContext,
-): PlanQuality {
+function evaluatePlan(assigned: Map<SlotKey, number>, ctx: PlannerContext): PlanQuality {
   const violationCount =
-    validateDailyCalories(ctx, assigned).length +
-    validateWeeklyBudget(ctx, assigned).length;
+    validateMemberDinnerCalories(ctx, assigned).length + validateWeeklyBudget(ctx, assigned).length;
   return { violationCount, score: scorePlan(assigned, ctx) };
 }
 
@@ -782,9 +806,7 @@ export function localSearch(
   rng: () => number,
   iterations: number,
 ): Map<SlotKey, number> {
-  const freeKeys = [...assigned.keys()].filter(
-    (key) => !protectedKeys.has(key),
-  );
+  const freeKeys = [...assigned.keys()].filter((key) => !protectedKeys.has(key));
   let quality = evaluatePlan(assigned, ctx);
 
   for (let i = 0; i < iterations; i++) {
@@ -800,8 +822,7 @@ export function localSearch(
 
     // Nothing to try if it picked the same recipe already there.
     const previousRecipeId = assigned.get(key);
-    if (previousRecipeId === undefined || previousRecipeId === candidate.id)
-      continue;
+    if (previousRecipeId === undefined || previousRecipeId === candidate.id) continue;
 
     // Make the swap, check the plan, keep it or put the old one back.
     assigned.set(key, candidate.id);
@@ -830,13 +851,7 @@ function collectReasons(
   pantry: PlannerPantryItem[],
   assigned: Map<SlotKey, number>,
 ): string[] {
-  const varietyReason = buildProteinVarietyReason(
-    day,
-    mealSlot,
-    recipeId,
-    recipes,
-    assigned,
-  );
+  const varietyReason = buildProteinVarietyReason(day, mealSlot, recipeId, recipes, assigned);
   return [
     ...buildReasons(recipeId, recipes, prices, pantry),
     ...(varietyReason ? [varietyReason] : []),
@@ -886,31 +901,20 @@ export function plan(
   violations.push(...expiry.violations);
 
   // Locked slots and expiry-forced placements claim their slots first.
-  const placement = placeMustUseConstraints(
-    expiry.constraints,
-    ctx.recipesById,
-    locked,
-    rng,
-  );
+  const placement = placeMustUseConstraints(expiry.constraints, ctx.recipesById, locked, rng);
   violations.push(...placement.violations);
   const assigned = placement.assigned;
   const protectedKeys = new Set(assigned.keys());
 
-  // Fill everything else, steering toward each day's calorie target.
+  // Fill everything else, steering toward the best-scoring eligible recipe.
   violations.push(...fillRemainingSlots(ctx, assigned));
 
   // Try to improve the plan without breaking a rule or touching a
   // protected slot.
-  localSearch(
-    assigned,
-    ctx,
-    protectedKeys,
-    rng,
-    DEFAULT_LOCAL_SEARCH_ITERATIONS,
-  );
+  localSearch(assigned, ctx, protectedKeys, rng, DEFAULT_LOCAL_SEARCH_ITERATIONS);
 
   // Final check against the finished plan.
-  violations.push(...validateDailyCalories(ctx, assigned));
+  violations.push(...validateMemberDinnerCalories(ctx, assigned));
   violations.push(...validateWeeklyBudget(ctx, assigned));
 
   const lockedKeys = new Set(
@@ -918,9 +922,10 @@ export function plan(
   );
   const slots: PlannedSlot[] = [];
   for (let day = 0; day < DAYS_PER_WEEK; day++) {
-    for (const mealSlot of MEAL_SLOTS) {
+    for (const mealSlot of PLANNED_MEAL_SLOTS) {
       const key = slotKey(day, mealSlot);
       const recipeId = assigned.get(key) ?? null;
+      const recipe = recipeId === null ? null : ctx.recipesById.get(recipeId);
       slots.push({
         day,
         mealSlot,
@@ -929,15 +934,8 @@ export function plan(
         reasons:
           recipeId === null
             ? []
-            : collectReasons(
-                day,
-                mealSlot,
-                recipeId,
-                recipes,
-                prices,
-                pantry,
-                assigned,
-              ),
+            : collectReasons(day, mealSlot, recipeId, recipes, prices, pantry, assigned),
+        memberServings: recipe ? computeMemberServings(recipe, targets.memberTargets) : [],
       });
     }
   }

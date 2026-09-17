@@ -21,6 +21,7 @@ import {
   INGREDIENT_PREFERENCE_RULES,
   MEAL_SLOTS,
 } from "shared";
+import type { MemberServing } from "shared";
 
 function sqlInList(values: readonly string[]) {
   return sql.raw(values.map((v) => `'${v.replace(/'/g, "''")}'`).join(", "));
@@ -112,15 +113,25 @@ export const pantryItems = pgTable(
   (table) => [index("pantry_items_ingredient_id_idx").on(table.ingredientId)],
 );
 
-export const householdMembers = pgTable("household_members", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-  dailyCalorieTarget: numeric("daily_calorie_target", {
-    mode: "number",
-  }).notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const householdMembers = pgTable(
+  "household_members",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull().unique(),
+    dailyCalorieTarget: numeric("daily_calorie_target", {
+      mode: "number",
+    }).notNull(),
+    dinnerCalorieTarget: numeric("dinner_calorie_target", { mode: "number" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "household_members_dinner_calorie_target_check",
+      sql`${table.dinnerCalorieTarget} IS NULL OR ${table.dinnerCalorieTarget} > 0`,
+    ),
+  ],
+);
 
 export const householdSettings = pgTable(
   "household_settings",
@@ -221,6 +232,7 @@ export const planSlots = pgTable(
     }),
     locked: boolean("locked").notNull().default(false),
     reasons: jsonb("reasons").$type<string[]>().notNull().default([]),
+    memberServings: jsonb("member_servings").$type<MemberServing[]>().notNull().default([]),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

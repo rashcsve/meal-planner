@@ -73,6 +73,18 @@ into the browser build.
   A stale or missing `expectedRevision` fails the CAS or an earlier explicit
   check and is reported as a typed error, never a silent overwrite. Full
   history in `context/progress.md`'s "Step 29.1" entry.
+- `household_members.dinner_calorie_target` (added in step 27.1, migration
+  `0016_add_household_member_dinner_calorie_target.sql`) is a nullable
+  `numeric` with a `> 0` check constraint. Nullable is deliberate: an
+  unconfigured member must block planning (`HouseholdMemberMissingDinnerTargetError`,
+  mapped to 422), not silently default to 0. The planner currently generates
+  dinner only (`PLANNED_MEAL_SLOTS` in `services/planner.ts`) — one recipe
+  per dinner slot, with each member's serving count derived from that
+  recipe's kcal-per-serving and their own `dinner_calorie_target`. The
+  older combined-household `dailyCalorieTarget` sum/check was removed from
+  the planner; that column still exists for a later whole-day phase but is
+  no longer read by planning. Full history in `context/progress.md`'s "Step
+  27.1" entry.
 
 ## Error handling
 

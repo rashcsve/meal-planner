@@ -2,13 +2,21 @@
 
 ## Core flow
 
-Maintain recipes and pantry stock, generate a week of lunches and dinners against
+Maintain recipes and pantry stock, generate a week of meals against
 calorie/budget/exclusion constraints, inspect or replace individual meals, lock
 choices that should survive regeneration, and shop from the resulting list. Plans
 must explain their choices (which constraint or preference drove a pick) and
 distinguish known facts (measured prices, known nutrition) from missing
 information (unknown price, incomplete nutrition) — never silently treat unknown
 as zero or complete.
+
+Current phase plans dinner only (one household, two members, each with their own
+per-meal calorie target); breakfast/lunch/snack remain defined in the meal-slot
+type for a later phase but are not generated. Each household member has their own
+calorie target for the meal; the planner picks one recipe per slot and scales
+each member's portion (servings, and the ingredient quantities/cost that follow
+from them) to hit their individual target, rather than picking different recipes
+per person or targeting one combined household total.
 
 ## Scope
 

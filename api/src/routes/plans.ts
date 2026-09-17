@@ -12,6 +12,7 @@ import {
   RecipeNotFoundError,
   HouseholdSettingsNotConfiguredError,
   NoHouseholdMembersError,
+  HouseholdMemberMissingDinnerTargetError,
   EmptyPriceCatalogError,
   EmptyPreferencesError,
   StaleRevisionError,
@@ -44,6 +45,7 @@ function mapPlanError(err: unknown): never {
   if (
     err instanceof HouseholdSettingsNotConfiguredError ||
     err instanceof NoHouseholdMembersError ||
+    err instanceof HouseholdMemberMissingDinnerTargetError ||
     err instanceof EmptyPriceCatalogError ||
     err instanceof EmptyPreferencesError
   ) {

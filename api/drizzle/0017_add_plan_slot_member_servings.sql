@@ -1,0 +1,1 @@
+ALTER TABLE "plan_slots" ADD COLUMN "member_servings" jsonb DEFAULT '[]'::jsonb NOT NULL;

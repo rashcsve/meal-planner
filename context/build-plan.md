@@ -617,6 +617,48 @@ pack-rounding and constraint-invariant tests.
 
 **Commit**: `feat(planner): add deterministic constrained meal planning`
 
+## 27.1 — Per-member dinner-only calorie targets and portion scaling
+
+**Requirements**
+
+- Narrow generation to dinner only: seven slots per week, one per day. `breakfast`,
+  `lunch` and `snack_or_dessert` stay defined in the shared meal-slot type for a
+  later phase; the planner simply does not generate them yet.
+- Replace the combined-household daily calorie target (sum of every member's
+  `dailyCalorieTarget`, checked against the day's total across all slots) with a
+  per-member, per-dinner calorie target. This is a new field, not a repurposing of
+  `dailyCalorieTarget` (that column stays a true whole-day figure for when other
+  meal slots return).
+- The planner picks one recipe per dinner slot, not one recipe per member. Each
+  member's serving count is derived from that recipe's kcal-per-serving and their
+  own dinner target (`servings = target / caloriesPerServing`); ingredient
+  quantities and cost for that slot scale from the sum of members' servings, not
+  the recipe's declared base serving count.
+- Hard constraint check becomes per-member: every member's scaled portion must
+  land within calorie tolerance of their own target, not the household total.
+
+**Acceptance criteria**
+
+- Seven slots are produced per generated week, not fourteen.
+- A plan slot records each member's servings and the resulting per-member
+  calories, alongside the existing recipe/cost/reasons fields.
+- Budget and shopping-list quantities for a slot are computed from summed
+  per-member servings, never from the recipe's raw serving count.
+- Same input snapshot and seed still give the same result (existing determinism
+  guarantee from step 27 is preserved under the new target shape).
+
+**Edge cases**: a member with no configured dinner target; a recipe whose
+kcal-per-serving makes a member's required servings implausible (e.g. under 0.25
+or over 4) — report rather than silently accept; recipe with unknown calories
+(already excluded upstream, per step 27).
+
+**Verification**: planner unit tests for per-member serving-scaling math and the
+implausible-servings edge case; existing deterministic-repeat and
+constraint-invariant tests re-run to confirm they still hold under the new
+target shape.
+
+**Commit**: `feat(planner): scale portions to per-member dinner calorie targets`
+
 ## 28. Plan persistence and endpoints
 
 **Requirements**
@@ -743,17 +785,18 @@ tool compatibility. Do not treat a generic skill-schema validator as proof of Cl
 
 **Requirements**
 
-- Add a seven-day, lunch/dinner grid using the persisted plan API; selection is local UI state.
-- Show per-slot cost basis, kcal, servings, cooking time, lock and actual selection reasons. Use
-  an outer selection ring, inner lock marker and non-colliding reason tag; expose text labels.
-- Add `/household` settings for the inputs established in step 27: servings, planned-meal calorie
+- Add a seven-day dinner grid using the persisted plan API; selection is local UI state.
+- Show per-slot cost basis, kcal, per-member servings, cooking time, lock and actual selection
+  reasons. Use an outer selection ring, inner lock marker and non-colliding reason tag; expose
+  text labels.
+- Add `/household` settings for the inputs established in step 27.1: per-member dinner calorie
   target/tolerance, budget/currency, exclusions, preferences and timezone.
 - Provide initial generate action and week navigation. On small screens use a reachable day/list
   layout, not seven unreadable compressed columns; native mobile implementation remains deferred.
 
 **Acceptance criteria**
 
-- Fourteen slots map to correct dates/meals; initial generation and settings persistence work.
+- Seven slots map to correct dates; initial generation and settings persistence work.
 - Infeasible generation shows reasons without inventing meals; unknown cost/kcal is labeled.
 - Selection, reason and lock states remain distinguishable and keyboard-accessible.
 

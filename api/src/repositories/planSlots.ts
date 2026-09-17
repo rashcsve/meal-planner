@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import type { MealSlot } from "shared";
+import type { MealSlot, MemberServing } from "shared";
 import { db, type DbClient } from "../db/index.js";
 import { planSlots } from "../db/schema.js";
 import { RecipeNotFoundError } from "../lib/errors.js";
@@ -11,6 +11,7 @@ export interface PlanSlotInput {
   recipeId: number | null;
   locked: boolean;
   reasons: string[];
+  memberServings: MemberServing[];
 }
 
 function slotAddress(planWeekId: number, day: number, mealSlot: MealSlot) {
@@ -46,6 +47,7 @@ export async function upsertPlanSlots(
         recipeId: sql`excluded.recipe_id`,
         locked: sql`excluded.locked`,
         reasons: sql`excluded.reasons`,
+        memberServings: sql`excluded.member_servings`,
         updatedAt: new Date(),
       },
     })
@@ -77,7 +79,7 @@ export async function updateSlotRecipe(
   try {
     const [slot] = await client
       .update(planSlots)
-      .set({ recipeId, reasons: [], updatedAt: new Date() })
+      .set({ recipeId, reasons: [], memberServings: [], updatedAt: new Date() })
       .where(slotAddress(planWeekId, day, mealSlot))
       .returning();
     return slot;

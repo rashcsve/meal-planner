@@ -8,6 +8,7 @@ export interface PlannerRecipe {
   timeMinutes: number;
   costCzk: number;
   calories: number;
+  baseServings: number;
   ingredientIds: number[];
 }
 
@@ -34,13 +35,23 @@ export interface LockedSlot {
   recipeId: number;
 }
 
+export interface MemberDinnerTarget {
+  memberId: number;
+  dinnerCalorieTarget: number;
+}
+
 export interface PlannerTargets {
-  dailyCalories: number;
+  memberTargets: MemberDinnerTarget[];
   weeklyBudgetCzk: number;
   startDayOfWeek: number;
 }
 
 export const PLANNER_VERSION = "1.0.0";
+
+export interface MemberServing {
+  memberId: number;
+  servings: number;
+}
 
 export interface PlannedSlot {
   day: number;
@@ -48,6 +59,7 @@ export interface PlannedSlot {
   recipeId: number | null;
   locked: boolean;
   reasons: string[];
+  memberServings: MemberServing[];
 }
 
 export interface PlanViolation {

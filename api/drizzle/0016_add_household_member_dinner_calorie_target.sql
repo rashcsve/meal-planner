@@ -1,0 +1,2 @@
+ALTER TABLE "household_members" ADD COLUMN "dinner_calorie_target" numeric;--> statement-breakpoint
+ALTER TABLE "household_members" ADD CONSTRAINT "household_members_dinner_calorie_target_check" CHECK ("household_members"."dinner_calorie_target" IS NULL OR "household_members"."dinner_calorie_target" > 0);
