@@ -6,10 +6,20 @@
       "Bash(*psql*)",
       "Bash(docker exec*)"
     ],
-    "deny": [
-      "Bash(*DROP*)",
-      "Bash(*TRUNCATE*)",
-      "Read(.env)"
+    "deny": ["Bash(*DROP*)", "Bash(*TRUNCATE*)", "Read(.env)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/prettier-format.sh",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }

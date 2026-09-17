@@ -113,6 +113,18 @@ chore(deps): add pino for structured logging
 Suggest commit messages when I ask. Never run `git commit` yourself unless I
 explicitly ask.
 
+## AI-assisted development
+
+`context/build-plan.md` is the numbered master plan; `context/progress.md`
+tracks step status; `context/product.md`, `context/architecture.md`,
+`context/code-standards.md` describe product intent, actual module boundaries,
+and executable verification commands. Requirements live in the plan, not
+duplicated into skills or here.
+
+Three skills drive the workflow: `/build-step <id>` implements and verifies one
+plan step, `/review <id>` is a read-only review of a step or diff, `/recover
+<error>` fixes one failed attempt after a normal correction didn't work.
+
 ## Structure
 
 npm workspaces: `api`, `web`, `shared`. `shared` holds Zod schemas used by

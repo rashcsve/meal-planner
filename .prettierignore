@@ -1,0 +1,7 @@
+node_modules
+api/drizzle
+api/drizzle/meta
+dist
+build
+web/dist
+web/storybook-static

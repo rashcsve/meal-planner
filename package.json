@@ -14,9 +14,11 @@
     "test": "npm run test -w api && npm run test -w web",
     "typecheck": "npm run typecheck -w api && npm run typecheck -w web",
     "lint": "npm run lint -w api && npm run lint -w web",
-    "migrate": "npm run migrate -w api"
+    "migrate": "npm run migrate -w api",
+    "format": "prettier --write"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.5",
+    "prettier": "^3.9.7"
   }
 }
