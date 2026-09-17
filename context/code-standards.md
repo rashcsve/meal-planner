@@ -27,12 +27,17 @@ explicit blocker, not silently skipped or assumed to pass.
 
 `routes/` → `services/` → `repositories/` → `db/`. A service must not import
 Hono types or know it was called by HTTP versus a test. Transaction boundaries
-belong in the route layer per `CLAUDE.md`, though the current `plans` service
-opens its own `db.transaction` around `generatePlan`'s multi-table write — this
-is an accepted, narrow exception because the write must be atomic and the route
-layer has no reason to see two repository calls it doesn't otherwise coordinate.
-Don't generalize from it; new multi-table writes should still be discussed if
-route-layer transactions turn out to be awkward.
+belong in the route layer per `CLAUDE.md`. The `plans` service is a deliberate,
+scoped exception: `generatePlan`, `setSlotLocked` and `replaceSlot` each open
+their own `db.transaction`, because a plan mutation must atomically
+check-and-increment `plan_weeks.revision` (optimistic concurrency, see
+`context/architecture.md`) and write the affected `plan_slots` rows in the
+same statement boundary — a route-layer transaction here would just wrap the
+same repository calls without coordinating anything the route itself needs to
+see. This exception is scoped to plan mutations needing an atomic revision
+check; don't generalize it to unrelated services. A new multi-table write
+elsewhere should still default to a route-layer transaction and be discussed
+here if that turns out to be awkward.
 
 ## Migrations
 

@@ -45,18 +45,12 @@ export const recipes = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
-    check(
-      "recipes_meal_check",
-      sql`${table.meal} IN (${sqlInList(MEAL_TYPES)})`,
-    ),
+    check("recipes_meal_check", sql`${table.meal} IN (${sqlInList(MEAL_TYPES)})`),
     check(
       "recipes_protein_source_check",
       sql`${table.proteinSource} IN (${sqlInList(PROTEIN_SOURCES)})`,
     ),
-    check(
-      "recipes_diet_check",
-      sql`${table.diet} IN (${sqlInList(DIET_TYPES)})`,
-    ),
+    check("recipes_diet_check", sql`${table.diet} IN (${sqlInList(DIET_TYPES)})`),
   ],
 );
 
@@ -74,10 +68,7 @@ export const ingredients = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
-    check(
-      "ingredients_base_unit_check",
-      sql`${table.baseUnit} IN (${sqlInList(BASE_UNITS)})`,
-    ),
+    check("ingredients_base_unit_check", sql`${table.baseUnit} IN (${sqlInList(BASE_UNITS)})`),
   ],
 );
 
@@ -146,10 +137,7 @@ export const householdSettings = pgTable(
       "household_settings_start_day_of_week_check",
       sql`${table.startDayOfWeek} BETWEEN 0 AND 6`,
     ),
-    check(
-      "household_settings_weekly_budget_czk_check",
-      sql`${table.weeklyBudgetCzk} >= 0`,
-    ),
+    check("household_settings_weekly_budget_czk_check", sql`${table.weeklyBudgetCzk} >= 0`),
   ],
 );
 
@@ -214,6 +202,7 @@ export const planWeeks = pgTable("plan_weeks", {
   weekStartDate: date("week_start_date").notNull().unique(),
   seed: integer("seed").notNull(),
   plannerVersion: text("planner_version").notNull(),
+  revision: integer("revision").notNull().default(1),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -237,10 +226,7 @@ export const planSlots = pgTable(
   },
   (table) => [
     check("plan_slots_day_check", sql`${table.day} BETWEEN 0 AND 6`),
-    check(
-      "plan_slots_meal_slot_check",
-      sql`${table.mealSlot} IN (${sqlInList(MEAL_SLOTS)})`,
-    ),
+    check("plan_slots_meal_slot_check", sql`${table.mealSlot} IN (${sqlInList(MEAL_SLOTS)})`),
     uniqueIndex("plan_slots_week_day_meal_slot_idx").on(
       table.planWeekId,
       table.day,

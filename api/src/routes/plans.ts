@@ -2,14 +2,9 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { generatePlanSchema, replaceSlotSchema } from "shared";
+import { generatePlanSchema, replaceSlotSchema, setSlotLockedSchema } from "shared";
 import { weekParamSchema, slotParamSchema } from "../lib/params.js";
-import {
-  generatePlan,
-  getWeek,
-  setSlotLocked,
-  replaceSlot,
-} from "../services/plans.js";
+import { generatePlan, getWeek, setSlotLocked, replaceSlot } from "../services/plans.js";
 import {
   WeekAlreadyGeneratedError,
   PlanWeekNotFoundError,
@@ -19,11 +14,25 @@ import {
   NoHouseholdMembersError,
   EmptyPriceCatalogError,
   EmptyPreferencesError,
+  StaleRevisionError,
+  ExpectedRevisionRequiredError,
 } from "../lib/errors.js";
 
 function mapPlanError(err: unknown): never {
   if (err instanceof WeekAlreadyGeneratedError) {
     throw new HTTPException(409, { message: err.message });
+  }
+  if (err instanceof StaleRevisionError) {
+    throw new HTTPException(409, {
+      message: err.message,
+      cause: { code: "STALE_PLAN_REVISION" },
+    });
+  }
+  if (err instanceof ExpectedRevisionRequiredError) {
+    throw new HTTPException(400, {
+      message: err.message,
+      cause: { code: "EXPECTED_REVISION_REQUIRED" },
+    });
   }
   if (
     err instanceof PlanWeekNotFoundError ||
@@ -48,16 +57,22 @@ export const plansRoute = new Hono()
     "/generate",
     zValidator("json", generatePlanSchema, (result) => {
       if (!result.success) {
-        throw new HTTPException(422, {
+        // A malformed expectedRevision (not a whole number >= 1) is reported
+        // as its own 400, distinct from the generic 422 used for other
+        // fields and from the 409 a genuinely stale revision gets.
+        const onlyExpectedRevisionInvalid = result.error.issues.every(
+          (issue) => issue.path[0] === "expectedRevision",
+        );
+        throw new HTTPException(onlyExpectedRevisionInvalid ? 400 : 422, {
           message: "Validation failed",
           cause: z.treeifyError(result.error),
         });
       }
     }),
     async (c) => {
-      const { weekStartDate, seed } = c.req.valid("json");
+      const { weekStartDate, seed, expectedRevision } = c.req.valid("json");
       try {
-        const week = await generatePlan(weekStartDate, seed);
+        const week = await generatePlan(weekStartDate, seed, expectedRevision);
         return c.json(week);
       } catch (err) {
         mapPlanError(err);
@@ -94,10 +109,19 @@ export const plansRoute = new Hono()
         });
       }
     }),
+    zValidator("json", setSlotLockedSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(422, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
     async (c) => {
       const { weekStartDate, day, mealSlot } = c.req.valid("param");
+      const { expectedRevision } = c.req.valid("json");
       try {
-        const slot = await setSlotLocked(weekStartDate, day, mealSlot, true);
+        const slot = await setSlotLocked(weekStartDate, day, mealSlot, true, expectedRevision);
         return c.json(slot);
       } catch (err) {
         mapPlanError(err);
@@ -114,10 +138,19 @@ export const plansRoute = new Hono()
         });
       }
     }),
+    zValidator("json", setSlotLockedSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(422, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
     async (c) => {
       const { weekStartDate, day, mealSlot } = c.req.valid("param");
+      const { expectedRevision } = c.req.valid("json");
       try {
-        const slot = await setSlotLocked(weekStartDate, day, mealSlot, false);
+        const slot = await setSlotLocked(weekStartDate, day, mealSlot, false, expectedRevision);
         return c.json(slot);
       } catch (err) {
         mapPlanError(err);
@@ -144,9 +177,9 @@ export const plansRoute = new Hono()
     }),
     async (c) => {
       const { weekStartDate, day, mealSlot } = c.req.valid("param");
-      const { recipeId } = c.req.valid("json");
+      const { recipeId, expectedRevision } = c.req.valid("json");
       try {
-        const slot = await replaceSlot(weekStartDate, day, mealSlot, recipeId);
+        const slot = await replaceSlot(weekStartDate, day, mealSlot, recipeId, expectedRevision);
         return c.json(slot);
       } catch (err) {
         mapPlanError(err);

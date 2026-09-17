@@ -5,7 +5,7 @@ import { db } from "../db/index.js";
 import {
   findPlanWeekByDate,
   insertPlanWeek,
-  updatePlanWeek,
+  casIncrementRevision,
 } from "../repositories/planWeeks.js";
 import {
   findSlotsByWeekId,
@@ -14,7 +14,12 @@ import {
   updateSlotRecipe,
   upsertPlanSlots,
 } from "../repositories/planSlots.js";
-import { PlanWeekNotFoundError, PlanSlotNotFoundError } from "../lib/errors.js";
+import {
+  PlanWeekNotFoundError,
+  PlanSlotNotFoundError,
+  StaleRevisionError,
+  ExpectedRevisionRequiredError,
+} from "../lib/errors.js";
 
 async function getLockedSlots(planWeekId: number): Promise<LockedSlot[]> {
   const rows = await findLockedSlotsByWeekId(planWeekId);
@@ -27,10 +32,12 @@ async function getLockedSlots(planWeekId: number): Promise<LockedSlot[]> {
     }));
 }
 
-export async function generatePlan(weekStartDate: string, seed: number) {
+export async function generatePlan(weekStartDate: string, seed: number, expectedRevision?: number) {
   const existingWeek = await findPlanWeekByDate(weekStartDate);
-  // A lock/unlock that happens right after this line, before the write
-  // below finishes, gets overwritten and lost. Fine for a single-user app.
+  if (existingWeek && expectedRevision === undefined) {
+    throw new ExpectedRevisionRequiredError(weekStartDate);
+  }
+
   const locked = existingWeek ? await getLockedSlots(existingWeek.id) : [];
   const inputs = await getPlanInputs(weekStartDate);
 
@@ -45,23 +52,29 @@ export async function generatePlan(weekStartDate: string, seed: number) {
   );
 
   return db.transaction(async (tx) => {
-    const week = existingWeek
-      ? await updatePlanWeek(
-          existingWeek.id,
-          { seed: result.seed, plannerVersion: result.plannerVersion },
-          tx,
-        )
-      : await insertPlanWeek(
-          {
-            weekStartDate,
-            seed: result.seed,
-            plannerVersion: result.plannerVersion,
-          },
-          tx,
-        );
+    let week;
+    if (existingWeek) {
+      week = await casIncrementRevision(
+        existingWeek.id,
+        expectedRevision!,
+        { seed: result.seed, plannerVersion: result.plannerVersion },
+        tx,
+      );
+      if (!week) {
+        throw new StaleRevisionError(weekStartDate, expectedRevision!);
+      }
+    } else {
+      week = await insertPlanWeek(
+        {
+          weekStartDate,
+          seed: result.seed,
+          plannerVersion: result.plannerVersion,
+        },
+        tx,
+      );
+    }
 
     const slots = await upsertPlanSlots(week.id, result.slots, tx);
-
     return { ...week, slots };
   });
 }
@@ -83,11 +96,17 @@ export async function setSlotLocked(
   day: number,
   mealSlot: MealSlot,
   locked: boolean,
+  expectedRevision: number,
 ) {
   const week = await findWeekOrThrow(weekStartDate);
-  const slot = await updateSlotLocked(week.id, day, mealSlot, locked);
-  if (!slot) throw new PlanSlotNotFoundError(day, mealSlot);
-  return slot;
+  return db.transaction(async (tx) => {
+    const updatedWeek = await casIncrementRevision(week.id, expectedRevision, {}, tx);
+    if (!updatedWeek) throw new StaleRevisionError(weekStartDate, expectedRevision);
+
+    const slot = await updateSlotLocked(week.id, day, mealSlot, locked, tx);
+    if (!slot) throw new PlanSlotNotFoundError(day, mealSlot);
+    return { ...slot, revision: updatedWeek.revision };
+  });
 }
 
 export async function replaceSlot(
@@ -95,9 +114,15 @@ export async function replaceSlot(
   day: number,
   mealSlot: MealSlot,
   recipeId: number,
+  expectedRevision: number,
 ) {
   const week = await findWeekOrThrow(weekStartDate);
-  const slot = await updateSlotRecipe(week.id, day, mealSlot, recipeId);
-  if (!slot) throw new PlanSlotNotFoundError(day, mealSlot);
-  return slot;
+  return db.transaction(async (tx) => {
+    const updatedWeek = await casIncrementRevision(week.id, expectedRevision, {}, tx);
+    if (!updatedWeek) throw new StaleRevisionError(weekStartDate, expectedRevision);
+
+    const slot = await updateSlotRecipe(week.id, day, mealSlot, recipeId, tx);
+    if (!slot) throw new PlanSlotNotFoundError(day, mealSlot);
+    return { ...slot, revision: updatedWeek.revision };
+  });
 }

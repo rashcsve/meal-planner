@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, type DbClient } from "../db/index.js";
 import { planWeeks } from "../db/schema.js";
 import { WeekAlreadyGeneratedError } from "../lib/errors.js";
@@ -30,15 +30,17 @@ export async function insertPlanWeek(data: PlanWeekInput, client: DbClient = db)
   }
 }
 
-export async function updatePlanWeek(
+// Returns undefined, rather than throwing, when `expectedRevision` is stale.
+export async function casIncrementRevision(
   id: number,
-  data: Pick<PlanWeekInput, "seed" | "plannerVersion">,
+  expectedRevision: number,
+  data: Partial<Pick<PlanWeekInput, "seed" | "plannerVersion">> = {},
   client: DbClient = db,
 ) {
   const [week] = await client
     .update(planWeeks)
-    .set({ ...data, updatedAt: new Date() })
-    .where(eq(planWeeks.id, id))
+    .set({ ...data, revision: sql`${planWeeks.revision} + 1`, updatedAt: new Date() })
+    .where(and(eq(planWeeks.id, id), eq(planWeeks.revision, expectedRevision)))
     .returning();
-  return week!;
+  return week;
 }

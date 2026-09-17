@@ -49,9 +49,10 @@ rewrite + integration tests), not a bounded reconciliation task. It must be
 completed as its own step before step 32 ("Optimistic locking") and step 33
 ("Regeneration and dependent cache consistency") are attempted, since both
 assume a working revision contract already exists on the backend. Do not start
-step 32/33 until this is resolved.
+step 32/33 until this is resolved. Tracked as step 29.1 below, scheduled
+between step 29 and step 30.
 
-## Step 29 — Audit current implementation and adopt agentic development — `in progress`
+## Step 29 — Audit current implementation and adopt agentic development — `complete`
 
 Part A audit (2026-09-17) found:
 
@@ -91,6 +92,132 @@ user declined twice. Also fixed from that review before the decision below:
 (could false-exclude an unrelated path) — now uses slash-bounded glob
 matching.
 
-**Next step: 30** (Week grid and planning settings) — blocked from completing
-its optimistic-locking-dependent later siblings (32, 33) until the step-28
-follow-up above is done; step 30 itself does not require it.
+Re-verified 2026-09-17 (no code changes since `36a632c`, working tree clean):
+`npm run typecheck` (api+web) clean; `npm run lint` clean (same 2 pre-existing
+`react/only-export-components` warnings); `npm run test -w api` → 5 files / 50
+tests pass; `npm run test -w web` → 17 files / 34 tests pass. All three skills
+load `context/`; hooks have demonstrated fixtures except the noted
+`drizzle-kit generate` fixture the user declined to exercise against real
+migration files (accepted, not blocking). Marking `complete` per this step's
+own rule: "update progress to `complete` only when evidence supports it."
+
+**Next step: 29.1** (approved blocking follow-up, below) — must land before
+step 30 begins its optimistic-locking-dependent later siblings (32, 33); step
+30 itself may start in parallel since it does not depend on 29.1.
+
+## Step 29.1 — Prevent lost updates in plan mutations — `complete`
+
+Approved 2026-09-17 as a blocking follow-up to the step-28 gap above (not
+folded into step 29 — real feature work, not reconciliation). Scope, agreed
+before implementation:
+
+- Add one `revision` column on `plan_weeks` covering the whole plan (week +
+  slots), not a separate counter per slot.
+- Every mutation of an existing plan (lock, unlock, replace-slot, regenerate)
+  must supply the revision it read and pay for it atomically: a single
+  `UPDATE plan_weeks SET revision = revision + 1 ... WHERE id = $1 AND
+  revision = $2` (compare-and-swap in SQL, not a read-then-check in
+  application code) inside the same `db.transaction` as the slot write. Zero
+  rows affected means a stale mutation.
+- Regeneration's locked-slot snapshot is read before the transaction; the same
+  CAS at write time means a lock made after that snapshot bumps the revision
+  first and the regeneration's write is rejected rather than silently
+  overwriting it.
+- Stale mutations return 409 with a stable `error.details.code` (matching the
+  existing `HTTPException` → `details` convention in `errorHandler.ts`), not a
+  bare message; clients are expected to refetch (`GET
+  /plans/:weekStartDate`) rather than retry blindly.
+- Concurrent initial creation is already handled by the existing
+  `plan_weeks.week_start_date` unique constraint (`WeekAlreadyGeneratedError`
+  → 409) — no new constraint needed there, only for the revision column.
+- Migration adds `revision integer not null default 1` (Postgres 11+ fast
+  path for a constant default, no table rewrite) — safe for existing rows.
+- New `api/tests/plans.test.ts` against real Postgres (testcontainers,
+  already wired in `api/tests/global-setup.ts`) covers persistence,
+  concurrency and rollback — this also backfills step 28's own missing
+  verification, not just 29.1's acceptance tests.
+- Remove the lost-update comment at `api/src/services/plans.ts:32-33` once the
+  CAS lands.
+
+Transaction approach presented to the user for review before implementation
+(2026-09-17); approved, then implemented the same day.
+
+**Implemented:** `plan_weeks.revision` (migration `0015_add_plan_weeks_
+revision.sql`, additive column, default `1`); `casIncrementRevision` in
+`repositories/planWeeks.ts` replaces `updatePlanWeek` — one `UPDATE ... WHERE
+id = $1 AND revision = $2` per mutation, run inside the same `db.transaction`
+as the slot write; `StaleRevisionError` → 409 with `cause.code:
+"STALE_PLAN_REVISION"`; `expectedRevision` required on lock/unlock/replace
+schemas; `updateSlotLocked`/`updateSlotRecipe` now accept the caller's
+transaction client.
+
+New `api/tests/plans.test.ts` (10 tests, real Postgres via testcontainers):
+revision required on mutations, stale-revision rejection with the stable
+error code, no partial writes on a mid-transaction failure, regeneration
+cannot overwrite a lock made after its snapshot, two same-revision mutations
+race to exactly one winner, a lock raced against a regeneration is never
+silently dropped, concurrent initial creation still 409s via the unique
+constraint, and existing lock-preservation across regeneration still holds.
+Also found and fixed a pre-existing test-harness gap while adding this file:
+`vitest.config.ts` let test files run in parallel against the one shared
+Postgres database from `global-setup.ts`, so `plans.test.ts` sharing
+`recipes`/`ingredients` with `recipes.test.ts` caused blanket-delete
+`afterEach` hooks in different files to corrupt each other's fixtures under
+parallel execution — fixed with `fileParallelism: false`, not by narrowing
+cleanup (the other files' own blanket deletes would still collide).
+
+Verified 2026-09-17: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing warnings); `npm run test -w api` → 6 files / 60
+tests pass (was 5/50); `npm run test -w web` → 17 files / 34 tests pass
+(unchanged). This also backfills step 28's own missing verification
+("real-Postgres integration tests for persistence, concurrency, rollback and
+lock invariants"), not just 29.1's acceptance tests.
+
+**Missing vs. stale revision (corrected after `/review`):** `generatePlan`'s
+`expectedRevision ?? -1` fallback let a client that forgot to send a revision
+get the same 409 message as a genuine conflict, with the internal `-1`
+sentinel leaking into the response text. Replaced with three distinct,
+tested outcomes for an existing plan: no `expectedRevision` → 400
+`EXPECTED_REVISION_REQUIRED` (checked before any planning work runs, so it's
+cheap); a non-integer or sub-1 `expectedRevision` → 400 with the standard
+Zod validation shape (`shared/src/plans.ts`'s `expectedRevisionSchema` now
+requires `.positive()`, not `.nonnegative()` — the column never holds 0); a
+correctly-shaped but outdated `expectedRevision` → 409
+`STALE_PLAN_REVISION` (renamed from `PLAN_REVISION_CONFLICT` for clarity, and
+applied uniformly since lock/unlock/replace share the same error class).
+Initial creation of a week with no `expectedRevision` is unaffected — that
+branch never reaches the revision check — and concurrent initial creation is
+still caught by the `plan_weeks.week_start_date` unique constraint.
+
+**Transaction ownership (corrected after `/review`):** `services/plans.ts`
+opening its own `db.transaction` around `generatePlan` predates this step, but
+this task expanded that pattern's scope: `setSlotLocked` and `replaceSlot`
+previously did a single bare `UPDATE` with no transaction at all, and now also
+open their own `db.transaction` for the same reason — the revision CAS and
+the slot write must be atomic. This is an approved, scoped exception, not a
+carried-over deviation; the rationale and its boundary (plan mutations
+needing an atomic revision check, nothing else) are recorded in
+`context/code-standards.md`'s "Layering" section. An earlier version of this
+entry understated the change as unchanged pre-existing behaviour — corrected
+2026-09-17.
+
+**Context accuracy (corrected after `/review`):** `context/architecture.md`
+still described `plan_weeks`/`plan_slots` as having no revision column and
+`plans` as having no test file — both stale as soon as the implementation
+above landed. Updated its "Database" and "Testing" sections to describe the
+revision column and its CAS mechanism (cross-referencing
+`code-standards.md`'s transaction-ownership rationale), and to name which
+test files exist versus which were last verified passing, rather than
+conflating the two.
+
+Re-verified 2026-09-17 after all three `/review` fixes above:
+`npm run typecheck` (api+web) clean; `npm run lint` clean (same 2
+pre-existing warnings); `npm run test -w api` → 6 files / 61 tests pass (was
+60 — added a test for the malformed-revision 400 case, and strengthened two
+existing tests with error-code assertions); `npm run test -w web` → 17 files
+/ 34 tests pass, unchanged (no web files touched this round, re-run to
+confirm rather than assumed). Ran the api suite three times in a row with no
+flake in the concurrency tests.
+
+**Next step: 30** (Week grid and planning settings) — no longer blocked on
+anything; 29.1 cleared the dependency for its later siblings (32, 33) too.

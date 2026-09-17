@@ -62,9 +62,17 @@ into the browser build.
   applying — never hand-edited.
 - Every table has `created_at`/`updated_at`; money and nutrition fields are
   `numeric`, never `float`.
-- `plan_weeks` / `plan_slots` (step 28) currently have **no revision/version
-  column** — see `context/progress.md` for why this is a recorded gap, not an
-  oversight to silently fix here.
+- `plan_weeks.revision` (added in step 29.1, migration
+  `0015_add_plan_weeks_revision.sql`) is an integer starting at 1, covering
+  the whole plan (week + its slots) rather than a per-slot counter. Every
+  mutation of an existing plan (lock, unlock, replace-slot, regenerate) does
+  a single `UPDATE plan_weeks SET revision = revision + 1 ... WHERE id = $1
+  AND revision = $2` (compare-and-swap) inside the same `db.transaction` as
+  the slot write — see the "Layering" section of `context/code-standards.md`
+  for why the `plans` service, not the route layer, owns that transaction.
+  A stale or missing `expectedRevision` fails the CAS or an earlier explicit
+  check and is reported as a typed error, never a silent overwrite. Full
+  history in `context/progress.md`'s "Step 29.1" entry.
 
 ## Error handling
 
@@ -78,11 +86,20 @@ domain error and let the route layer map it.
 ## Testing
 
 - `api`: Vitest + `@testcontainers/postgresql` — a real Postgres per test run,
-  migrations applied via `tests/global-setup.ts`. Current coverage: recipes,
-  nutrition, unit conversions, planner. **Pantry, household settings/members/
-  preferences/prices, and plans have no test files yet** — pantry/household
-  gaps predate step 29 and are tracked as follow-ups, not fixed here; the plans
-  gap is step 28's own required verification and is recorded as blocking.
+  migrations applied via `tests/global-setup.ts`. Test files run sequentially
+  (`fileParallelism: false` in `api/vitest.config.ts`), not in parallel —
+  several files' `afterEach` hooks do blanket deletes on tables (`recipes`,
+  `ingredients`) that more than one file uses, which corrupts a concurrently
+  running file's fixtures otherwise.
+  - Files that exist and were last verified passing 2026-09-17
+    (`npm run test -w api` → 6 files / 61 tests): `recipes.test.ts`,
+    `nutrition.test.ts`, `planner.test.ts`, `unitConversions.test.ts`,
+    `units.test.ts`, and `plans.test.ts` (11 tests — persistence, the
+    revision compare-and-swap, concurrent-mutation races, rollback on a
+    mid-transaction failure, and lock preservation across regeneration).
+  - **No test file exists yet** for pantry, household settings/members,
+    ingredient preferences, or ingredient prices — predates step 29, tracked
+    as a follow-up, not fixed here.
 - `web`: Vitest + Storybook's `@storybook/addon-vitest`, every story runs as a
   real headless-Chromium test; accessibility violations fail the run
   (`preview.tsx`'s `a11y.test: 'error'`).

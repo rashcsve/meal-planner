@@ -7,7 +7,9 @@ export class DuplicateTitleError extends Error {
 
 export class MissingIngredientDensityError extends Error {
   constructor(unit: string, baseUnit: string) {
-    super(`Converting "${unit}" to "${baseUnit}" needs the ingredient's density, but none was given`);
+    super(
+      `Converting "${unit}" to "${baseUnit}" needs the ingredient's density, but none was given`,
+    );
     this.name = "MissingIngredientDensityError";
   }
 }
@@ -37,9 +39,7 @@ export class EmptyPriceCatalogError extends Error {
 
 export class EmptyPreferencesError extends Error {
   constructor() {
-    super(
-      "Cannot plan without household preferences: neverIngredientIds is empty",
-    );
+    super("Cannot plan without household preferences: neverIngredientIds is empty");
     this.name = "EmptyPreferencesError";
   }
 }
@@ -48,6 +48,24 @@ export class WeekAlreadyGeneratedError extends Error {
   constructor(weekStartDate: string) {
     super(`A plan for the week of ${weekStartDate} was already generated`);
     this.name = "WeekAlreadyGeneratedError";
+  }
+}
+
+export class StaleRevisionError extends Error {
+  constructor(weekStartDate: string, expectedRevision: number) {
+    super(
+      `Plan for week ${weekStartDate} was changed by another request (expected revision ${expectedRevision}); refetch and retry`,
+    );
+    this.name = "StaleRevisionError";
+  }
+}
+
+export class ExpectedRevisionRequiredError extends Error {
+  constructor(weekStartDate: string) {
+    super(
+      `expectedRevision is required to regenerate the existing plan for week ${weekStartDate}; fetch the plan first to get its current revision`,
+    );
+    this.name = "ExpectedRevisionRequiredError";
   }
 }
 

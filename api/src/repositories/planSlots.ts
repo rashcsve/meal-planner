@@ -22,19 +22,14 @@ function slotAddress(planWeekId: number, day: number, mealSlot: MealSlot) {
 }
 
 export async function findSlotsByWeekId(planWeekId: number) {
-  return db
-    .select()
-    .from(planSlots)
-    .where(eq(planSlots.planWeekId, planWeekId));
+  return db.select().from(planSlots).where(eq(planSlots.planWeekId, planWeekId));
 }
 
 export async function findLockedSlotsByWeekId(planWeekId: number) {
   return db
     .select()
     .from(planSlots)
-    .where(
-      and(eq(planSlots.planWeekId, planWeekId), eq(planSlots.locked, true)),
-    );
+    .where(and(eq(planSlots.planWeekId, planWeekId), eq(planSlots.locked, true)));
 }
 
 export async function upsertPlanSlots(
@@ -62,8 +57,9 @@ export async function updateSlotLocked(
   day: number,
   mealSlot: MealSlot,
   locked: boolean,
+  client: DbClient = db,
 ) {
-  const [slot] = await db
+  const [slot] = await client
     .update(planSlots)
     .set({ locked, updatedAt: new Date() })
     .where(slotAddress(planWeekId, day, mealSlot))
@@ -76,9 +72,10 @@ export async function updateSlotRecipe(
   day: number,
   mealSlot: MealSlot,
   recipeId: number,
+  client: DbClient = db,
 ) {
   try {
-    const [slot] = await db
+    const [slot] = await client
       .update(planSlots)
       .set({ recipeId, reasons: [], updatedAt: new Date() })
       .where(slotAddress(planWeekId, day, mealSlot))
