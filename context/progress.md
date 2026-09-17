@@ -316,3 +316,103 @@ rather than a recipe's raw serving count, following the same
 **Next step: 30** (Week grid and planning settings); 29.1 already cleared
 the unrelated optimistic-locking dependency for step 30's later siblings
 (32, 33).
+
+## Step 30 — Week grid and planning settings — `implemented—awaiting review`
+
+Scope agreed with the user before implementation (2026-09-17), since the
+plan's text ("per-member dinner calorie target/tolerance, budget/currency,
+exclusions, preferences and timezone") assumed several settings that did not
+yet exist as real inputs: calorie tolerance stays hardcoded at ±10% in
+`planner.ts` (displayed as fixed text, not editable); currency stays fixed to
+CZK (displayed as a read-only label, no schema/type changes); a `timezone`
+column was added to `household_settings` (editable, default `Europe/Prague`,
+not yet consumed by any planning/date logic); ingredient exclusions/
+preferences editing is deferred to a later step (only targets/tolerance/
+budget/timezone are on `/household` for this step).
+
+**Found and fixed as part of this step, not pre-existing:** there were no
+API routes at all for household settings/members — only services/
+repositories with no route file, so nothing was reachable over HTTP.
+`findSlotsByWeekId` had no `ORDER BY`, so `GET /:weekStartDate` slot order
+was undefined. `generatePlan` computed `violations` (via `plan()`) but
+discarded them before returning — the API had no way to surface "why a slot
+couldn't be filled," contradicting step 27's own acceptance criteria. All
+three fixed here since step 30's acceptance criteria depend on them directly.
+
+**Backend implemented:** migration `0018_add_household_settings_timezone.sql`
+(additive `timezone text not null default 'Europe/Prague'`, same safe
+constant-default fast path as the `revision` column — not destructive, no
+approval gate needed); `HouseholdSettingsInput`/`updateDinnerCalorieTarget`
+repository additions; new `api/src/routes/household.ts` (`GET`/`PUT
+/settings`, `GET /members`, `PUT /members/:id`) mounted at `/api/household`;
+`HouseholdMemberNotFoundError` (404); `shared/src/household.ts`
+(`updateHouseholdSettingsSchema`, `updateMemberDinnerTargetSchema`).
+Param-vs-body validation status split (400 for the `:id` param, 422 for the
+JSON body) matches the existing convention in `recipes.ts`/`plans.ts`, not a
+new rule. `findSlotsByWeekId` now orders by `day`. `generatePlan`'s response
+includes `violations` (not persisted — only the generation attempt's own
+response carries them, since a later `GET` can't know whether they still
+apply after locks/edits).
+
+**Frontend implemented:** `web/src/features/week/` (`WeekPage` container,
+`WeekNav`, `WeekGrid` presentational, `deriveWeekRows` pure derivation,
+`useWeek`/`useGeneratePlan`) and `web/src/features/household/`
+(`HouseholdPage` container, `HouseholdSettingsForm`, `MemberTargetRow`,
+`useHousehold`). Current week is URL state (`?start=YYYY-MM-DD` on `/week`),
+not component state, so back/forward and the sidebar's date-range label
+(wired into the pre-existing TODO in `Sidebar.tsx`) stay in sync without a
+shared store. Since `features/` must never import from each other, the
+recipe list and household settings/members *read* queries were extracted
+into `web/src/shared/api/{recipeCatalog,household}.ts`; `features/recipes/
+useRecipes.ts` and `features/household/useHousehold.ts` now delegate their
+read hooks to those shared modules (same query keys, so the cache is
+genuinely shared, not duplicated) while keeping their own mutations local.
+Reason strings from the planner (free-text, e.g. `"promo: ... on sale at
+..."`) are categorized into short `ReasonTag` labels by
+`shared/lib/planReasons.ts` rather than rendering the raw prose.
+
+Storybook stories added for `WeekGrid`, `HouseholdSettingsForm`, and
+`MemberTargetRow` (interactive + state variants), run as real Vitest tests
+per the project's existing convention. `api/tests/household.test.ts` added
+(9 tests: settings null/persist/validation, members list, member update
+success/404/400/422) — the new routes had no coverage otherwise, unlike the
+pre-existing pantry/household gap noted under step 29, which was about
+already-existing but unmounted code.
+
+**Bug found and fixed during manual verification, not by the automated
+suite:** `deriveWeekRows` mapped every row `GET /:weekStartDate` returned
+into a day-card keyed by `day`, assuming every row was a dinner slot. The
+dev database still had `breakfast`/`lunch`/`dinner` rows from before step
+27.1 restricted planning to dinner-only, so the grid rendered 21 cards (3
+stacked per day) with duplicate React keys. Fixed by filtering to
+`mealSlot === "dinner"` in `deriveWeekRows` — the correct fix regardless of
+this particular database's history, since nothing today enforces that
+`plan_slots` only ever contains dinner rows going forward either.
+
+Verified 2026-09-17: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing `web` warnings); `npm run test -w api` → 7 files
+/ 76 tests pass (was 6/67 — new `household.test.ts`); `npm run test -w web`
+→ 20 files / 43 tests pass (was 17/34 — three new story files). Manual
+browser verification (Playwright against the dev servers, screenshots
+inspected): `/household` loads, saves a weekly-budget/timezone change, and
+saves a per-member dinner calorie target (confirmed via a direct `GET
+/api/household/members` round-trip, not just the UI re-render, after an
+earlier false-positive from an imprecise test-script selector); `/week`
+shows "No plan generated for this week yet." with a working Generate button;
+generating with incomplete member targets shows the exact 422 domain-error
+message inline; generating with both members configured produces 7 dinner
+day-cards with correct per-member servings/calories, cost, reason tags, a
+locked-slot marker, and a "some slots couldn't be filled" violations banner
+listing the actual unmet-constraint details; clicking a day-card shows the
+outer selection ring. Migration applied to the dev database
+(`npm run migrate`); no destructive statements.
+
+**Not yet done, left for later steps:** selecting a day does nothing beyond
+showing the ring (detail rail is step 31); there is no lock/unlock control
+in the UI yet (interactive locking with rollback is step 32); regenerating
+an existing week is not exposed (only initial generation — regeneration and
+its cache consistency is step 33); ingredient exclusions/preferences have no
+edit UI (deferred, see scope note above).
+
+**Next step: 31** (Meal detail rail and replacement), after the user reviews
+this diff and authorizes a commit.

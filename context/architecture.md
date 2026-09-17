@@ -11,7 +11,7 @@ api/src/
   index.ts        entrypoint, mounts routes, does not import from routes/services directly for app construction vs listen
   config/         Zod-validated env (DATABASE_URL, PORT, NODE_ENV, LOG_LEVEL, CORS_ORIGIN)
   db/             drizzle schema (schema.ts) + pooled connection (index.ts)
-  routes/         recipes.ts, pantry.ts, plans.ts — HTTP parsing/validation only
+  routes/         recipes.ts, pantry.ts, plans.ts, household.ts — HTTP parsing/validation only
   services/       recipes, pantry, nutrition, planner, plans, plan-inputs,
                   householdMembers, householdSettings, ingredientPrices,
                   ingredientPreferences — business logic, no HTTP, no raw SQL
@@ -23,7 +23,9 @@ api/tests/        vitest + testcontainers, real Postgres per run
 shared/src/       zod schemas + inferred types, imported by both api and web
 web/src/
   app/            shell, router, TanStack Query client, typed API client
-  features/       recipes, pantry (week/shopping/household/import are step 30+, not built yet)
+  features/       recipes, pantry, week, household (shopping/import are step 34+, not built yet)
+  shared/api/     read-only query hooks shared across features (recipeCatalog.ts,
+                  household.ts) — features never import each other's files directly
   shared/ui/      design-system primitives
   stories/        Storybook stories, run as real Vitest tests
 ```
@@ -85,6 +87,14 @@ into the browser build.
   the planner; that column still exists for a later whole-day phase but is
   no longer read by planning. Full history in `context/progress.md`'s "Step
   27.1" entry.
+- `household_settings.timezone` (added in step 30, migration
+  `0018_add_household_settings_timezone.sql`) is `text not null default
+  'Europe/Prague'`. It is editable on `/household` but not yet read by any
+  planning or date logic — added because the setting is real and the plan
+  calls for it, not because something consumes it yet. Calorie tolerance
+  (fixed ±10%, `planner.ts`) and currency (fixed CZK, column/type names)
+  stayed hardcoded by deliberate scope decision — see `context/progress.md`'s
+  "Step 30" entry.
 
 ## Error handling
 
@@ -104,14 +114,18 @@ domain error and let the route layer map it.
   `ingredients`) that more than one file uses, which corrupts a concurrently
   running file's fixtures otherwise.
   - Files that exist and were last verified passing 2026-09-17
-    (`npm run test -w api` → 6 files / 61 tests): `recipes.test.ts`,
+    (`npm run test -w api` → 7 files / 76 tests): `recipes.test.ts`,
     `nutrition.test.ts`, `planner.test.ts`, `unitConversions.test.ts`,
-    `units.test.ts`, and `plans.test.ts` (11 tests — persistence, the
-    revision compare-and-swap, concurrent-mutation races, rollback on a
-    mid-transaction failure, and lock preservation across regeneration).
-  - **No test file exists yet** for pantry, household settings/members,
-    ingredient preferences, or ingredient prices — predates step 29, tracked
-    as a follow-up, not fixed here.
+    `units.test.ts`, `plans.test.ts` (persistence, the revision
+    compare-and-swap, concurrent-mutation races, rollback on a
+    mid-transaction failure, and lock preservation across regeneration), and
+    `household.test.ts` (added in step 30 — settings get/put/validation,
+    members list, member dinner-target update and its 404/400/422 cases).
+  - **No test file exists yet** for pantry, ingredient preferences, or
+    ingredient prices — predates step 29, tracked as a follow-up, not fixed
+    here. (Household settings/members are now covered — step 30 added the
+    routes and their tests together, since those routes did not exist
+    before this step.)
 - `web`: Vitest + Storybook's `@storybook/addon-vitest`, every story runs as a
   real headless-Chromium test; accessibility violations fail the run
   (`preview.tsx`'s `a11y.test: 'error'`).
@@ -122,9 +136,16 @@ domain error and let the route layer map it.
 
 TanStack Query is the entire server-state architecture — no Redux/Zustand.
 Local interaction state (selection, form drafts) is `useState`/`useReducer`
-inside the owning feature. Features (`recipes`, `pantry`, and future `week`,
-`shopping`, `household`, `import`) never import from each other; shared pieces
-move to `web/src/shared/`.
+inside the owning feature. Features (`recipes`, `pantry`, `week`,
+`household`, and future `shopping`, `import`) never import from each other;
+shared pieces move to `web/src/shared/`. In practice this means read-only
+queries that more than one feature needs (the recipe catalog, household
+settings/members) live in `web/src/shared/api/` with their own query keys;
+the owning feature's hook file re-exports them (and adds its own mutations)
+rather than duplicating the fetch/key so the TanStack Query cache stays
+genuinely shared, not just similarly-shaped. `week` currently reads its
+recipe/household data this way; `household`'s own read hooks are the
+canonical example other features should follow for new cross-feature data.
 
 ## Development workflow
 
