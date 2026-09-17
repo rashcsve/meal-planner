@@ -5,6 +5,7 @@ type ReasonTagVariant = "save" | "pantry" | "fast";
 interface ReasonTagProps {
   variant: ReasonTagVariant;
   children: ReactNode;
+  title?: string;
 }
 
 const variantClasses: Record<ReasonTagVariant, string> = {
@@ -13,9 +14,10 @@ const variantClasses: Record<ReasonTagVariant, string> = {
   fast: "bg-lock-tint text-lock",
 };
 
-export function ReasonTag({ variant, children }: ReasonTagProps) {
+export function ReasonTag({ variant, children, title }: ReasonTagProps) {
   return (
     <span
+      title={title}
       className={`inline-flex items-center rounded px-1 py-px text-9 font-bold uppercase tracking-wider font-stretch-88% ${variantClasses[variant]}`}
     >
       {children}
