@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { MealSlot, MemberServing } from "shared";
 import { db, type DbClient } from "../db/index.js";
 import { planSlots } from "../db/schema.js";
@@ -23,7 +23,11 @@ function slotAddress(planWeekId: number, day: number, mealSlot: MealSlot) {
 }
 
 export async function findSlotsByWeekId(planWeekId: number) {
-  return db.select().from(planSlots).where(eq(planSlots.planWeekId, planWeekId));
+  return db
+    .select()
+    .from(planSlots)
+    .where(eq(planSlots.planWeekId, planWeekId))
+    .orderBy(asc(planSlots.day));
 }
 
 export async function findLockedSlotsByWeekId(planWeekId: number) {

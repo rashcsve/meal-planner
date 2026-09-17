@@ -75,7 +75,7 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
     }
 
     const slots = await upsertPlanSlots(week.id, result.slots, tx);
-    return { ...week, slots };
+    return { ...week, slots, violations: result.violations };
   });
 }
 
