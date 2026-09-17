@@ -139,6 +139,7 @@ export const householdSettings = pgTable(
     id: integer("id").primaryKey().default(1),
     weeklyBudgetCzk: numeric("weekly_budget_czk", { mode: "number" }).notNull(),
     startDayOfWeek: integer("start_day_of_week").notNull(),
+    timezone: text("timezone").notNull().default("Europe/Prague"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

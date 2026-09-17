@@ -1,0 +1,1 @@
+ALTER TABLE "household_settings" ADD COLUMN "timezone" text DEFAULT 'Europe/Prague' NOT NULL;

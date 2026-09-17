@@ -127,6 +127,13 @@
       "when": 1789646308212,
       "tag": "0017_add_plan_slot_member_servings",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789653276482,
+      "tag": "0018_add_household_settings_timezone",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ const SETTINGS_ROW_ID = 1;
 export interface HouseholdSettingsInput {
   weeklyBudgetCzk: number;
   startDayOfWeek: number;
+  timezone: string;
 }
 
 export async function findHouseholdSettings() {

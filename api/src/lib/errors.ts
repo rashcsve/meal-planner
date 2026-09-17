@@ -112,3 +112,10 @@ export class HouseholdMemberMissingDinnerTargetError extends Error {
     this.name = "HouseholdMemberMissingDinnerTargetError";
   }
 }
+
+export class HouseholdMemberNotFoundError extends Error {
+  constructor(id: number) {
+    super(`No household member with id ${id}`);
+    this.name = "HouseholdMemberNotFoundError";
+  }
+}
