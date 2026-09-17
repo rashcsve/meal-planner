@@ -3,27 +3,24 @@ import type { InferResponseType } from "hono/client";
 import type { CreateRecipeInput } from "shared";
 import { apiClient } from "../../app/apiClient";
 import { unwrapResponse } from "../../shared/api/unwrapResponse";
+import {
+  recipeCatalogKeys,
+  useRecipeCatalog,
+  type RecipeCatalogEntry,
+} from "../../shared/api/recipeCatalog";
 
 export const recipesKeys = {
-  list: ["recipes"] as const,
+  list: recipeCatalogKeys.list,
   detail: (id: number) => ["recipes", id] as const,
 };
 
-export type Recipe = InferResponseType<typeof apiClient.api.recipes.$get>[number];
-export type RecipeWithIngredients = InferResponseType<(typeof apiClient.api.recipes)[":id"]["$get"]>;
+export type Recipe = RecipeCatalogEntry;
+export type RecipeWithIngredients = InferResponseType<
+  (typeof apiClient.api.recipes)[":id"]["$get"]
+>;
 export type RecipeIngredient = RecipeWithIngredients["ingredients"][number];
 
-async function fetchRecipes(): Promise<Recipe[]> {
-  const res = await apiClient.api.recipes.$get();
-  return unwrapResponse(res);
-}
-
-export function useRecipes() {
-  return useQuery({
-    queryKey: recipesKeys.list,
-    queryFn: fetchRecipes,
-  });
-}
+export const useRecipes = useRecipeCatalog;
 
 async function fetchRecipe(id: number): Promise<RecipeWithIngredients> {
   const res = await apiClient.api.recipes[":id"].$get({ param: { id: String(id) } });
