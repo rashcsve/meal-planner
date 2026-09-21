@@ -85,7 +85,9 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
                     error={
                       editLine.isError && editLine.variables?.lineId === line.id
                         ? editLine.error.message
-                        : undefined
+                        : removeLine.isError && removeLine.variables?.lineId === line.id
+                          ? removeLine.error.message
+                          : undefined
                     }
                     onRemove={() => removeLine.mutate({ recipeId: id, lineId: line.id })}
                     isRemoving={removeLine.isPending && removeLine.variables?.lineId === line.id}

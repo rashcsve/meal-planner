@@ -481,6 +481,47 @@ No console errors during the flow. Seed data was then restored to its
 original values (`displayAmount: 150`, `isOptional: false`) via a direct
 `PUT`, confirmed with a follow-up `GET`.
 
+**`/review` found four issues after this commit, all fixed (2026-09-21):**
+
+Important: (1) `RecipeDetail.tsx` stopped showing `removeLine`'s error
+after the refactor into `IngredientLineRow` — the old list-level
+`ErrorState` for failed removes was dropped and never replaced;
+`IngredientLineRow`'s `error` prop now also falls back to `removeLine`'s
+error, not just `editLine`'s. (2) `IngredientLineRow`'s `useForm`
+`defaultValues` captured `line.ingredientId`/`line.amountBase` once at
+mount and never resynced — harmless today (nothing else writes those
+fields yet) but a silent full-replace clobber waiting to happen the moment
+R02.3c-4's picker adds a second writer, since the row is keyed by `line.id`
+and never remounts. Fixed by merging the *current*
+`line.ingredientId`/`line.amountBase` into the submitted payload inside the
+submit handler, instead of trusting the form's captured defaults — `line`
+is always fresh (a normal prop), so this can't go stale the way the hidden
+`defaultValues` could. Deliberately not fixed via `reset()`-on-prop-change,
+which would also wipe any in-progress edit on this row triggered by an
+unrelated sibling row's save (the shared `recipesKeys.detail` invalidation
+refetches the whole list).
+
+Minor: (3) the two `Input`s had no `aria-invalid`/`aria-describedby` wiring
+to the error message, unlike `MemberTargetRow`'s equivalent fields — added
+both, pointing at a new optional `id` prop on the shared `ErrorState`
+primitive (`web/src/shared/ui/ErrorState.tsx`) so the error box itself can
+be the `aria-describedby` target. (4) no test locked in the payload-merge
+behavior fix (2) depends on — added
+`PreservesLatestValuesAfterExternalUpdate` to
+`IngredientLineRow.stories.tsx`, a `play`-function story using a small
+local harness component that changes the `line` prop after mount (without
+remounting, matching how a real `recipesKeys.detail` refetch behaves) and
+asserts the submitted payload reflects the new value, not the mount-time
+one. Confirmed this test actually catches (2)'s bug: temporarily reverted
+the submit-handler fix, reran — the new test failed with the exact
+symptom (`ingredientId`/`amountBase` from the stale snapshot, not the
+updated prop) — then restored the fix and reran clean.
+
+Re-verified: `npm run typecheck`/`lint -w web` clean; `npm run test -w
+web` → 21 files / 50 tests (was 48 — the merge-payload story from the
+first review pass plus this external-update story); `npx prettier --check`
+clean on all touched files.
+
 **Not yet done, left for later slices:** editing `amountBase` directly, or
 reassigning a line's ingredient — both need the unit-aware picker this
 slice deliberately deferred; no confirmation dialog or optimistic

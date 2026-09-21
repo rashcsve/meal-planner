@@ -42,11 +42,18 @@ export function IngredientLineRow({
   });
   const fieldId = `line-${line.id}`;
   const message = errors.displayUnit?.message ?? errors.displayAmount?.message ?? error;
+  const errorId = message ? `${fieldId}-error` : undefined;
 
   return (
     <li className={cx("pl-1.5", line.amountBase == null && rowStateShadow.check)}>
       <form
-        onSubmit={handleSubmit((data) => onSave(data))}
+        onSubmit={handleSubmit((data) =>
+          onSave({
+            ...data,
+            ingredientId: line.ingredientId,
+            amountBase: line.amountBase ?? undefined,
+          }),
+        )}
         className="flex flex-wrap items-center gap-1.5 text-11"
       >
         <span className="flex-1">{line.ingredientName}</span>
@@ -57,6 +64,8 @@ export function IngredientLineRow({
           id={`${fieldId}-amount`}
           type="number"
           className="w-14"
+          aria-invalid={message ? true : undefined}
+          aria-describedby={errorId}
           {...register("displayAmount", {
             setValueAs: (v) => (v === "" ? undefined : Number(v)),
           })}
@@ -67,6 +76,8 @@ export function IngredientLineRow({
         <Input
           id={`${fieldId}-unit`}
           className="w-16"
+          aria-invalid={message ? true : undefined}
+          aria-describedby={errorId}
           {...register("displayUnit", { setValueAs: (v) => (v === "" ? undefined : v) })}
         />
         <label className="inline-flex items-center gap-1 text-9 text-faint">
@@ -82,7 +93,7 @@ export function IngredientLineRow({
           onClick={onRemove}
         />
       </form>
-      {message && <ErrorState title="Couldn't save ingredient" message={message} />}
+      {message && <ErrorState id={errorId} title="Couldn't save ingredient" message={message} />}
     </li>
   );
 }
