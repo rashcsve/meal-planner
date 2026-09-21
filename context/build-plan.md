@@ -22,6 +22,12 @@ it is not a request for one large diff or an automatic commit.
    Mobile boards supply layout only: ignore their older lunches/macros content.
 5. [planner-logic-review.md](planner-logic-review.md): findings to verify against code,
    not a claim that proposed repairs have already been made.
+6. [r01-fixtures.md](r01-fixtures.md): representative examples and test impact for R02's
+   portions/yield/nutrition work and R04's exclusion/lock consistency work, each checked
+   directly against current code, not assumed from the review above.
+7. [r04-search-quality.md](r04-search-quality.md): the proposed severity-aware search
+   ordering, required comparison fixtures and work-limit measurement methodology for R04,
+   grounded directly in the current `localSearch`/`isBetter`/`scorePlan` implementation.
 
 Mock values, prototype scripts, suggested prompts and model-accuracy examples are
 reference material. They are not tested business rules or measured results.
@@ -126,13 +132,13 @@ They should not block unrelated documentation or preparatory analysis.
 
 | Decision | Recommended default / work needed | Resolve before |
 | --- | --- | --- |
-| Initial target and share values | Target 520 and share 1 are proposed new-household defaults; show existing members their new shares for confirmation rather than inferring them from old targets. Validate quarter steps, proposed range 0.25–4. | R01/R03 migration |
-| Recipe amount storage | Preserve source quantities and original yield; derive per-portion values through one calculation. If normalizing storage instead, retain source values and test against double division. | R02 |
-| Cooking adjustments | Exact demand internally; explicit ingredient-specific adjustments for indivisible cooking amounts. Recalculate consumption/nutrition when actual cooking amounts change. Purchase rounding happens after aggregation and stock subtraction. | R02/R08 |
+| Initial target and share values | **Resolved in R01** — see "R01 resolutions" below. | R01/R03 migration |
+| Recipe amount storage | **Resolved in R01** — see "R01 resolutions" below. | R02 |
+| Cooking adjustments | **R02-scoped slice resolved in R01** — see "R01 resolutions" below. Ingredient-specific indivisible-amount adjustment mechanics remain open for R08. | R02/R08 |
 | Budget before offers | Keep existing budget data; label recipe-cost estimates. Missing costs cannot prove compliance. Decide whether enforcement is optional before checkout pricing exists; zero must not secretly mean disabled. | R04 |
 | Rule overrides | Never-plan ingredients and invalid quantities remain blocked. Time preferences may be overridden with acknowledgement; decide calorie/budget overrides explicitly. | R04/R05 |
 | Locks and changed rules | Preserve user intent; report conflicting locks and require repair or an allowed explicit override. Do not silently drop a lock or certify a conflict. | R04/R05 |
-| Legacy plan editing | Preserve reading and stored portions. Choose compatible editing or explicit conversion preview; do not remove editing merely as an implementation shortcut. | R03/R05 |
+| Legacy plan editing | **Resolved in R01** — see "R01 resolutions" below. | R03/R05 |
 | Selected days / copy last week | Omitted days must have defined semantics. Recommend copying assignments into a new draft, then evaluating current rules/stock; preserve cooked records. | R05 |
 | Dates and expiry | Use household timezone for today and actual planned dates for weekdays. Define expiry-day inclusion, past days, and expired stock eligibility. | R04/R08 |
 | Cupboard ingredients | Explicit stock or explicit staple policy; no implicit unlimited stock. | R07/R09 |
@@ -140,6 +146,60 @@ They should not block unrelated documentation or preparatory analysis.
 | Waste tally | Define whether the monthly figure counts actions, lots or quantities; never sum incompatible units. Define partial removal and Undo semantics. | R08 |
 | Shop choice | Lowest known basket cost subject to a hard maximum number of stops; distance as tie-breaker; savings threshold for another stop. Define missing prices, pack sizes, purchase dates and conditional offers. | R12 |
 | Public deployment | Decide private single-household access versus a public service. Auth before exposure; no automatic JWT choice or multi-household framework solely for hypothetical native mobile. | Before exposure; R14 at latest |
+
+### R01 resolutions
+
+Four rows above were flagged as blocking R02/R03. Resolved 2026-09-21, by user decision
+where the choice was a real product/data tradeoff, otherwise finalized directly because
+the row already restated a decision recorded elsewhere in this document.
+
+**Initial target and share values.** For a household with existing per-member dinner
+targets and no shares yet, migration proposes a household target equal to the **maximum**
+of the existing per-member targets (the largest eater defines the recipe's standard
+1.0-share portion), then computes each other member's proposed share as
+`round((memberTarget / proposedHouseholdTarget) / 0.25) × 0.25`, clamped to 0.25–4.
+Example: existing targets 500 and 800 → proposed household target 800, shares 1 and 0.75.
+A household with no existing members/targets (a genuinely new household) defaults to
+target 520, share 1, per the plan's original proposal. Proposed values are shown on
+`/household` for explicit confirmation before the fixed-share model is used for planning;
+until confirmed, planning keeps using the current per-member-target model — confirmation
+gates the new model, it does not block the app.
+
+Once a member's share is confirmed, it becomes its own independent setting: editing that
+member's legacy per-member dinner-calorie target afterward does **not** recompute or
+re-propose their share, and does not mark it unconfirmed again. This matches the plan's
+own rule that shares are a fixed, deliberate choice the planner never adjusts to fit a
+target — the same must hold for the person setting the share, not only for the planner.
+The legacy target field and the confirmed share are two separate settings from the moment
+of confirmation onward, not one derived from the other.
+
+**Recipe amount storage.** Preserve each ingredient line's source quantity and the
+recipe's original yield/serving count exactly as entered; never normalize or pre-divide
+at write time. Every per-portion value (calories, ingredient demand, estimated cost) goes
+through one shared calculation — `sourceAmount / recipe.baseServings × targetServings` —
+the same ratio `validateWeeklyBudget` already uses, extended to be the single call site
+for this division rather than duplicated per feature. This closes the row by rejecting
+the "normalize storage instead" alternative outright: it existed only as a fallback, and
+nothing in R02's scope needs it.
+
+**Cooking adjustments — R02-scoped slice.** R02 must keep internal demand math exact
+(no intermediate rounding baked into calorie/cost/demand calculations); rounding happens
+only at the existing quarter-serving boundary or at final display. R02 does **not** build
+the "explicit ingredient-specific adjustment for indivisible cooking amounts" feature —
+that mechanism, and what happens when actual cooking amounts change, remain open and
+belong to R08. This resolution only removes R02's blocker: don't design R02's math in a
+way R08 would have to unwind.
+
+**Legacy plan editing.** The user confirmed there is no real production data in the app
+yet. R03 therefore does not need dual-path editing compatibility for plans generated
+before the fixed-share model — existing dev/test household and plan data can be deleted
+and regenerated fresh once R03 ships, rather than building a compatible-editing or
+conversion-preview path against data nobody needs preserved. This is a scope reduction
+for *this* deployment's current data only, not a reversal of the general principle
+(`CLAUDE.md`, `build-plan.md`'s "Scope and delivery" section: "Preserve existing recipe
+IDs... do not invent missing history") — the general preserve-real-data rule still applies
+the first time this app holds data worth keeping, and should be revisited explicitly then,
+not assumed solved by this resolution.
 
 ## Build order and coverage
 
@@ -296,6 +356,95 @@ quality limitations; 500 attempts and a faster runtime alone are not success cri
 **Risk / rollback:** keep the prior saved plan while trying the new algorithm; do not
 advertise amount-level stock coverage before R08. Keep recipe-cost and checkout-cost
 rules separate. Replay needs the ordered inputs/version, not only a seed.
+
+#### R04 implementation slices
+
+Written 2026-09-21 as R01's last deliverable ("break the R04 work into small rule, search
+and measurement slices"). Each slice below targets one bounded diff, independently
+verifiable, per `CLAUDE.md`'s one-small-step rule. Slices citing
+[r01-fixtures.md](r01-fixtures.md) or [r04-search-quality.md](r04-search-quality.md) already
+have a concrete design to implement against; slices marked **needs a decision first** still
+have an open row in this document's "Decisions to finish" table that R01 did not resolve
+(only four rows were in R01's scope) — resolve that row at the start of the slice, the same
+way R01 resolved its own four, not by guessing during implementation.
+
+**Rule slices**
+
+1. **R04.1 — Empty price catalog / empty exclusions are valid states, not errors.**
+   `EmptyPriceCatalogError`/`EmptyPreferencesError` currently throw whenever either list is
+   empty (`planner.ts`'s `plan()` guard clauses), conflating "genuinely no promos this week"
+   / "household has no exclusions" with "settings were never configured." Distinguish the
+   two; only the latter should still block generation.
+2. **R04.2 — Fix pantry-exclusion bypass.** Implements [r01-fixtures.md §4](r01-fixtures.md)'s
+   proposed fix exactly: filter `resolveExpiryConstraints`'s candidate recipes through
+   `ctx.eligibleRecipesBySlot` instead of the raw recipe list.
+3. **R04.3 — Fix locked-slot-already-covers-expiry false violation.** Implements
+   [r01-fixtures.md §5](r01-fixtures.md)'s proposed fix: precompute `lockedIngredientIds`
+   from `locked` only, skip already-covered constraints before searching for a placement.
+4. **R04.4 — Generalize "existing coverage" beyond locked slots.** R04.3 deliberately
+   excluded must-use placements made earlier in the same run and the still-open
+   "two same-ingredient pantry lots" case (no quantity/lot tracking exists before R08) — this
+   slice decides and implements how far "check existing coverage before suggesting another
+   meal" extends without pretending to solve lot allocation early. **Needs a decision
+   first**, since the plan text only says "check existing coverage," not how to define it
+   without quantities.
+5. **R04.5 — Distinguish unknown recipe cost from zero cost.** **Needs a decision first**
+   — the "Budget before offers" row in this document's decision table (still open, tagged
+   R04) covers exactly this: whether a recipe with unknown cost is excluded from planning
+   (today's behavior, via `plan-inputs.ts` omitting it) or included with an explicit
+   "unknown" cost status that budget validation must handle without silently reading it as
+   zero.
+6. **R04.6 — Real weekday/timezone-aware date semantics.** **Needs a decision first** — the
+   "Dates and expiry" row (still open, tagged R04/R08): derive actual weekdays from the
+   requested week-start date for weeknight scoring, and use `household_settings.timezone`
+   (already stored since step 30, not yet read by planning) for "today" when computing
+   pantry expiry deadlines.
+7. **R04.7 — Report conflicting locks instead of silently keeping them uncontested.**
+   **Needs a decision first** — the "Locks and changed rules" row (still open, tagged
+   R04/R05): when a locked slot's recipe now fails current eligibility (a new exclusion, a
+   changed target), what "report a conflict" means operationally (a violation entry? a
+   distinct plan status?) before implementing it.
+8. **R04.8 — Persist evaluation status, input versions and staleness.** Schema work
+   (additive migration) plus service logic: store `violations`/evaluation status and the
+   input versions used at generation time on `plan_weeks` (today, `plans.ts:92` returns
+   violations in the response only — nothing persists them, so a reload loses them); mark an
+   evaluation stale when recipes/targets/exclusions change since. Likely splits further into
+   a migration slice and a service-logic slice once started, given its size.
+
+**Search slices**
+
+9. **R04.9 — Add `severity` to `PlanViolation`.** Populate it in
+   `validateMemberDinnerCalories`/`validateWeeklyBudget` using
+   [r04-search-quality.md](r04-search-quality.md)'s formulas. Purely additive — violation
+   *counts* and existing test expectations for counts/messages are unaffected.
+10. **R04.10 — Replace `isBetter`'s two-tier comparison with the three-tier comparator**
+    (violation count → severity sum → score), keeping the existing input-order tie-break
+    unchanged. Depends on R04.9. New tests from the "incremental budget repair" fixture in
+    r04-search-quality.md.
+11. **R04.11 — Replace the 500-random-attempt loop with the systematic per-dinner pass**
+    (examine every eligible replacement for every changeable dinner each pass; apply the
+    single best strict improvement; repeat until a pass finds none, or the measured work
+    budget from R04.14 is hit). Depends on R04.10.
+12. **R04.12 — Let the systematic pass reconsider empty slots**, not only the one-time
+    `fillRemainingSlots` fill before search starts, per the "empty slots" fixture in
+    r04-search-quality.md. Depends on R04.11.
+
+**Measurement slices**
+
+13. **R04.13 — Build and run the comparison harness** (initial week vs. legacy random
+    search vs. new systematic search) over the four required fixtures in
+    r04-search-quality.md plus recipe-library sizes anchored to this household's real scale.
+    Record evaluations-per-pass, passes-to-convergence and wall-clock-per-evaluation in
+    `progress.md`. Depends on R04.10-R04.12 existing to compare against.
+14. **R04.14 — Choose and document the actual work-limit number from R04.13's measured
+    data**, wiring it in as the systematic search's stopping condition, kept distinct from a
+    separate wall-clock safety cutoff. Cannot start before R04.13 produces real numbers —
+    this is the one place a concrete constant enters the code, and only after measurement.
+15. **R04.15 — Independent final validation and honest convergence reporting.** Run a full
+    validation pass after search stops; report "no improvement found" distinctly from "hit
+    the work budget," and neither as proof of a global optimum. Includes the store-count
+    coordinated-change fixture (r04-search-quality.md §4) asserting the search honestly
+    reports convergence rather than silently claiming an unreachable optimum.
 
 ### R05 — Preview, accept, swaps and concurrent edits
 

@@ -29,6 +29,147 @@ planning documentation is being updated; the user's existing
 `.claude/settings.json` modification remains untouched. Application tests were
 not rerun for this documentation-only revision.
 
+## R01 — Confirm contracts and prepare regression cases — `implemented—awaiting review`
+
+First slice (2026-09-21): resolved the four decision-table rows in `build-plan.md`
+tagged as blocking R02/R03 (initial target/share values, recipe amount storage,
+the R02-scoped slice of cooking adjustments, legacy plan editing). Two were
+finalized directly since they only restated a decision already recorded
+elsewhere in the plan (recipe amount storage; the R02 slice of cooking
+adjustments). Two were real product/data tradeoffs and were put to the user:
+
+- **Share migration policy** — user chose "derive from current data, then
+  confirm" over "blank defaults, manual entry." Household target proposed as
+  the max of existing per-member targets, each member's share derived from
+  that and shown for explicit confirmation before the fixed-share model is
+  used for planning; the current per-member-target model keeps working until
+  confirmed. Full formula in `build-plan.md`'s "R01 resolutions" section. A
+  follow-up question during understanding-check exposed a gap this slice had
+  not answered — what happens if a member's legacy target changes after their
+  share is confirmed — resolved separately: the confirmed share becomes its
+  own independent setting; editing the legacy target afterward does not
+  recompute or unconfirm it. Also recorded in "R01 resolutions."
+- **Legacy plan editing** — user stated there is no real production data in
+  the app yet, so R03 does not need dual-path legacy/new-model editing
+  compatibility; existing dev/test data can be deleted and regenerated under
+  the new model once R03 ships. Recorded explicitly as a scope reduction for
+  *this* deployment's current (empty) data, not a reversal of the general
+  preserve-real-data principle — that principle applies again the first time
+  this app holds data worth keeping.
+
+No code, schema, or test changes in this slice — `context/build-plan.md` only.
+Not yet done: baseline/legacy-step-ID reconciliation check, R02 fixture
+examples (portions, yield, missing nutrition, pantry exclusions, locks,
+legacy plans, stale revisions), R04 search-quality ordering and comparison
+fixtures, and breaking R04 into small rule/search/measurement slices — all
+still open per `build-plan.md`'s R01 description.
+
+Second slice (2026-09-21): audited `build-plan.md`'s "Confirmed current
+baseline" bullets and historical-step cross-references against the actual
+repository (schema, `planner.ts`, `plans.ts`) rather than trusting the prose.
+Spot-checked: seven-dinner-only generation (`PLANNED_MEAL_SLOTS`), no fixed
+share column in `household_members`, ingredient amounts stored against each
+recipe's own yield (`recipe_ingredients.amountBase`/`displayAmount`,
+`recipes.servings`), pantry quantities not reaching the planner, and
+violations returned but not persisted (`plans.ts:92`). All matched — no drift
+found, no doc changes needed for this slice. `MASTER-PLAN-v2.md` itself isn't
+checked into the repo (supplied in an earlier conversation only), so its own
+step numbers aren't independently re-verifiable here; not treated as a gap,
+since `build-plan.md` already absorbed what it needed from it.
+
+Third slice (2026-09-21): wrote [r01-fixtures.md](r01-fixtures.md) — the
+"specify representative examples... read existing tests before adding
+coverage" deliverable, covering portions, original yield, missing nutrition,
+pantry exclusions, locks, legacy plans and stale revisions. Read
+`nutrition.test.ts`, `planner.test.ts`, `plannerFixtures.ts`, `plans.test.ts`
+and the relevant sections of `recipes.test.ts`/`units*.test.ts` before writing
+it, and verified two of the seven areas directly against `planner.ts`'s
+actual function bodies rather than trusting `planner-logic-review.md`
+secondhand — both turned out to be real, currently-reproducible bugs with
+exact fixture data now written down: `resolveExpiryConstraints` receives the
+unfiltered recipe list, not the never-ingredient-filtered eligible set, so an
+excluded ingredient can be placed via expiry with no violation reported; and
+`placeMustUseConstraints`/`findPlacementOptions` only check whether a
+`(day, mealSlot)` slot is occupied, never whether an already-locked recipe
+already satisfies the same expiring ingredient, producing a false "no free
+slot" violation. Also found one existing test that encodes a known gap as
+expected behavior and must change deliberately, not as a regression:
+`nutrition.test.ts:29-36`, `"sums only the computable lines, skipping the
+rest"`, asserts a partial-nutrition recipe returns a total indistinguishable
+from a complete one. No test files or application code changed by this
+slice — `context/r01-fixtures.md` (new) and a `build-plan.md` source-list
+addition only.
+
+Fourth slice (2026-09-21): at the user's request, added concrete **proposed
+fixes** (not applied — design only, per the user's explicit "propose the
+fixes into the plan, don't do it now") for the confirmed bugs in
+`r01-fixtures.md`'s pantry-exclusions and locks sections, plus a fix sketch
+for the missing-nutrition status field and the yield-scaling duplication:
+pantry exclusions — call `resolveExpiryConstraints` with
+`ctx.eligibleRecipesBySlot`-filtered recipes instead of the raw list;
+locks — precompute `lockedIngredientIds` from `locked` (not the growing
+`assigned` map, to avoid changing the separate, still-open
+same-ingredient-multiple-lots behavior) and skip already-covered constraints
+before searching for a placement; nutrition — `summarizeKcal` returns a
+`status: "complete" | "partial" | "unknown"` alongside `kcalTotal`; yield
+scaling — one shared `scaleToServings` function replacing the two
+independent `totalServings / baseServings` implementations. All four are
+R02/R04 implementation work, not yet started; no application code changed.
+
+Fifth slice (2026-09-21): wrote [r04-search-quality.md](r04-search-quality.md)
+— the "define the search-quality ordering and comparison fixtures before
+R04... specify the runtime/quality measurements used to choose a work limit;
+do not invent a new magic iteration count" deliverable. Read `isBetter`,
+`evaluatePlan`, `scorePlan`, `countDistinctStores`, `fillRemainingSlots` and
+`localSearch` directly to ground the proposal: today's `isBetter` only
+compares a plain violation count then a preference score that never
+includes cost or calorie deviation, which is exactly why the plan's own
+900→800 Kč incremental-repair example currently can't be recognized as
+progress. Proposed a three-tier ordering (violation count, then a new
+normalized "how far past the limit" severity sum, then the existing
+preference score) with concrete severity formulas for both hard rules, an
+explicit stable tie-break (kept identical to `fillRemainingSlots`'s existing
+input-order rule, not a new convention), and four required comparison
+fixtures — incremental budget repair, locked meals, empty slots, and a
+genuine coordinated-change case identified by reasoning about which
+constraint is actually non-separable per slot (store count, since
+`countDistinctStores` depends on the joint ingredient set across all
+assigned slots, unlike the linear/additive weekly-budget cost) rather than
+assumed. The work-limit section specifies three measurements to take (
+evaluations per pass, passes to convergence, wall-clock per evaluation)
+against fixtures sized to this household's real recipe count, deferring the
+actual cutoff number to when R04 runs that measurement — no number is
+invented here. No test files, schema, or application code changed.
+
+Sixth slice (2026-09-21): added the "R04 implementation slices" subsection to
+`build-plan.md` under R04 — the last remaining R01 deliverable ("break the
+R04 work into small rule, search and measurement slices"). 15 bounded slices
+(R04.1-R04.8 rule, R04.9-R04.12 search, R04.13-R04.15 measurement), each
+citing `r01-fixtures.md` or `r04-search-quality.md` where a concrete design
+already exists, and explicitly marked **needs a decision first** where R04.4
+through R04.7 depend on a decision-table row R01 did not resolve (only four
+rows were in R01's scope: share migration, recipe amount storage, the
+R02-scoped cooking-adjustment slice, legacy plan editing — "Budget before
+offers," "Dates and expiry," and "Locks and changed rules" remain open,
+tagged R04/R04-R05, and are flagged rather than guessed at). Dependencies
+between slices recorded (e.g. R04.14's work-limit number cannot be chosen
+before R04.13 produces measured data). No code changed.
+
+**All five R01 deliverables are now done**: baseline/legacy-step-ID
+reconciliation (no drift found), the four blocking decisions resolved (plus
+one follow-up gap closed during understanding-check), `r01-fixtures.md`
+(portions/yield/nutrition/pantry-exclusions/locks/legacy-plans/stale-revisions,
+with proposed fixes for the two confirmed bugs added at the user's request),
+`r04-search-quality.md` (severity-aware ordering, four comparison fixtures,
+work-limit measurement methodology), and the R04 slice breakdown above.
+Marked `implemented—awaiting review` rather than `complete`, per this
+project's own rule that a step's status reflects verified evidence, and the
+user has not yet reviewed the full set of R01 changes together.
+
+**Next step:** user review of R01's five deliverables together, then R04.1
+(the first, decision-free rule slice) whenever the user asks to resume
+implementation.
+
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes
 do not override the active roadmap above. In particular, old step 31 is the
