@@ -5,7 +5,11 @@ import { Pill } from "../../shared/ui/Pill";
 import { Stat } from "../../shared/ui/Stat";
 import { formatTime } from "../../shared/lib/formatTime";
 import { IngredientLineRow } from "./IngredientLineRow";
+import { AddIngredientLineForm } from "./AddIngredientLineForm";
+import { useCreateIngredient, useIngredients } from "./useIngredients";
+import { firstMutationError, lineMutationError } from "./mutationError";
 import {
+  useAddIngredientLine,
   useEditIngredientLine,
   useRecipe,
   useRemoveIngredientLine,
@@ -27,6 +31,13 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
   const { data: recipe, isLoading, error } = useRecipe(id);
   const editLine = useEditIngredientLine();
   const removeLine = useRemoveIngredientLine();
+  const {
+    data: ingredients,
+    error: ingredientsError,
+    isLoading: ingredientsLoading,
+  } = useIngredients();
+  const addLine = useAddIngredientLine();
+  const createIngredient = useCreateIngredient();
   const tags = recipe
     ? [recipe.cuisine, recipe.proteinSource, recipe.diet].filter((tag): tag is string =>
         Boolean(tag),
@@ -72,30 +83,45 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
             </div>
           )}
 
-          {recipe.ingredients.length > 0 && (
-            <div className="border-t border-hair pt-2.5">
-              <span className="type-label text-9 text-faint">Ingredients</span>
-              <ul className="mt-1.5 flex flex-col gap-1">
-                {recipe.ingredients.map((line) => (
-                  <IngredientLineRow
-                    key={line.id}
-                    line={line}
-                    onSave={(data) => editLine.mutate({ recipeId: id, lineId: line.id, data })}
-                    isSaving={editLine.isPending && editLine.variables?.lineId === line.id}
-                    error={
-                      editLine.isError && editLine.variables?.lineId === line.id
-                        ? editLine.error.message
-                        : removeLine.isError && removeLine.variables?.lineId === line.id
-                          ? removeLine.error.message
-                          : undefined
-                    }
-                    onRemove={() => removeLine.mutate({ recipeId: id, lineId: line.id })}
-                    isRemoving={removeLine.isPending && removeLine.variables?.lineId === line.id}
+          <div className="border-t border-hair pt-2.5">
+            <span className="type-label text-9 text-faint">Ingredients</span>
+            <ul className="mt-1.5 flex flex-col gap-1">
+              {recipe.ingredients.map((line) => (
+                <IngredientLineRow
+                  key={line.id}
+                  line={line}
+                  onSave={(data) => editLine.mutate({ recipeId: id, lineId: line.id, data })}
+                  isSaving={editLine.isPending && editLine.variables?.lineId === line.id}
+                  error={lineMutationError(line.id, editLine, removeLine)}
+                  onRemove={() => removeLine.mutate({ recipeId: id, lineId: line.id })}
+                  isRemoving={removeLine.isPending && removeLine.variables?.lineId === line.id}
+                />
+              ))}
+              {ingredientsLoading && (
+                <li className="pl-1.5">
+                  <Skeleton className="h-6" />
+                </li>
+              )}
+              {ingredientsError && (
+                <li className="pl-1.5">
+                  <ErrorState
+                    title="Couldn't load ingredients"
+                    message={ingredientsError.message}
                   />
-                ))}
-              </ul>
-            </div>
-          )}
+                </li>
+              )}
+              {ingredients && (
+                <AddIngredientLineForm
+                  ingredients={ingredients}
+                  onAdd={(data) => addLine.mutateAsync({ recipeId: id, data })}
+                  onCreateIngredient={(data) => createIngredient.mutateAsync(data)}
+                  isAdding={addLine.isPending}
+                  isCreating={createIngredient.isPending}
+                  error={firstMutationError(addLine, createIngredient)}
+                />
+              )}
+            </ul>
+          </div>
 
           {recipe.source && (
             <p className="border-t border-hair pt-2 text-10 text-faint">Source: {recipe.source}</p>

@@ -529,10 +529,229 @@ update/rollback on save (same minimal-mutation pattern R02.3c-2 used for
 remove); no keyboard-specific test beyond the a11y check the new stories
 already run.
 
-**Next step:** either R02.3c-4 (the add-line picker UI R02.3c was
-originally scoped to include) or R02.4 (yield editing) or R02.5 (archiving,
-needs a decision first), per the user's choice, after the user reviews
-this diff.
+**R02.3c-4 — Ingredient list + add-line hooks — `complete` (2026-09-21).**
+User chose to continue with the add-line picker UI next; narrowed further
+before implementing, same reasoning R02.3c-1 used to split hooks from UI —
+a list hook, an add-line mutation hook, and a new form component (with a
+`<select>` pattern not used anywhere else in `recipes` yet, plus an
+empty-ingredients state) together would clear CLAUDE.md's ~40-line step cap.
+This slice is hooks only, no UI change.
+
+New `web/src/features/recipes/useIngredients.ts` — `useIngredients()`
+(`GET /api/ingredients`), typed via `InferResponseType`, same shape as
+`recipeCatalog.ts`'s pattern. `web/src/features/recipes/useRecipes.ts`
+gained `useAddIngredientLine()` (`POST /api/recipes/:id/ingredients`),
+mirroring `useEditIngredientLine`'s structure exactly: invalidates
+`recipesKeys.detail(recipeId)` on success rather than writing the mutation
+response into the cache, for the same reason as the edit/remove hooks — the
+add response is the raw repository row, not the joined `ingredientName`
+shape the cached detail uses.
+
+No UI wired yet — `RecipeDetail.tsx` unchanged. No new test file, matching
+R02.3c-1's own precedent: thin TanStack Query wrappers with nothing to
+render yet.
+
+Verified 2026-09-21: `npm run typecheck -w web` clean; `npm run lint -w web`
+clean (same 2 pre-existing unrelated warnings in `Table.tsx`/`Sidebar.tsx`);
+`npx prettier --check` clean on both touched files. `npm run test -w web`
+and api tests not re-run — no test-relevant or api-side change in this
+slice, same rationale R02.3c-1 gave.
+
+**R02.3c-5 — Add-line form UI — `implemented—awaiting review` (2026-09-21).**
+Finishes what R02.3c-4 was originally scoped to include. New
+`web/src/features/recipes/AddIngredientLineForm.tsx` — presentational, same
+family as `IngredientLineRow.tsx`/`MemberTargetRow.tsx` (a `<form>` inside a
+trailing `<li>`, react-hook-form + `zodResolver(recipeIngredientLineSchema)`,
+explicit ghost Add button), not a page-level "create" form like
+`RecipeForm.tsx` — chosen because this component only mounts once its
+`ingredients` prop is a known non-empty list (see below), which a
+page-level form pattern doesn't need but this one relies on for its
+`defaultValues`. Submits only `ingredientId`/`displayAmount`/`displayUnit`/
+`isOptional` — never `amountBase` — matching R02.3c-3's same deliberate
+scope limit ("missing amounts stay editable, never invented"); a unit-aware
+`amountBase` picker stays out of scope for both edit and add.
+
+`RecipeDetail.tsx` now also owns `useIngredients()` and the new
+`useAddIngredientLine()` (added in R02.3c-4), passing the loaded list down.
+The "Ingredients" section header is no longer gated on
+`recipe.ingredients.length > 0` — a recipe with zero lines still needs
+somewhere to add its first one. Three states handled inline in the list:
+an ingredients-list load error (`ErrorState`, in its own `<li>` — a bare
+`<div>` directly inside a `<ul>` is invalid list markup, the same class of
+a11y issue `IngredientLineRow.stories.tsx`'s decorator already worked
+around), an empty ingredient catalog (a one-line `<li>` fallback text, no
+inline "create ingredient" — deliberately deferred, see below), and the
+normal case (the form itself).
+
+Bug caught by the Storybook interaction test, fixed before it shipped:
+`handleSubmit(onAdd)` passed straight through calls `onAdd(data, event)` —
+react-hook-form's `SubmitHandler` always receives the DOM event as a second
+argument. `IngredientLineRow.tsx`'s existing submit handler already avoids
+this by wrapping in an inline arrow (`handleSubmit((data) => onSave(...))`);
+`AddIngredientLineForm.tsx` now does the same
+(`handleSubmit((data) => onAdd(data))`), so `useAddIngredientLine`'s
+`data` argument can't end up being a `SyntheticEvent` instead of the form
+payload.
+
+`web/src/stories/AddIngredientLineForm.stories.tsx` (new, 4 stories:
+default, adding, add-failed, and a `play`-function story that selects an
+ingredient, fills amount/unit, submits, and asserts the exact payload —
+including `isOptional: false`, since an unchecked checkbox is submitted as
+`false`, not omitted, unlike the optional text/number fields which really
+do become `undefined` via `emptyToUndefinedNumber`/`emptyToUndefined`,
+reused here from `shared/lib/formValues.ts` rather than re-inlined the way
+`IngredientLineRow.tsx` did it).
+
+Verified 2026-09-21: `npm run typecheck -w web` clean; `npm run lint -w web`
+clean (same 2 pre-existing unrelated warnings); `npx prettier --check`
+clean on all touched files. `npm run test -w web` → 22 files / 54 tests
+pass (was 21/53 — 4 new stories; the interaction-test story caught the
+`onAdd(data, event)` bug on the first run, failed with the extra
+`SyntheticBaseEvent` argument, then passed clean after the arrow-wrap fix).
+Manual browser verification (`npm run dev:all` against dev Postgres,
+Playwright driving real headless Chromium — `chromium-cli` still
+unavailable in this environment): opened Chia puding's detail rail, used
+the add-line form to add "Skořice" (15 g) — the new line appeared in the
+list immediately (row-state bar showing "check", since its `amountBase` is
+correctly left `null`), no console errors, and a follow-up
+`GET /api/recipes/1` confirmed the line server-side with `amountBase: null`
+(not invented) and `status` correctly dropping from `"complete"` to
+`"partial"`. Seed data restored via `DELETE` on the added line, confirmed
+`kcalTotal`/`status` matched the pre-verification response.
+
+**Correction and fix (2026-09-21, found and fixed via `/review`):** this
+entry originally claimed "no reset-after-add (the form keeps its last
+values...)" — that was inaccurate: `handleAdd` called `reset()` with no
+arguments after a successful add, which reverted every field, including
+`ingredientId`, to the `defaultValues` captured at mount
+(`ingredients[0]?.id`), not the ingredient the user just picked. Fixed by
+calling `reset()` (clearing amount/unit/optional as before) followed by
+`setValue("ingredientId", data.ingredientId)`, so the picker keeps
+showing the just-used ingredient — adding several lines of the same
+ingredient in a row now only requires re-entering the amount/unit each
+time, matching the originally intended design. (`reset({ ingredientId })`
+alone does not work here — passing partial values to RHF's `reset` merges
+with, rather than clears, the omitted fields, which was verified by
+running the test before landing on the two-call fix.) The Storybook
+`SubmitsSelectedIngredient` play test now also asserts the ingredient
+selection survives a submit, and was confirmed to fail without the fix.
+Two minor findings from the same review pass were also fixed: the "+ New
+ingredient" toggle now clears `newName` on cancel, and `RecipeDetail.tsx`
+shows a `Skeleton` row while `useIngredients()` is loading instead of
+rendering nothing.
+
+**Not yet done, left for later slices:** inline "create a new ingredient"
+from this form (R02.3a's `POST /api/ingredients` exists for this, still
+unused from the UI); no empty-ingredient-catalog affordance beyond the
+fallback text, since inline-create is what would actually resolve that
+state.
+
+**R02.3c-6 — Create-ingredient hook — `complete` (2026-09-21).** User chose
+to continue with inline ingredient creation; narrowed to hooks-before-UI
+again, same reasoning as R02.3c-1/R02.3c-4 — the toggle UI, two new inputs
+(name, base unit), and chaining two mutations (create ingredient, then add
+the line with its new id) together would clear the step-size cap and mix
+"add a mutation" with "build a two-step form flow" that doesn't exist
+elsewhere in this codebase yet.
+
+`web/src/features/recipes/useIngredients.ts` gained `useCreateIngredient()`
+(`POST /api/ingredients`), mirroring `useCreateRecipe`'s shape: invalidates
+`ingredientsKeys.list` on success (so the new ingredient appears in the
+picker) and resolves with the created `Ingredient`, so a caller can chain
+straight into `useAddIngredientLine` without waiting on a refetch. No UI
+change yet — `AddIngredientLineForm.tsx` unchanged. No new test file, same
+rationale as every other hooks-only slice: a thin TanStack Query wrapper
+with nothing to render yet.
+
+Verified 2026-09-21: `npm run typecheck -w web` clean; `npm run lint -w web`
+clean (same 2 pre-existing unrelated warnings); `npx prettier --check`
+clean. `npm run test -w web` not re-run — no test-relevant change.
+
+**R02.3c-7 — Wire inline ingredient creation into the add-line form —
+`implemented—awaiting review` (2026-09-21).** Closes the last gap left open
+by R02.3c-5/R02.3a: creating a brand-new ingredient from the recipe detail
+rail itself, not just picking an existing one.
+
+Went through two rejected designs before landing on this one, both worth
+recording since they're real traps: (1) a single form validated as one
+`recipeIngredientLineSchema` object, with `ingredientId` defaulting to
+`ingredients[0].id` as a throwaway placeholder while in "new ingredient"
+mode, replaced by the real id only after creation succeeded — rejected for
+carrying a meaningless value through validation just to satisfy Zod.
+(2) the same shape but with `useCreateIngredient` owned inside
+`AddIngredientLineForm` itself — rejected for breaking the ownership split
+every other row/form in this feature uses (`RecipeDetail.tsx` owns every
+mutation; presentational components only get callbacks and state as props).
+
+Final design ("create-then-select"): `RecipeDetail.tsx` now also owns
+`useCreateIngredient()`. `AddIngredientLineForm` gained an `isNew` toggle
+(a plain `useState`, not part of the react-hook-form-managed fields) that
+swaps the ingredient `<select>` for name/base-unit inputs with their own
+"Create" button — a separate `type="button"` action, not the form's
+submit. Clicking it calls the new `onCreateIngredient` prop
+(`createIngredient.mutateAsync`, passed down from the container); on
+success the form calls `setValue("ingredientId", ingredient.id)` and flips
+back to the normal picker — so by the time the quantity fields' "Add"
+button can even be clicked, `ingredientId` is always a real id, never a
+placeholder. The main form's `ingredientId` field is never touched or
+validated while `isNew` is true, since "Add" is disabled during that state.
+
+A small correctness detail: the just-created ingredient might not yet be in
+the `ingredients` prop when `setValue` runs — `useCreateIngredient`'s
+`invalidateQueries` triggers a refetch, but that refetch is async and the
+prop update lands after this render. `AddIngredientLineForm` holds the
+just-created ingredient in one extra bit of local state and merges it into
+the `<select>`'s options (deduped by id) until the real list catches up, so
+the select always has a matching `<option>` for the value being set.
+
+`RecipeDetail.tsx`'s ingredients section no longer needs the
+zero-ingredients-catalog fallback text from R02.3c-5 — the form itself is
+now a valid empty-catalog affordance, so it's rendered whenever `ingredients`
+has loaded, even as `[]`. `AddIngredientLineForm`'s `defaultValues` uses
+`ingredients[0]?.id` (`undefined` when the catalog is empty) instead of the
+non-null assertion from before, since mounting with zero ingredients is now
+a real, reachable state.
+
+`AddIngredientLineForm.stories.tsx` gained a `CreatesNewIngredient`
+interaction story: clicks "+ New ingredient", fills a name, clicks
+"Create", and asserts `onCreateIngredient` was called with
+`{ name, baseUnit }` and that the form collapsed back to the picker with
+the new ingredient genuinely selected (`toHaveValue("99")` against the
+story's stubbed `onCreateIngredient` result) — not a placeholder.
+
+Verified 2026-09-21: `npm run typecheck -w web` clean; `npm run lint -w web`
+clean (same 2 pre-existing unrelated warnings); `npx prettier --check`
+clean on all touched files. `npm run test -w web` → 22 files / 55 tests
+pass (was 54 — the new interaction story). Manual browser verification
+(`npm run dev:all` against dev Postgres, Playwright driving real headless
+Chromium — a stray dev server left running from an earlier session had
+taken port 5173, which silently pushed this run's web server to 5174 and
+broke the API's CORS allow-list; caught via a CORS console error, not a
+guess, then fixed by killing the stray process and restarting on the
+correct port): opened Chia puding's detail rail, clicked "+ New
+ingredient", created "Verify Cinnamon XYZ" (g), confirmed it appeared
+pre-selected in the now-restored picker, added it as a 2 g line — the line
+appeared immediately, no console errors, and a follow-up
+`GET /api/recipes/1` confirmed the line server-side (`ingredientId: 135`,
+`amountBase: null`, `status` correctly dropping to `"partial"`). No
+`DELETE /api/ingredients/:id` route exists (R02.3a only added list/create),
+so cleanup for the test ingredient row went through direct SQL against the
+dev container after confirming by id and name that it was exactly the test
+row and nothing else referenced it; the test line itself was removed
+through the existing `DELETE /api/recipes/:id/ingredients/:lineId` route.
+Confirmed restored: `kcalTotal`/`status` back to their pre-verification
+values and the ingredient catalog back to 134 rows.
+
+**Not yet done:** no way to add macros (`kcalPer100g` etc.) to a newly
+created ingredient from this form — only `name`/`baseUnit`, matching
+`createIngredientSchema`'s only-two-required-fields shape; a new
+ingredient created this way starts nutritionally unknown, same as any
+ingredient with no macros today. No `DELETE /api/ingredients/:id` route
+(out of scope for R02.3; noted here only because manual verification
+needed it and had to fall back to direct SQL).
+
+**Next step:** R02.4 (yield editing) or R02.5 (archiving, needs a decision
+first), per the user's choice — this closes out R02.3.
 
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes

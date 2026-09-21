@@ -34,6 +34,29 @@ export function useCreateRecipe() {
   });
 }
 
+export interface AddIngredientLineVariables {
+  recipeId: number;
+  data: RecipeIngredientLineInput;
+}
+
+async function postIngredientLine({ recipeId, data }: AddIngredientLineVariables) {
+  const res = await apiClient.api.recipes[":id"].ingredients.$post({
+    param: { id: String(recipeId) },
+    json: data,
+  });
+  return unwrapResponse(res);
+}
+
+export function useAddIngredientLine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: postIngredientLine,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: recipesKeys.detail(variables.recipeId) });
+    },
+  });
+}
+
 export interface EditIngredientLineVariables {
   recipeId: number;
   lineId: number;
