@@ -1,42 +1,51 @@
 import { findIngredientLinesForAllRecipes } from "../repositories/recipeIngredients.js";
 
+export type KcalStatus = "complete" | "partial" | "unknown";
+
 export interface KcalSummary {
   kcalTotal: number;
+  status: KcalStatus;
 }
 
 export const EMPTY_KCAL_SUMMARY: KcalSummary = {
   kcalTotal: 0,
+  status: "complete",
 };
 
 interface IngredientLine {
   amountBase: number | null;
   kcalPer100g: number | null;
+  baseUnit: string;
 }
 
 export function summarizeKcal(lines: IngredientLine[]): KcalSummary {
   let kcalTotal = 0;
+  let computableCount = 0;
 
   for (const line of lines) {
-    if (line.amountBase == null || line.kcalPer100g == null) {
+    if (line.amountBase == null || line.kcalPer100g == null || line.baseUnit !== "g") {
       continue;
     }
+    computableCount++;
     kcalTotal += (line.amountBase / 100) * line.kcalPer100g;
   }
 
-  return { kcalTotal };
+  const status: KcalStatus =
+    lines.length === 0 || computableCount === lines.length
+      ? "complete"
+      : computableCount === 0
+        ? "unknown"
+        : "partial";
+
+  return { kcalTotal, status };
 }
 
-export function computeKcalPerServing(
-  kcalTotal: number,
-  servings: number | null,
-): number | null {
+export function computeKcalPerServing(kcalTotal: number, servings: number | null): number | null {
   if (!servings) return null;
   return kcalTotal / servings;
 }
 
-export async function getKcalSummariesByRecipe(): Promise<
-  Map<number, KcalSummary>
-> {
+export async function getKcalSummariesByRecipe(): Promise<Map<number, KcalSummary>> {
   const lines = await findIngredientLinesForAllRecipes();
 
   const linesByRecipe = new Map<number, IngredientLine[]>();

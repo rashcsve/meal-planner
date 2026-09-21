@@ -52,9 +52,11 @@ async function buildPlannerRecipes(): Promise<PlannerRecipe[]> {
 
   const plannerRecipes: PlannerRecipe[] = [];
   for (const recipe of recipes) {
-    const kcalTotal = kcalSummaries.get(recipe.id)?.kcalTotal ?? null;
+    const summary = kcalSummaries.get(recipe.id);
     const kcalPerServing =
-      kcalTotal === null ? null : computeKcalPerServing(kcalTotal, recipe.servings);
+      summary && summary.status === "complete"
+        ? computeKcalPerServing(summary.kcalTotal, recipe.servings)
+        : null;
 
     // A recipe missing its meal type, cost, servings, or per-serving calories
     // can't be scored against a meal slot or a budget

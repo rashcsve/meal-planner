@@ -170,6 +170,59 @@ user has not yet reviewed the full set of R01 changes together.
 (the first, decision-free rule slice) whenever the user asks to resume
 implementation.
 
+## R02 — Reliable quantities, nutrition and recipe writing — `in progress`
+
+R02 bundles several distinct pieces of work (nutrition status, scaling
+centralization, ingredient-line writing/editing, archiving/versioning), so it
+was broken into slices in `build-plan.md`'s new "R02 implementation slices"
+subsection before implementing, the same way R01 broke down R04.
+
+**R02.1 — Nutrition status and unit-compatible computability — `complete`
+(2026-09-21).** Implemented `r01-fixtures.md §3`'s design: `summarizeKcal`
+(`api/src/services/nutrition.ts`) returns `{ kcalTotal, status: "complete" |
+"partial" | "unknown" }` instead of a bare total.
+
+Found while implementing, not in `r01-fixtures.md`: a line only counts as
+computable if the ingredient's `baseUnit === "g"` — `kcalPer100g` is defined
+per 100g, but `recipe_ingredients.amountBase` can be `g`, `ml`, or `pcs`
+(`shared/src/recipes.ts`'s `BASE_UNITS`), and the prior code multiplied every
+line's `amountBase` by `kcalPer100g` regardless of unit, silently treating
+`ml`/`pcs` amounts as grams. This directly matches R02's own verification
+line ("ml/pcs are not interpreted as grams"), so it was fixed in this slice
+rather than opened as a separate one. `findIngredientLinesForRecipe`/
+`findIngredientLinesForAllRecipes` (`api/src/repositories/
+recipeIngredients.ts`) now also select `baseUnit`.
+
+Planning eligibility (`buildPlannerRecipes` in `api/src/services/
+plan-inputs.ts`) now requires `status === "complete"` before treating a
+recipe's calories as usable — a `"partial"` recipe no longer silently passes
+as a complete calorie estimate, per the plan's own rule. Recipe display
+(`api/src/services/recipes.ts`, `listRecipes`/`getRecipe`) keeps showing the
+computed number when `status` is `"partial"` (still shown, just based on
+fewer lines) and only nulls `kcalPerServing` for `"unknown"` — the frontend
+(`RecipesPage.tsx`) already renders a null `kcalPerServing` as "—", so no web
+change was needed this slice.
+
+`api/tests/nutrition.test.ts` rewritten per `r01-fixtures.md`'s explicit
+instruction: the "sums only the computable lines, skipping the rest" test's
+expectation changed from `{ kcalTotal: 330 }` to `{ kcalTotal: 330, status:
+"partial" }` (deliberately, not a regression — it previously encoded the gap
+R02 exists to close); its siblings gained `status` assertions; three new
+tests cover the `ml`/`pcs`/mixed-unit cases. No existing `recipes.test.ts`
+assertions needed changes (they use `toMatchObject`, which ignores the added
+`status` field, and none touch a non-gram ingredient).
+
+Verified 2026-09-21: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing `web` warnings, unrelated); `npm run test -w api`
+→ 7 files / 84 tests pass (was 81 — 3 new nutrition tests); `npm run test -w
+web` → 20 files / 43 tests pass, unchanged (backend-only slice).
+
+Not yet done: R02.2 (scaling centralization) through R02.5 (archiving,
+needs a decision first) — see `build-plan.md`.
+
+**Next step:** R02.2 (centralize `scaleToServings`), or a different R02 slice
+if the user prefers a different order, when the user asks to resume.
+
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes
 do not override the active roadmap above. In particular, old step 31 is the

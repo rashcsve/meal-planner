@@ -11,6 +11,7 @@ export async function findIngredientLinesForRecipe(recipeId: number) {
       displayUnit: recipeIngredients.displayUnit,
       amountBase: recipeIngredients.amountBase,
       kcalPer100g: ingredients.kcalPer100g,
+      baseUnit: ingredients.baseUnit,
     })
     .from(recipeIngredients)
     .innerJoin(ingredients, eq(recipeIngredients.ingredientId, ingredients.id))
@@ -32,6 +33,7 @@ export async function findIngredientLinesForAllRecipes() {
       recipeId: recipeIngredients.recipeId,
       amountBase: recipeIngredients.amountBase,
       kcalPer100g: ingredients.kcalPer100g,
+      baseUnit: ingredients.baseUnit,
     })
     .from(recipeIngredients)
     .innerJoin(ingredients, eq(recipeIngredients.ingredientId, ingredients.id));

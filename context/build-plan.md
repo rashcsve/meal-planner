@@ -273,6 +273,37 @@ historical references survive migration. Add API tests for recipe ingredients/ed
 **Risk / rollback:** additive migration and preserved source data. No guessed backfill
 of quantities or nutrition; old readers must remain compatible during deployment.
 
+#### R02 implementation slices
+
+Written 2026-09-21 while implementing R02.1, following the same reasoning R01 applied to
+R04: this milestone bundles distinct pieces of work and CLAUDE.md caps a step at roughly
+40 lines, so it is broken into slices rather than attempted as one diff.
+
+1. **R02.1 — Nutrition status: complete/partial/unknown, and unit-compatible
+   computability.** Implemented. `summarizeKcal` now returns `{ kcalTotal, status }` per
+   [r01-fixtures.md §3](r01-fixtures.md); a line only counts if it is gram-based
+   (`ingredients.baseUnit === "g"`), fixing a confirmed bug found while implementing this
+   slice — `kcalPer100g` is defined per 100g, but `amountBase` can be `g`/`ml`/`pcs`
+   (`shared/src/recipes.ts` `BASE_UNITS`), and the prior code silently treated `ml`/`pcs`
+   amounts as grams. Planning eligibility (`plan-inputs.ts`) now requires
+   `status === "complete"`; recipe display (`recipes.ts`) nulls `kcalPerServing` only for
+   `"unknown"`, still showing a labelled partial number.
+2. **R02.2 — Centralize yield/servings scaling.** Add the shared `scaleToServings` function
+   per [r01-fixtures.md §2](r01-fixtures.md); replace `validateWeeklyBudget`'s inline ratio
+   (`planner.ts`) and `deriveMealDetail.ts`'s ingredient-scaling ratio with calls to it. No
+   behavior change intended — a reuse fix, not a calculation change.
+3. **R02.3 — Ingredient-line writing and editing.** Add/edit/remove ingredient lines on a
+   recipe (API + UI), needed by the detail/import flows R02's goal names. Missing amounts
+   stay editable, never invented.
+4. **R02.4 — Yield editing.** Edit a recipe's `servings`/yield after creation, keeping
+   `amountBase` as each line's original source quantity (per R01's "Recipe amount storage"
+   resolution) rather than reinterpreting it.
+5. **R02.5 — Archive before physical delete; historical snapshot/version data.** **Needs a
+   decision first** — R02's own text says to "define the historical snapshot/version data
+   required before edits can affect old meals," which is not yet specified. Resolve what a
+   snapshot captures (recipe + ingredient lines at generation time? a version pointer?)
+   before implementing, the same way R01 resolved R04's blocking rows up front.
+
 ### R03 — Fixed portion shares, end to end
 
 **Goal:** new weeks use a standard-portion target and fixed member shares.
