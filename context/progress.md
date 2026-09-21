@@ -308,8 +308,53 @@ Verified 2026-09-21: `npm run typecheck` (api+web) clean; `npm run lint`
 clean (same 2 pre-existing unrelated `web` warnings); `npm run test -w api`
 → 9 files / 94 tests pass (was 8/87 — 7 new).
 
-**Next step:** R02.3b (recipe ingredient-line CRUD — add/edit/remove a line
-on a specific recipe), after the user reviews this diff.
+**R02.3b — Recipe ingredient-line CRUD — `complete` (2026-09-21).** Added
+`POST /api/recipes/:id/ingredients`, `PUT /api/recipes/:id/ingredients/:lineId`,
+`DELETE /api/recipes/:id/ingredients/:lineId`. No schema/migration needed —
+`recipe_ingredients` already had every column this required.
+
+Design decision made with the user before implementing: `PUT` is a full
+replace, not a partial update — the body must include every field
+(`ingredientId`, `amountBase`, `displayAmount`, `displayUnit`, `isOptional`),
+and omitting an amount field clears it to `null` rather than leaving the
+existing value untouched. This makes "missing amounts stay editable, never
+invented" (R02's own text) concrete: a caller can deliberately blank an
+amount back to unknown through the same endpoint used to set it.
+
+`shared/src/recipeIngredients.ts` (new, `recipeIngredientLineSchema`, reused
+for both create and full-replace update since they're the same shape);
+`api/src/lib/params.ts` (`recipeIngredientLineParamSchema`, two-key
+`{id, lineId}`); `api/src/lib/errors.ts`
+(`RecipeIngredientLineNotFoundError`); `api/src/repositories/
+recipeIngredients.ts` (`findRecipeIngredientLineById`,
+`insertRecipeIngredientLine`, `updateRecipeIngredientLine`,
+`deleteRecipeIngredientLine` — FK-violation-on-`ingredientId` maps to
+`IngredientNotFoundError`, following the exact pattern already used by
+`pantryItems.ts`'s `insertPantryItem`); `api/src/services/
+recipeIngredients.ts` (new — `addIngredientLine` checks the recipe exists
+first, since an FK violation on `recipeId` alone isn't distinguishable from
+one on `ingredientId` by the existing catch; `editIngredientLine`/
+`removeIngredientLine` rely on the `{id, lineId}` `WHERE` clause matching
+nothing as the not-found signal, which also correctly 404s a line requested
+under the wrong recipe id, not just a nonexistent one); `api/src/routes/
+recipes.ts` extended with the three nested endpoints, mapping
+`RecipeNotFoundError`/`IngredientNotFoundError`/
+`RecipeIngredientLineNotFoundError` to 404, same convention as the existing
+recipe/ingredient/pantry routes.
+
+`api/tests/recipeIngredients.test.ts` (new, 12 tests): add with/without an
+amount, 404 on a nonexistent recipe or ingredient, 422 on a missing
+`ingredientId`; edit replaces fields, edit clears an omitted amount to
+`null`, edit 404s for a nonexistent line and for a line under the wrong
+recipe id; delete removes the line (204, confirmed via a follow-up `GET`)
+and 404s for a nonexistent line.
+
+Verified 2026-09-21: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing unrelated `web` warnings); `npm run test -w api`
+→ 10 files / 106 tests pass (was 9/94 — 12 new, no regressions).
+
+**Next step:** R02.3c (frontend ingredient picker + line editor), after the
+user reviews this diff.
 
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes

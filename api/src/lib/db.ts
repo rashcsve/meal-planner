@@ -8,3 +8,11 @@ export function pgErrorCode(err: unknown): string | undefined {
   }
   return undefined;
 }
+
+export function pgErrorConstraint(err: unknown): string | undefined {
+  const cause = err instanceof Error ? err.cause : undefined;
+  if (cause && typeof cause === "object" && "constraint" in cause) {
+    return cause.constraint as string;
+  }
+  return undefined;
+}

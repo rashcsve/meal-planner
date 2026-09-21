@@ -1,5 +1,6 @@
 export * from "./recipes.js";
 export * from "./ingredients.js";
+export * from "./recipeIngredients.js";
 export * from "./pantry.js";
 export * from "./planner.js";
 export * from "./preferences.js";

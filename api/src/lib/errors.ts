@@ -97,6 +97,13 @@ export class RecipeNotFoundError extends Error {
   }
 }
 
+export class RecipeIngredientLineNotFoundError extends Error {
+  constructor(recipeId: number, lineId: number) {
+    super(`No ingredient line ${lineId} on recipe ${recipeId}`);
+    this.name = "RecipeIngredientLineNotFoundError";
+  }
+}
+
 export class HouseholdSettingsNotConfiguredError extends Error {
   constructor() {
     super(

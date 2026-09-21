@@ -34,6 +34,7 @@ export async function getRecipe(id: number) {
     displayAmount: line.displayAmount,
     displayUnit: line.displayUnit,
     amountBase: line.amountBase,
+    isOptional: line.isOptional,
   }));
   const summary = summarizeKcal(lines);
 

@@ -5,6 +5,11 @@ export const idParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const recipeIngredientLineParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  lineId: z.coerce.number().int().positive(),
+});
+
 export const weekParamSchema = z.object({
   weekStartDate: z.iso.date(),
 });
