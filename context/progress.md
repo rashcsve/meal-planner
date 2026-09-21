@@ -220,8 +220,59 @@ web` → 20 files / 43 tests pass, unchanged (backend-only slice).
 Not yet done: R02.2 (scaling centralization) through R02.5 (archiving,
 needs a decision first) — see `build-plan.md`.
 
-**Next step:** R02.2 (centralize `scaleToServings`), or a different R02 slice
-if the user prefers a different order, when the user asks to resume.
+**R02.2 — Centralize yield/servings scaling — `implemented—awaiting review`
+(2026-09-21).** Implemented `r01-fixtures.md §2`'s design, with one
+deviation from its own tentative suggestion: the doc suggested
+`api/src/lib/units.ts` or a new `api/src/lib/scaling.ts` as "likely"
+locations, but one of the two duplicated call sites
+(`web/src/features/week/deriveMealDetail.ts`) is in the `web` workspace,
+which cannot import from `api/src/lib` (only a type-only `AppType` import
+crosses that boundary, per `architecture.md`'s contracts-boundary note). A
+function placed in `api/src/lib` could not actually be the *one* function
+both sides call. Added `scaleToServings(amount, baseServings, totalServings)`
+to a new `shared/src/scaling.ts` instead (exported via `shared/src/index.ts`)
+— `shared` already exports plain values/consts alongside Zod schemas
+(`MEAL_SLOTS`, `PLANNER_VERSION`), so this isn't a new kind of export from
+that package, and both `api` and `web` already depend on it.
+
+Replaced `validateWeeklyBudget`'s inline `recipe.costCzk * (totalServings /
+recipe.baseServings)` (`api/src/services/planner.ts`) and
+`deriveMealDetail.ts`'s `ingredientRow` ratio calculation with calls to
+`scaleToServings`. No behavior change intended: `deriveMealDetail.ts` keeps
+its existing guard (skip scaling, show the recipe's raw `displayAmount`, when
+`baseServings` is falsy/null or `totalServings <= 0` — the zero-guard fixed
+during step 31's manual verification) and its existing 1-decimal display
+rounding; only the division itself now goes through the shared function.
+
+Added `api/tests/scaling.test.ts` (3 tests, no Docker needed — pure
+function): the exact `r01-fixtures.md §2` worked example (200g rice,
+baseServings 4, totalServings 3.25 → 162.5g), an identity case, and the
+`validateWeeklyBudget` docblock's own worked cost example (400 Kč, 4
+servings, 2.25 needed → 225 Kč). No test added in `web` for
+`deriveMealDetail.ts`'s call site — it has no existing test file (no
+Storybook story either, per step 31's note that query-owning containers rely
+on manual verification here), and adding one is a scope expansion beyond
+this reuse-only slice, not something this slice's "no behavior change"
+framing calls for.
+
+Verified 2026-09-21: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing `web` warnings, unrelated).
+**`npm run test -w web` → 20 files / 43 tests pass, unchanged.**
+**`npm run test -w api` — blocked:** Docker Desktop was unresponsive for
+this session (`docker info`, and a Docker-independent-looking
+`vitest run tests/scaling.test.ts` invocation — blocked anyway because
+`api/vitest.config.ts`'s global setup starts the Postgres testcontainer for
+every run regardless of which file is selected — all hung with no output
+for several minutes). The new `scaling.test.ts` and the existing
+`planner.test.ts`/`nutrition.test.ts` suites (which already assert
+`validateWeeklyBudget`'s numeric output and would catch any behavior change
+from this refactor) have **not** been run against real Postgres this slice.
+Not claiming this passed — an explicit blocker, per this project's own rule
+not to claim a check passed without running it.
+
+**Next step:** re-run `npm run test -w api` once Docker is available and
+confirm the new/existing tests pass before treating R02.2 as verified; then
+R02.3, R02.4, or R02.5 (needs a decision first) per the user's choice.
 
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes

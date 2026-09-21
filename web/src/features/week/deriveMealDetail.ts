@@ -1,3 +1,4 @@
+import { scaleToServings } from "shared";
 import { categorizeReasons, type ReasonTagInfo } from "../../shared/lib/planReasons";
 import { formatTime } from "../../shared/lib/formatTime";
 import type {
@@ -54,13 +55,19 @@ function membersFromServings(
   }));
 }
 
-function ingredientRow(line: RecipeIngredient, ratio: number | null): MealDetailIngredientRow {
+function ingredientRow(
+  line: RecipeIngredient,
+  baseServings: number | null,
+  totalServings: number,
+): MealDetailIngredientRow {
   const incomplete = line.amountBase == null;
   if (line.displayAmount == null) {
     return { id: line.id, label: line.ingredientName, incomplete };
   }
   const amount =
-    ratio != null ? Math.round(line.displayAmount * ratio * 10) / 10 : line.displayAmount;
+    baseServings && totalServings > 0
+      ? Math.round(scaleToServings(line.displayAmount, baseServings, totalServings) * 10) / 10
+      : line.displayAmount;
   const amountLabel = [amount, line.displayUnit].filter(Boolean).join(" ");
   return {
     id: line.id,
@@ -83,7 +90,6 @@ export function deriveMealDetail(
   if (!recipe) return null;
 
   const totalServings = slot.memberServings.reduce((sum, m) => sum + m.servings, 0);
-  const ratio = recipe.servings && totalServings > 0 ? totalServings / recipe.servings : null;
 
   return {
     title: recipe.title,
@@ -93,7 +99,9 @@ export function deriveMealDetail(
     ),
     members: membersFromServings(slot.memberServings, members, recipe.kcalPerServing),
     reasonTags: categorizeReasons(slot.reasons),
-    ingredients: recipe.ingredients.map((line) => ingredientRow(line, ratio)),
+    ingredients: recipe.ingredients.map((line) =>
+      ingredientRow(line, recipe.servings, totalServings),
+    ),
   };
 }
 

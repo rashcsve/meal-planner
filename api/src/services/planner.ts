@@ -1,4 +1,4 @@
-import { MEAL_SLOTS, PLANNER_VERSION } from "shared";
+import { MEAL_SLOTS, PLANNER_VERSION, scaleToServings } from "shared";
 import type {
   PlannerRecipe,
   PlannerIngredientPrice,
@@ -522,7 +522,7 @@ export function validateWeeklyBudget(
       (servingsSum, member) => servingsSum + member.servings,
       0,
     );
-    return sum + recipe.costCzk * (totalServings / recipe.baseServings);
+    return sum + scaleToServings(recipe.costCzk, recipe.baseServings, totalServings);
   }, 0);
 
   if (total <= ctx.targets.weeklyBudgetCzk) return [];
