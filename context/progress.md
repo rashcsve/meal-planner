@@ -353,7 +353,72 @@ Verified 2026-09-21: `npm run typecheck` (api+web) clean; `npm run lint`
 clean (same 2 pre-existing unrelated `web` warnings); `npm run test -w api`
 → 10 files / 106 tests pass (was 9/94 — 12 new, no regressions).
 
-**Next step:** R02.3c (frontend ingredient picker + line editor), after the
+**R02.3c — Frontend ingredient picker + line editor — `in progress`.** Too
+large for one diff (edit/remove hooks, list/create-ingredient hooks, line
+editor UI, and the add-line picker UI are each their own slice), so broken
+down the same way R02.3 itself was, before implementing.
+
+**R02.3c-1 — Edit/remove ingredient-line hooks — `complete` (2026-09-21).**
+`web/src/features/recipes/useRecipes.ts` gained `useEditIngredientLine`
+(`PUT /api/recipes/:id/ingredients/:lineId`) and `useRemoveIngredientLine`
+(`DELETE .../:lineId`, via the existing `unwrapEmptyResponse` helper for the
+204 response). Both invalidate `recipesKeys.detail(recipeId)` on success
+rather than writing the mutation response into the cache directly — the
+route's response is the raw repository row (no `ingredientName`), while the
+cached recipe detail is the joined view `RecipeDetail.tsx` renders, so an
+invalidate-and-refetch is the correct match for that shape gap, not a
+`setQueryData` merge. No UI wired yet — `RecipeDetail.tsx`'s ingredient list
+is still read-only; that's R02.3c-2. No new test file: these are thin
+TanStack Query wrappers with nothing to render yet, matching this file's
+existing pattern (`useCreateRecipe`/`useRecipe` etc. have no dedicated test
+either — query hooks here are verified through the UI that calls them).
+
+Verified 2026-09-21: `npm run typecheck -w web` clean; `npm run lint -w web`
+clean (same 2 pre-existing warnings, unrelated, in `Sidebar.tsx`/`Table.tsx`).
+`npm run test -w web` and api tests not re-run — no test-relevant or
+api-side change in this slice.
+
+**R02.3c-2 — Remove button on ingredient lines — `implemented—awaiting
+review` (2026-09-21).** Narrowed further from the originally planned
+"edit + remove" — a full react-hook-form row (per `MemberTargetRow.tsx`'s
+always-editable-row pattern) plus a remove button together would exceed
+`CLAUDE.md`'s ~40-line step cap, so remove came first, matching
+`PantryPage.tsx`'s existing single-click `CloseButton` removal pattern (no
+confirmation dialog, consistent with that precedent). Inline amount/unit
+editing is deferred to the next slice.
+
+`RecipeDetail.tsx`: each ingredient `<li>` is now a flex row with the label
+and a `CloseButton` (`aria-label="Remove {ingredientName}"`, disabled while
+`removeLine.isPending`) calling `useRemoveIngredientLine().mutate({recipeId:
+id, lineId: line.id})`. ~10 lines of functional diff.
+
+Verified 2026-09-21: `npm run typecheck -w web` clean; `npm run lint -w web`
+clean (same 2 pre-existing unrelated warnings); `npm run test -w web` → 20
+files / 43 tests pass, unchanged (`RecipeDetail.tsx` has no Storybook story,
+matching its established convention of manual-only verification for
+query-owning containers). Manual browser verification (dev api+web servers
+against dev Postgres, Playwright driving real Chromium since `chromium-cli`
+wasn't available in this environment): opened Chia puding's detail rail,
+clicked remove on "Řecký jogurt" — the line disappeared from the rail
+without a page reload, no console errors, and a direct
+`GET /api/recipes/1` afterward confirmed the line was actually gone
+server-side (2 remaining ingredients). Seed data was inadvertently modified
+during verification — see below — and has been restored.
+
+**Data-restoration note:** the first restoration attempt used the deleted
+*line's* id (27) as the `ingredientId` in the re-add request, which silently
+added the wrong ingredient ("Sýr") — line ids and ingredient ids are
+different id spaces and the recipe-detail response doesn't expose
+`ingredientId` directly, only `ingredientName`. Caught by inspecting the
+response instead of assuming success; deleted the wrong line, looked up
+"Řecký jogurt"'s real ingredient id (19) via `GET /api/ingredients`, and
+re-added with the correct id. Final `kcalTotal` (370.3) and `status`
+("complete") verified matching the pre-verification response; the restored
+line has a new database id (283, was 27) but that's an
+internal detail, not user-visible or referenced elsewhere.
+
+**Next step:** R02.3c-3 — inline amount/unit/optional editing for existing
+ingredient lines (`useEditIngredientLine`, unused since R02.3c-1), after the
 user reviews this diff.
 
 The entries below retain their historical step numbers, statuses and evidence.
