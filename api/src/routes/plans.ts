@@ -4,12 +4,20 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { generatePlanSchema, replaceSlotSchema, setSlotLockedSchema } from "shared";
 import { weekParamSchema, slotParamSchema } from "../lib/params.js";
-import { generatePlan, getWeek, setSlotLocked, replaceSlot } from "../services/plans.js";
+import {
+  generatePlan,
+  getWeek,
+  setSlotLocked,
+  replaceSlot,
+  getSlotCandidates,
+} from "../services/plans.js";
 import {
   WeekAlreadyGeneratedError,
   PlanWeekNotFoundError,
   PlanSlotNotFoundError,
   RecipeNotFoundError,
+  SlotLockedError,
+  RecipeNotEligibleError,
   HouseholdSettingsNotConfiguredError,
   NoHouseholdMembersError,
   HouseholdMemberMissingDinnerTargetError,
@@ -27,6 +35,12 @@ function mapPlanError(err: unknown): never {
     throw new HTTPException(409, {
       message: err.message,
       cause: { code: "STALE_PLAN_REVISION" },
+    });
+  }
+  if (err instanceof SlotLockedError) {
+    throw new HTTPException(409, {
+      message: err.message,
+      cause: { code: "SLOT_LOCKED" },
     });
   }
   if (err instanceof ExpectedRevisionRequiredError) {
@@ -47,9 +61,13 @@ function mapPlanError(err: unknown): never {
     err instanceof NoHouseholdMembersError ||
     err instanceof HouseholdMemberMissingDinnerTargetError ||
     err instanceof EmptyPriceCatalogError ||
-    err instanceof EmptyPreferencesError
+    err instanceof EmptyPreferencesError ||
+    err instanceof RecipeNotEligibleError
   ) {
-    throw new HTTPException(422, { message: err.message });
+    throw new HTTPException(422, {
+      message: err.message,
+      cause: err instanceof RecipeNotEligibleError ? { code: "RECIPE_NOT_ELIGIBLE" } : undefined,
+    });
   }
   throw err;
 }
@@ -154,6 +172,26 @@ export const plansRoute = new Hono()
       try {
         const slot = await setSlotLocked(weekStartDate, day, mealSlot, false, expectedRevision);
         return c.json(slot);
+      } catch (err) {
+        mapPlanError(err);
+      }
+    },
+  )
+  .get(
+    "/:weekStartDate/slots/:day/:mealSlot/candidates",
+    zValidator("param", slotParamSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(400, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
+    async (c) => {
+      const { weekStartDate, day, mealSlot } = c.req.valid("param");
+      try {
+        const result = await getSlotCandidates(weekStartDate, day, mealSlot);
+        return c.json(result);
       } catch (err) {
         mapPlanError(err);
       }

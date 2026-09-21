@@ -30,6 +30,10 @@ afterEach(async () => {
 });
 
 // Just enough for generatePlan to succeed; planner.test.ts covers feasibility and scoring.
+// Two dinner recipes exist so replaceSlot/candidates tests can swap between
+// them: dinnerRecipe (400 kcal/serving, no promo) and dinnerRecipe2 (800
+// kcal/serving, its ingredient on promo) give distinct, hand-checkable
+// memberServings/reasons depending on which one a test picks.
 async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) {
   const [lunchIngredient] = await db
     .insert(ingredients)
@@ -38,6 +42,10 @@ async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) 
   const [dinnerIngredient] = await db
     .insert(ingredients)
     .values({ name: "Dinner base", baseUnit: "g", kcalPer100g: 400 })
+    .returning();
+  const [dinnerIngredient2] = await db
+    .insert(ingredients)
+    .values({ name: "Dinner base 2", baseUnit: "g", kcalPer100g: 800 })
     .returning();
   // Unused by any recipe, so marking it "never" satisfies the planner's non-empty-preferences check without excluding a recipe.
   const [unusedIngredient] = await db
@@ -53,6 +61,10 @@ async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) 
     .insert(recipes)
     .values({ title: "Test dinner", time: 20, cost: 100, meal: "dinner", servings: 1 })
     .returning();
+  const [dinnerRecipe2] = await db
+    .insert(recipes)
+    .values({ title: "Test dinner 2", time: 20, cost: 100, meal: "dinner", servings: 1 })
+    .returning();
 
   await db.insert(recipeIngredients).values([
     {
@@ -64,6 +76,12 @@ async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) 
     {
       recipeId: dinnerRecipe!.id,
       ingredientId: dinnerIngredient!.id,
+      amountBase: 100,
+      isOptional: false,
+    },
+    {
+      recipeId: dinnerRecipe2!.id,
+      ingredientId: dinnerIngredient2!.id,
       amountBase: 100,
       isOptional: false,
     },
@@ -91,12 +109,26 @@ async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) 
       price: 10,
       validFrom: "2020-01-01",
     },
+    {
+      ingredientId: dinnerIngredient2!.id,
+      store: "Store",
+      amount: 1,
+      unit: "g",
+      price: 10,
+      validFrom: "2020-01-01",
+      isPromo: true,
+    },
   ]);
   await db
     .insert(ingredientPreferences)
     .values({ ingredientId: unusedIngredient!.id, rule: "never", memberId: null });
 
-  return { lunchRecipe: lunchRecipe!, dinnerRecipe: dinnerRecipe!, member: member! };
+  return {
+    lunchRecipe: lunchRecipe!,
+    dinnerRecipe: dinnerRecipe!,
+    dinnerRecipe2: dinnerRecipe2!,
+    member: member!,
+  };
 }
 
 async function seedPlanWeek(overrides: Partial<{ weekStartDate: string; revision: number }> = {}) {
@@ -271,14 +303,22 @@ describe("stale mutations", () => {
   });
 
   it("does not let a regeneration overwrite a lock made after its snapshot", async () => {
-    const { dinnerRecipe } = await seedPlannableHousehold();
+    await seedPlannableHousehold();
     const generateRes = await postJson("/api/plans/generate", {
       weekStartDate: "2026-01-05",
       seed: 1,
     });
     expect(generateRes.status).toBe(200);
-    const generated = (await generateRes.json()) as { revision: number };
+    const generated = (await generateRes.json()) as {
+      revision: number;
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
     expect(generated.revision).toBe(1);
+    // Either seeded dinner recipe is a valid pick; lock preservation is what
+    // this test checks, not which one the planner scored higher.
+    const assignedRecipeId = generated.slots.find(
+      (s) => s.day === 0 && s.mealSlot === "dinner",
+    )!.recipeId;
 
     const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
       expectedRevision: 1,
@@ -304,7 +344,7 @@ describe("stale mutations", () => {
     expect(getBody.revision).toBe(2);
     expect(getBody.seed).toBe(1);
     const lockedSlot = getBody.slots.find((s) => s.day === 0 && s.mealSlot === "dinner");
-    expect(lockedSlot).toMatchObject({ locked: true, recipeId: dinnerRecipe.id });
+    expect(lockedSlot).toMatchObject({ locked: true, recipeId: assignedRecipeId });
   });
 });
 
@@ -387,12 +427,18 @@ describe("existing behaviour preserved", () => {
   });
 
   it("still preserves a locked slot across regeneration with a valid revision", async () => {
-    const { dinnerRecipe } = await seedPlannableHousehold();
+    await seedPlannableHousehold();
     const generateRes = await postJson("/api/plans/generate", {
       weekStartDate: "2026-01-05",
       seed: 1,
     });
-    const generated = (await generateRes.json()) as { revision: number };
+    const generated = (await generateRes.json()) as {
+      revision: number;
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
+    const assignedRecipeId = generated.slots.find(
+      (s) => s.day === 0 && s.mealSlot === "dinner",
+    )!.recipeId;
 
     const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
       expectedRevision: generated.revision,
@@ -411,7 +457,7 @@ describe("existing behaviour preserved", () => {
       slots: { day: number; mealSlot: string; locked: boolean; recipeId: number | null }[];
     };
     const slot = getBody.slots.find((s) => s.day === 0 && s.mealSlot === "dinner");
-    expect(slot).toMatchObject({ locked: true, recipeId: dinnerRecipe.id });
+    expect(slot).toMatchObject({ locked: true, recipeId: assignedRecipeId });
   });
 });
 
@@ -432,7 +478,7 @@ describe("household configuration", () => {
 
 describe("member servings persistence", () => {
   it("persists each member's servings and returns them from generate and a subsequent GET", async () => {
-    const { member } = await seedPlannableHousehold();
+    const { dinnerRecipe, member } = await seedPlannableHousehold();
     const generateRes = await postJson("/api/plans/generate", {
       weekStartDate: "2026-01-05",
       seed: 1,
@@ -441,13 +487,19 @@ describe("member servings persistence", () => {
       slots: {
         day: number;
         mealSlot: string;
+        recipeId: number | null;
         memberServings: { memberId: number; servings: number }[];
       }[];
     };
-    // dinnerIngredient is 400 kcal/100g, 100g used, servings=1 -> 400 kcal/serving;
-    // the seeded member's dinnerCalorieTarget is 400, so exactly 1 serving.
     const generatedDinner = generated.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
-    expect(generatedDinner.memberServings).toEqual([{ memberId: member.id, servings: 1 }]);
+    // dinnerIngredient is 400 kcal/100g, dinnerIngredient2 is 800 kcal/100g
+    // (both recipes use 100g, so that's kcal/serving); the seeded member's
+    // dinnerCalorieTarget is 400, so exactly 1 serving of dinnerRecipe or
+    // 0.5 of dinnerRecipe2, whichever the planner picked.
+    const expectedServings = generatedDinner.recipeId === dinnerRecipe.id ? 1 : 0.5;
+    expect(generatedDinner.memberServings).toEqual([
+      { memberId: member.id, servings: expectedServings },
+    ]);
 
     const getRes = await app.request("/api/plans/2026-01-05");
     const getBody = (await getRes.json()) as {
@@ -458,10 +510,86 @@ describe("member servings persistence", () => {
       }[];
     };
     const fetchedDinner = getBody.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
-    expect(fetchedDinner.memberServings).toEqual([{ memberId: member.id, servings: 1 }]);
+    expect(fetchedDinner.memberServings).toEqual([
+      { memberId: member.id, servings: expectedServings },
+    ]);
   });
 
-  it("resets memberServings to empty when a slot's recipe is replaced", async () => {
+  it("recomputes memberServings and reasons for the newly assigned recipe, not the old one", async () => {
+    const { dinnerRecipe, dinnerRecipe2, member } = await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as {
+      revision: number;
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
+    const assignedId = generated.slots.find(
+      (s) => s.day === 0 && s.mealSlot === "dinner",
+    )!.recipeId!;
+    // Swap to whichever of the two dinner recipes the planner didn't already
+    // pick, so this test exercises a real change, not a no-op reassignment.
+    const target = assignedId === dinnerRecipe.id ? dinnerRecipe2 : dinnerRecipe;
+    // dinnerIngredient is 400 kcal/100g (no promo), dinnerIngredient2 is 800
+    // kcal/100g (on promo) - both recipes use 100g, so calories/serving equal
+    // the ingredient's kcalPer100g. Member target is 400 (seedPlannableHousehold's default).
+    const expectedServings = target.id === dinnerRecipe.id ? 1 : 0.5;
+    const expectedReasons =
+      target.id === dinnerRecipe2.id ? ["promo: Dinner base 2 on sale at Store"] : [];
+
+    const replaceRes = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: target.id,
+      expectedRevision: generated.revision,
+    });
+    expect(replaceRes.status).toBe(200);
+    const replaced = (await replaceRes.json()) as {
+      recipeId: number;
+      reasons: string[];
+      memberServings: { memberId: number; servings: number }[];
+    };
+    expect(replaced.recipeId).toBe(target.id);
+    expect(replaced.memberServings).toEqual([{ memberId: member.id, servings: expectedServings }]);
+    expect(replaced.reasons).toEqual(expectedReasons);
+
+    const getRes = await app.request("/api/plans/2026-01-05");
+    const getBody = (await getRes.json()) as {
+      slots: { day: number; mealSlot: string; memberServings: unknown[] }[];
+    };
+    const slot = getBody.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    expect(slot.memberServings).toEqual([{ memberId: member.id, servings: expectedServings }]);
+  });
+});
+
+describe("slot replacement validation", () => {
+  it("rejects replacing a locked slot, requiring an explicit unlock first", async () => {
+    const { dinnerRecipe2 } = await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as { revision: number };
+
+    const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const locked = (await lockRes.json()) as { revision: number };
+
+    const replaceRes = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: dinnerRecipe2.id,
+      expectedRevision: locked.revision,
+    });
+    expect(replaceRes.status).toBe(409);
+    const body = (await replaceRes.json()) as { error: { details?: { code?: string } } };
+    expect(body.error.details?.code).toBe("SLOT_LOCKED");
+
+    const getRes = await app.request("/api/plans/2026-01-05");
+    const getBody = (await getRes.json()) as { revision: number };
+    // A rejected replace must not bump the revision either.
+    expect(getBody.revision).toBe(locked.revision);
+  });
+
+  it("rejects replacing a dinner slot with a recipe of the wrong meal type", async () => {
     const { lunchRecipe } = await seedPlannableHousehold();
     const generateRes = await postJson("/api/plans/generate", {
       weekStartDate: "2026-01-05",
@@ -469,20 +597,61 @@ describe("member servings persistence", () => {
     });
     const generated = (await generateRes.json()) as { revision: number };
 
-    // Replacing with a recipe the planner never scaled portions for -
-    // stale servings for the old recipe must not linger and be misread as
-    // belonging to the new one.
     const replaceRes = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
       recipeId: lunchRecipe.id,
       expectedRevision: generated.revision,
     });
-    expect(replaceRes.status).toBe(200);
+    expect(replaceRes.status).toBe(422);
+    const body = (await replaceRes.json()) as {
+      error: { message: string; details?: { code?: string } };
+    };
+    expect(body.error.details?.code).toBe("RECIPE_NOT_ELIGIBLE");
+    expect(body.error.message).toContain("meal type");
+  });
+
+  it("rejects a replace with a stale revision without writing anything", async () => {
+    const { dinnerRecipe2 } = await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as { revision: number };
+
+    const replaceRes = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: dinnerRecipe2.id,
+      expectedRevision: generated.revision + 1,
+    });
+    expect(replaceRes.status).toBe(409);
+    const body = (await replaceRes.json()) as { error: { details?: { code?: string } } };
+    expect(body.error.details?.code).toBe("STALE_PLAN_REVISION");
 
     const getRes = await app.request("/api/plans/2026-01-05");
-    const getBody = (await getRes.json()) as {
-      slots: { day: number; mealSlot: string; memberServings: unknown[] }[];
+    const getBody = (await getRes.json()) as { revision: number };
+    expect(getBody.revision).toBe(generated.revision);
+  });
+});
+
+describe("slot candidates", () => {
+  it("returns only recipes eligible for the slot, best-scoring first", async () => {
+    const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+
+    const res = await app.request("/api/plans/2026-01-05/slots/0/dinner/candidates");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      candidates: { recipeId: number; memberServings: unknown[] }[];
     };
-    const slot = getBody.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
-    expect(slot.memberServings).toEqual([]);
+
+    const ids = body.candidates.map((c) => c.recipeId);
+    expect(ids).toContain(dinnerRecipe.id);
+    expect(ids).toContain(dinnerRecipe2.id);
+    expect(ids).toHaveLength(2); // the lunch-only recipe is excluded
+    // dinnerRecipe2's ingredient is on promo, giving it a higher scoreSlot.
+    expect(body.candidates[0]!.recipeId).toBe(dinnerRecipe2.id);
+  });
+
+  it("404s for a week with no plan yet", async () => {
+    const res = await app.request("/api/plans/2026-01-05/slots/0/dinner/candidates");
+    expect(res.status).toBe(404);
   });
 });

@@ -1,39 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { InferResponseType } from "hono/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CreateRecipeInput } from "shared";
 import { apiClient } from "../../app/apiClient";
 import { unwrapResponse } from "../../shared/api/unwrapResponse";
 import {
   recipeCatalogKeys,
   useRecipeCatalog,
+  useRecipeDetail,
   type RecipeCatalogEntry,
+  type RecipeWithIngredients,
 } from "../../shared/api/recipeCatalog";
 
-export const recipesKeys = {
-  list: recipeCatalogKeys.list,
-  detail: (id: number) => ["recipes", id] as const,
-};
+export const recipesKeys = recipeCatalogKeys;
 
 export type Recipe = RecipeCatalogEntry;
-export type RecipeWithIngredients = InferResponseType<
-  (typeof apiClient.api.recipes)[":id"]["$get"]
->;
+export type { RecipeWithIngredients };
 export type RecipeIngredient = RecipeWithIngredients["ingredients"][number];
 
 export const useRecipes = useRecipeCatalog;
-
-async function fetchRecipe(id: number): Promise<RecipeWithIngredients> {
-  const res = await apiClient.api.recipes[":id"].$get({ param: { id: String(id) } });
-  return unwrapResponse(res);
-}
-
-export function useRecipe(id: number | undefined) {
-  return useQuery({
-    queryKey: recipesKeys.detail(id ?? -1),
-    queryFn: () => fetchRecipe(id!),
-    enabled: id != null,
-  });
-}
+export const useRecipe = useRecipeDetail;
 
 async function postRecipe(data: CreateRecipeInput): Promise<RecipeWithIngredients> {
   const res = await apiClient.api.recipes.$post({ json: data });

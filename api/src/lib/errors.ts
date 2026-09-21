@@ -119,3 +119,17 @@ export class HouseholdMemberNotFoundError extends Error {
     this.name = "HouseholdMemberNotFoundError";
   }
 }
+
+export class SlotLockedError extends Error {
+  constructor(day: number, mealSlot: string) {
+    super(`Slot for day ${day}, ${mealSlot} is locked; unlock it before replacing its recipe`);
+    this.name = "SlotLockedError";
+  }
+}
+
+export class RecipeNotEligibleError extends Error {
+  constructor(recipeId: number, day: number, mealSlot: string, reason: string) {
+    super(`Recipe ${recipeId} can't fill day ${day}, ${mealSlot}: ${reason}`);
+    this.name = "RecipeNotEligibleError";
+  }
+}

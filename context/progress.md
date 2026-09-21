@@ -317,7 +317,7 @@ rather than a recipe's raw serving count, following the same
 the unrelated optimistic-locking dependency for step 30's later siblings
 (32, 33).
 
-## Step 30 — Week grid and planning settings — `implemented—awaiting review`
+## Step 30 — Week grid and planning settings — `complete`
 
 Scope agreed with the user before implementation (2026-09-17), since the
 plan's text ("per-member dinner calorie target/tolerance, budget/currency,
@@ -414,5 +414,137 @@ an existing week is not exposed (only initial generation — regeneration and
 its cache consistency is step 33); ingredient exclusions/preferences have no
 edit UI (deferred, see scope note above).
 
-**Next step: 31** (Meal detail rail and replacement), after the user reviews
-this diff and authorizes a commit.
+Committed as `feat(api): add household settings and member routes`,
+`fix(plans): order returned slots by day and surface generation violations`,
+`feat(household): add settings and dinner-target UI`,
+`feat(week): add weekly plan grid and generation` (this entry previously said
+"awaiting review/commit" — stale, corrected here since the commits already
+landed).
+
+**Next step: 31** (Meal detail rail and replacement).
+
+## Step 31 — Meal detail rail and replacement — `implemented—awaiting review`
+
+**Found while orienting, treated as in-scope (not a separate follow-up):**
+`replaceSlot` (added in step 28/30) had three gaps against this step's own
+acceptance criteria: no locked-slot check (would silently overwrite a locked
+slot's recipe); no eligibility validation on the new recipe (meal type,
+excluded ingredients, per-member servings plausibility); and it
+unconditionally reset `reasons`/`memberServings` to `[]` instead of
+recomputing them. Design (new `/candidates` endpoint, backend validation,
+frontend rail) presented to the user for review before implementation
+(2026-09-18); approved.
+
+**Backend implemented:** `api/src/services/planner.ts` — `computeMemberServings`
+and `isServingsPlausible` exported (were private); new `checkSlotEligibility`
+(mealType/never-ingredient/servings-plausibility, one violation reason or
+`null`) that `indexEligibleRecipesBySlot` now calls, replacing its inline
+boolean checks (same behavior, deduped); `collectReasons` exported.
+`api/src/lib/errors.ts` — `SlotLockedError` (409 `SLOT_LOCKED`),
+`RecipeNotEligibleError` (422 `RECIPE_NOT_ELIGIBLE`). `api/src/services/plans.ts`
+— new `getSlotCandidates(weekStartDate, day, mealSlot)` reuses
+`getPlanInputs`/`buildPlannerContext`/`eligibleRecipes` (no new planning
+logic) and ranks results by `scoreSlot`; `replaceSlot` now: 404s via a direct
+`findRecipeById` check before touching household-config-dependent
+`getPlanInputs` (preserves the existing "nonexistent recipeId still 404s"
+behavior even for a week with incomplete household config); 409s
+(`SlotLockedError`) if the target slot is locked; 422s
+(`RecipeNotEligibleError`) if the recipe fails `checkSlotEligibility`; then
+recomputes real `reasons`/`memberServings` from the rest of the week's
+assigned slots instead of blanking them. New route
+`GET /api/plans/:weekStartDate/slots/:day/:mealSlot/candidates`.
+`updateSlotRecipe` (repository) now takes `reasons`/`memberServings`
+parameters instead of hardcoding empty arrays.
+
+**Frontend implemented:** `web/src/features/week/MealDetailRail.tsx` (new),
+`deriveMealDetail.ts` (new, pure — `deriveMealDetail`/`deriveCandidateRows`),
+wired into `WeekPage.tsx` next to `WeekGrid` when a day is selected. Shows
+recipe title/meta/tags, per-member servings and calories, reason tags,
+ingredients scaled by (total servings needed ÷ recipe's base servings —
+same ratio `validateWeeklyBudget` already uses), and either a locked notice
+with an "Unlock to edit" action or a ranked replacement-candidate list.
+`useWeek.ts` gained `useSlotCandidates`, `useReplaceSlot`, `useSetSlotLocked`
+— the lock mutation here is a plain mutate-then-cache-write (no query
+cancellation/snapshot/rollback), since building the full optimistic-update
+UX is step 32's scope; this step only needs enough to gate replacement
+behind an explicit unlock. `web/src/shared/api/recipeCatalog.ts` gained
+`useRecipeDetail`/`RecipeWithIngredients`/`RecipeIngredient` (moved out of
+`features/recipes/useRecipes.ts`, which now re-exports them) since `week`
+needed the single-recipe-with-ingredients query too and features may not
+import each other's files — same pattern step 30 already used for the
+recipe catalog list. `web/src/shared/layout/DetailRail.tsx` gained an
+optional `className` override (default preserves its exact prior fixed
+`w-73` behavior for `RecipeDetail`, its only other caller) so
+`MealDetailRail` can render one content tree that's a side rail at `md:`
+and a full-width inline panel below it — the project's `md:` breakpoint
+convention (already used by `WeekGrid`'s `grid-cols-1 md:grid-cols-7`),
+extended here to the rail primitive for the first time since this is the
+first screen that needed a non-desktop-only rail.
+
+**Bug found and fixed during manual browser verification, not by the
+automated suite:** `deriveMealDetail`'s ingredient-scaling ratio was
+`totalServings / recipe.servings` with no zero guard. A slot with an empty
+`memberServings` array (the same pre-27.1 legacy dinner-slot data step 30's
+verification already flagged as present in the dev database) produced a
+ratio of exactly `0`; every scaled ingredient amount then rounded to `0`,
+and `[amount, unit].filter(Boolean)` silently dropped it (`Boolean(0)` is
+`false`) — ingredients rendered as a bare unit with no quantity (e.g. "g
+Brambory"), not an error or an "unknown" state. Fixed by treating
+`totalServings === 0` the same as "no scaling data" (falls back to the
+recipe's own base/unscaled amounts) rather than a real `0` ratio — the
+correct fix regardless of this specific database's history, since nothing
+prevents a slot with empty `memberServings` from existing again. Re-verified
+in the browser after the fix (locked slot with empty `memberServings` now
+shows its base amounts correctly).
+
+New api tests in `api/tests/plans.test.ts`: locked-slot replace rejection
+(409 `SLOT_LOCKED`), wrong-meal-type replace rejection (422
+`RECIPE_NOT_ELIGIBLE`), stale-revision replace rejection (409, no partial
+write), candidates endpoint returns only eligible recipes ranked
+best-scoring-first, candidates 404s for a week with no plan yet. Also
+rewrote the "resets memberServings to empty when a slot's recipe is
+replaced" test — it asserted the pre-fix bug's behavior (replacing a dinner
+slot with a lunch-only recipe used to silently succeed and blank
+`memberServings`; it now correctly 422s) — replaced with a test asserting
+real recomputed `reasons`/`memberServings` for a validly-replaced recipe.
+`seedPlannableHousehold` gained a second dinner recipe (needed so
+replace/candidates tests have more than one valid recipe to work with),
+which changed which recipe the deterministic planner assigns to day-0
+dinner under seed 1; three unrelated pre-existing tests
+("does not let a regeneration overwrite a lock made after its snapshot",
+"still preserves a locked slot across regeneration with a valid revision",
+"persists each member's servings...") hardcoded the single old recipe's id
+and started failing — fixed by reading the actually-assigned recipe from
+each test's own generate response instead of assuming which of the two
+valid recipes the planner picked (the tests' real intent — lock survival,
+persistence — is unaffected by which recipe that is).
+
+Verified 2026-09-18: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing `web` warnings); `npm run test -w api` → 7 files
+/ 81 tests pass (was 76 — 5 new, 3 existing rewritten as described above);
+`npm run test -w web` → 20 files / 43 tests pass, unchanged (no new
+Storybook story — `MealDetailRail` does its own data fetching/mutations,
+and the project's established convention, per `RecipeDetail.tsx` having no
+story either, is that only prop-driven presentational components get
+stories; query-owning containers are verified by the manual browser
+journey instead). Manual browser verification (Playwright driving the real
+dev servers + dev Postgres, screenshots inspected, no console errors):
+selecting an unlocked dinner day opens the rail with correct title,
+tags, reasons, per-member servings/calories, and ingredients; picking a
+replacement candidate persists (confirmed via the grid updating and a
+direct API round-trip) and shows correctly recomputed reasons/servings for
+the new recipe; a locked day shows the locked notice and no candidate
+list; clicking "Unlock to edit" reveals the candidate list; at a narrow
+(420px) viewport the rail renders as a full-width inline panel below the
+grid, not a clipped side rail.
+
+**Not yet done, left for later steps:** the lock/unlock control here is
+intentionally minimal (no optimistic update, cancellation, or rollback —
+step 32); replaceSlot's stale-revision recovery is "show the error and let
+the next `staleTime`/focus refetch resolve it," not an explicit
+reconcile-and-retry flow (also step 32/33 territory); no Playwright/E2E
+journey test was added for the replace flow — only Vitest/API tests plus
+the manual Playwright verification above, matching this project's existing
+practice of manual-only verification for query-owning feature containers.
+
+**Next step: 32** (Optimistic locking), after the user reviews this diff.

@@ -113,12 +113,14 @@ domain error and let the route layer map it.
   several files' `afterEach` hooks do blanket deletes on tables (`recipes`,
   `ingredients`) that more than one file uses, which corrupts a concurrently
   running file's fixtures otherwise.
-  - Files that exist and were last verified passing 2026-09-17
-    (`npm run test -w api` → 7 files / 76 tests): `recipes.test.ts`,
+  - Files that exist and were last verified passing 2026-09-18
+    (`npm run test -w api` → 7 files / 81 tests): `recipes.test.ts`,
     `nutrition.test.ts`, `planner.test.ts`, `unitConversions.test.ts`,
     `units.test.ts`, `plans.test.ts` (persistence, the revision
     compare-and-swap, concurrent-mutation races, rollback on a
-    mid-transaction failure, and lock preservation across regeneration), and
+    mid-transaction failure, lock preservation across regeneration, and —
+    added in step 31 — locked-slot/ineligible-recipe replace rejection and
+    the `/candidates` endpoint's eligibility filtering/ranking), and
     `household.test.ts` (added in step 30 — settings get/put/validation,
     members list, member dinner-target update and its 404/400/422 cases).
   - **No test file exists yet** for pantry, ingredient preferences, or
@@ -139,13 +141,23 @@ Local interaction state (selection, form drafts) is `useState`/`useReducer`
 inside the owning feature. Features (`recipes`, `pantry`, `week`,
 `household`, and future `shopping`, `import`) never import from each other;
 shared pieces move to `web/src/shared/`. In practice this means read-only
-queries that more than one feature needs (the recipe catalog, household
-settings/members) live in `web/src/shared/api/` with their own query keys;
-the owning feature's hook file re-exports them (and adds its own mutations)
-rather than duplicating the fetch/key so the TanStack Query cache stays
-genuinely shared, not just similarly-shaped. `week` currently reads its
-recipe/household data this way; `household`'s own read hooks are the
-canonical example other features should follow for new cross-feature data.
+queries that more than one feature needs (the recipe catalog, a single
+recipe's full detail with ingredients, household settings/members) live in
+`web/src/shared/api/` with their own query keys; the owning feature's hook
+file re-exports them (and adds its own mutations) rather than duplicating
+the fetch/key so the TanStack Query cache stays genuinely shared, not just
+similarly-shaped. `week` reads recipe/household data this way, including
+the single-recipe-detail query (`useRecipeDetail`, added in step 31 when
+the meal detail rail needed it alongside `recipes`' own `RecipeDetail`);
+`household`'s own read hooks are the canonical example other features
+should follow for new cross-feature data.
+
+`web/src/shared/layout/DetailRail.tsx` takes an optional `className`
+override (default preserves the original fixed `w-73` side-rail sizing for
+`RecipeDetail`, its first caller) so a consumer can render one content tree
+that's a side rail at the `md:` breakpoint and a full-width inline panel
+below it on narrow screens — added in step 31 for `MealDetailRail`, the
+first rail usage that needed a non-desktop-only layout.
 
 ## Development workflow
 

@@ -14,6 +14,7 @@ import { useWeek, useGeneratePlan } from "./useWeek";
 import { deriveWeekRows } from "./deriveWeekRows";
 import { WeekNav } from "./WeekNav";
 import { WeekGrid } from "./WeekGrid";
+import { MealDetailRail } from "./MealDetailRail";
 
 const START_PARAM = "start";
 const DEFAULT_START_DAY_OF_WEEK = 1;
@@ -117,29 +118,48 @@ export function WeekPage() {
     );
   }
 
+  const selectedSlot =
+    selectedDay !== null
+      ? weekQuery.data.slots.find((s) => s.day === selectedDay && s.mealSlot === "dinner")
+      : undefined;
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {nav}
-      <div className="flex-1 overflow-auto p-3.5">
-        {generatePlan.isSuccess && generatePlan.data.violations.length > 0 && (
-          <div className="mb-2">
-            <ErrorState
-              title="Some slots couldn't be filled"
-              message={generatePlan.data.violations.map((v) => v.detail).join(" ")}
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
+        <div className="flex-1 overflow-auto p-3.5">
+          {generatePlan.isSuccess && generatePlan.data.violations.length > 0 && (
+            <div className="mb-2">
+              <ErrorState
+                title="Some slots couldn't be filled"
+                message={generatePlan.data.violations.map((v) => v.detail).join(" ")}
+              />
+            </div>
+          )}
+          <div data-detail-rail-ignore>
+            <WeekGrid
+              rows={deriveWeekRows(
+                weekStartDate,
+                weekQuery.data.slots,
+                recipesQuery.data ?? [],
+                membersQuery.data ?? [],
+              )}
+              selectedDay={selectedDay}
+              onSelectDay={setSelectedDay}
+              onDeselect={() => setSelectedDay(null)}
             />
           </div>
+        </div>
+        {selectedSlot && (
+          <MealDetailRail
+            weekStartDate={weekStartDate}
+            revision={weekQuery.data.revision}
+            slot={selectedSlot}
+            members={membersQuery.data ?? []}
+            recipes={recipesQuery.data ?? []}
+            onClose={() => setSelectedDay(null)}
+          />
         )}
-        <WeekGrid
-          rows={deriveWeekRows(
-            weekStartDate,
-            weekQuery.data.slots,
-            recipesQuery.data ?? [],
-            membersQuery.data ?? [],
-          )}
-          selectedDay={selectedDay}
-          onSelectDay={setSelectedDay}
-          onDeselect={() => setSelectedDay(null)}
-        />
       </div>
     </div>
   );

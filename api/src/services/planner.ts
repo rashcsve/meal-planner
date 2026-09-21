@@ -143,7 +143,7 @@ function roundToNearestServing(servings: number): number {
  * recipe.calories=420, memberTargets=[{memberId:1,dinnerCalorieTarget:500}]
  * -> [{memberId:1, servings:1.25}] (500/420 rounded to the nearest 0.25).
  */
-function computeMemberServings(
+export function computeMemberServings(
   recipe: PlannerRecipe,
   memberTargets: MemberDinnerTarget[],
 ): MemberServing[] {
@@ -158,7 +158,10 @@ function computeMemberServings(
  * would need an unrealistic portion (a sliver or several platefuls) - see
  * context/build-plan.md step 27.1.
  */
-function isServingsPlausible(recipe: PlannerRecipe, memberTargets: MemberDinnerTarget[]): boolean {
+export function isServingsPlausible(
+  recipe: PlannerRecipe,
+  memberTargets: MemberDinnerTarget[],
+): boolean {
   return computeMemberServings(recipe, memberTargets).every(
     (member) =>
       member.servings >= MIN_PLAUSIBLE_SERVINGS && member.servings <= MAX_PLAUSIBLE_SERVINGS,
@@ -166,11 +169,41 @@ function isServingsPlausible(recipe: PlannerRecipe, memberTargets: MemberDinnerT
 }
 
 /**
+ * Why a recipe can't fill this slot, or null if it's eligible. Shared by
+ * indexEligibleRecipesBySlot (bulk filtering during generation) and
+ * replaceSlot's server-side validation of a single manually-picked recipe,
+ * so the two can never disagree about what's eligible.
+ *
+ * @example
+ * checkSlotEligibility(lunchOnlyRecipe, "dinner", new Set(), []) ->
+ * "recipe's meal type ('lunch') doesn't match slot 'dinner'"
+ */
+export function checkSlotEligibility(
+  recipe: PlannerRecipe,
+  mealSlot: MealSlot,
+  neverIngredientIds: Set<number>,
+  memberTargets: MemberDinnerTarget[],
+): string | null {
+  const allowedTypes = MEAL_SLOT_TYPES[mealSlot];
+  if (!allowedTypes.includes(recipe.mealType)) {
+    return `recipe's meal type ('${recipe.mealType}') doesn't match slot '${mealSlot}'`;
+  }
+
+  const excludedIngredientId = recipe.ingredientIds.find((id) => neverIngredientIds.has(id));
+  if (excludedIngredientId !== undefined) {
+    return `recipe uses excluded ingredient ${excludedIngredientId}`;
+  }
+
+  if (PLANNED_MEAL_SLOTS.includes(mealSlot) && !isServingsPlausible(recipe, memberTargets)) {
+    return "recipe's calories-per-serving would need an implausible portion (under 0.25 or over 4 servings) for a household member";
+  }
+
+  return null;
+}
+
+/**
  * Eligibility per slot never changes during one run, so this is computed
  * once (only 4 slots) instead of re-filtering every time localSearch asks.
- * For dinner - the only slot currently generated - a recipe also has to
- * clear isServingsPlausible for every member; breakfast/lunch/snack aren't
- * planned yet, so they skip that check.
  *
  * @example
  * A "lunch" recipe containing a never-ingredient is excluded from the
@@ -183,15 +216,12 @@ function indexEligibleRecipesBySlot(
 ): Map<MealSlot, PlannerRecipe[]> {
   const index = new Map<MealSlot, PlannerRecipe[]>();
   for (const mealSlot of MEAL_SLOTS) {
-    const allowedTypes = MEAL_SLOT_TYPES[mealSlot];
-    const isPlannedSlot = PLANNED_MEAL_SLOTS.includes(mealSlot);
     index.set(
       mealSlot,
       recipes.filter(
         (recipe) =>
-          allowedTypes.includes(recipe.mealType) &&
-          !recipe.ingredientIds.some((id) => neverIngredientIds.has(id)) &&
-          (!isPlannedSlot || isServingsPlausible(recipe, targets.memberTargets)),
+          checkSlotEligibility(recipe, mealSlot, neverIngredientIds, targets.memberTargets) ===
+          null,
       ),
     );
   }
@@ -842,7 +872,7 @@ export function localSearch(
 // 8. plan() - runs the pipeline above in order and assembles the result.
 // ---------------------------------------------------------------------------
 
-function collectReasons(
+export function collectReasons(
   day: number,
   mealSlot: MealSlot,
   recipeId: number,

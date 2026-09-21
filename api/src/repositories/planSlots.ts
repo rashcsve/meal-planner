@@ -78,12 +78,14 @@ export async function updateSlotRecipe(
   day: number,
   mealSlot: MealSlot,
   recipeId: number,
+  reasons: string[],
+  memberServings: MemberServing[],
   client: DbClient = db,
 ) {
   try {
     const [slot] = await client
       .update(planSlots)
-      .set({ recipeId, reasons: [], memberServings: [], updatedAt: new Date() })
+      .set({ recipeId, reasons, memberServings, updatedAt: new Date() })
       .where(slotAddress(planWeekId, day, mealSlot))
       .returning();
     return slot;
