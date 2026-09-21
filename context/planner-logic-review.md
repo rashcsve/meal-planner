@@ -1,6 +1,6 @@
 # Planner logic: current behavior and repair plan
 
-Reviewed 2026-09-18 against the current working tree, including the uncommitted step-31 meal-detail and replacement changes. This is a description and proposed repair plan, not a record of implemented fixes. Product choices below remain proposals until confirmed.
+Reviewed 2026-09-18 against the current working tree, including step-31 meal-detail and replacement changes. This is a description and proposed repair plan, not a record of implemented fixes. Product choices below remain proposals until confirmed.
 
 ## Scope and terminology
 
@@ -33,21 +33,21 @@ The service reads household members, household settings, recipes and their ingre
 
 Actual input use:
 
-| Input | Current behavior |
-| --- | --- |
-| Dinner calorie target | Determines each member's portion |
-| Daily calorie target | Not used for dinner planning |
-| Weekly budget | Limit for estimated recipe cost, in CZK |
-| Start day of week | Used to decide weekdays for cooking-time scoring |
-| Timezone | Stored in settings but not consumed by planning/date logic |
-| Recipe meal type, yield, cost | Required to enter the planning recipe list |
-| Ingredient nutrition | Used to derive recipe calories per serving |
-| Ingredient `never` rules | Combined into household-wide exclusions after resolving member overrides |
-| Ingredient `dislike` rules | Not used in scoring |
-| Cuisine and diet labels | Not used in filtering or scoring |
-| Protein label | Used for recent-repeat scoring |
-| Pantry | Only ingredient ID and expiry offset reach the planner; quantities do not |
-| Prices | Only offers valid on the first day of the week are loaded |
+| Input                         | Current behavior                                                          |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| Dinner calorie target         | Determines each member's portion                                          |
+| Daily calorie target          | Not used for dinner planning                                              |
+| Weekly budget                 | Limit for estimated recipe cost, in CZK                                   |
+| Start day of week             | Used to decide weekdays for cooking-time scoring                          |
+| Timezone                      | Stored in settings but not consumed by planning/date logic                |
+| Recipe meal type, yield, cost | Required to enter the planning recipe list                                |
+| Ingredient nutrition          | Used to derive recipe calories per serving                                |
+| Ingredient `never` rules      | Combined into household-wide exclusions after resolving member overrides  |
+| Ingredient `dislike` rules    | Not used in scoring                                                       |
+| Cuisine and diet labels       | Not used in filtering or scoring                                          |
+| Protein label                 | Used for recent-repeat scoring                                            |
+| Pantry                        | Only ingredient ID and expiry offset reach the planner; quantities do not |
+| Prices                        | Only offers valid on the first day of the week are loaded                 |
 
 Preference resolution starts with household rules, applies a member's override for the same ingredient, then combines all members' resolved `never` rules. A member override of `dislike` can replace a household `never` for that member. This is existing behavior and needs an explicit product policy before treating household exclusions as immutable.
 
@@ -110,11 +110,11 @@ Each empty day receives the ordinary eligible recipe with the highest current sl
 
 The score has three components:
 
-| Component | Current contribution |
-| --- | --- |
-| Promotional ingredients | +1 for each ingredient with any loaded promotional offer |
-| Protein variety | +1 if no same-protein recipe occurs in the preceding three days, otherwise −1 |
-| Weekday cooking time | `(60 − minutes) / 60`; zero on weekends |
+| Component               | Current contribution                                                          |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| Promotional ingredients | +1 for each ingredient with any loaded promotional offer                      |
+| Protein variety         | +1 if no same-protein recipe occurs in the preceding three days, otherwise −1 |
+| Weekday cooking time    | `(60 − minutes) / 60`; zero on weekends                                       |
 
 A 15-minute weekday recipe with one promotional ingredient and no recent protein repeat scores `1 + 1 + 0.75 = 2.75`.
 
@@ -180,14 +180,14 @@ Source: `getSlotCandidates`, `replaceSlot`, `setSlotLocked` in `api/src/services
 
 Small fixtures were run directly against the current exported functions without database writes. The walkthrough's intermediate states were checked against a complete `plan()` call with the same ordered inputs and seed.
 
-| Case | Observed current result |
-| --- | --- |
-| Excluded shrimp expires today | Shrimp is scheduled today; no violation is reported |
-| Today's locked salmon already uses salmon expiring today | Reports “no free slot” for the ingredient despite the assigned salmon meal |
-| Two same-ingredient pantry rows expire today | Second row reports no free slot; quantities are unavailable to determine real coverage |
-| One known 100 kcal ingredient plus one ingredient of unknown nutrition | Returns 100 kcal with no completeness indicator |
+| Case                                                                                | Observed current result                                                                                                 |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Excluded shrimp expires today                                                       | Shrimp is scheduled today; no violation is reported                                                                     |
+| Today's locked salmon already uses salmon expiring today                            | Reports “no free slot” for the ingredient despite the assigned salmon meal                                              |
+| Two same-ingredient pantry rows expire today                                        | Second row reports no free slot; quantities are unavailable to determine real coverage                                  |
+| One known 100 kcal ingredient plus one ingredient of unknown nutrition              | Returns 100 kcal with no completeness indicator                                                                         |
 | Seven fast dinners cost 700 Kč; slower substitutes could total 70 Kč; budget 100 Kč | Search retains the 700 Kč week because a single substitution still leaves one violation and lowers the preference score |
-| Pantry-selected recipe yields zero servings for a member | Recipe is placed despite failing ordinary portion eligibility |
+| Pantry-selected recipe yields zero servings for a member                            | Recipe is placed despite failing ordinary portion eligibility                                                           |
 
 Previously reproduced in the step-31 review: 400 kcal target receives 500 kcal through replacement eligibility; detail cost differs from scaled grid cost; 0.025 litres renders with no numeric quantity; following days keep stale protein-variety reasons. Empty slots hide the replacement controls by inspection.
 

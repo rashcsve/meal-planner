@@ -1,49 +1,60 @@
 # Product
 
-## Core flow
+## Direction: Use It Up
 
-Maintain recipes and pantry stock, generate a week of meals against
-calorie/budget/exclusion constraints, inspect or replace individual meals, lock
-choices that should survive regeneration, and shop from the resulting list. Plans
-must explain their choices (which constraint or preference drove a pick) and
-distinguish known facts (measured prices, known nutrition) from missing
-information (unknown price, incomplete nutrition) — never silently treat unknown
-as zero or complete.
+Help one household decide what to cook, use food already available, buy the shortfall,
+and record what was actually cooked or discarded. Planning, shopping and cooking
+should agree about quantities and distinguish known facts from missing information.
 
-Current phase plans dinner only (one household, two members, each with their own
-per-meal calorie target); breakfast/lunch/snack remain defined in the meal-slot
-type for a later phase but are not generated. Each household member has their own
-calorie target for the meal; the planner picks one recipe per slot and scales
-each member's portion (servings, and the ingredient quantities/cost that follow
-from them) to hit their individual target, rather than picking different recipes
-per person or targeting one combined household total.
+The approved direction is dinner-only, one calorie target per standard portion
+(±10%), and fixed portion shares for each person. The planner selects suitable
+recipes; it does not change a person's share to reach an individual calorie target.
+For example, 0.75 + 1.5 shares means cooking 2.25 standard portions. Actual target
+and share values are household settings, not values to infer silently from old data.
+
+## Current application versus target behavior
+
+The current code still uses individual dinner calorie targets and recipe-dependent
+servings. It already generates seven dinners and stores each plan's member servings.
+The new model is **planned, not implemented**. Existing saved portions must survive
+migration; applying a new model to an existing week requires an explicit operation.
+
+Other agreed target behavior:
+
+- Save incomplete recipe drafts without certifying calorie compliance.
+- Apply consistent rules to automatic planning, expiry suggestions, locks and swaps.
+- Prioritize expiring food without breaking exclusions or other rules.
+- Preview a plan or swap before accepting it; retain warnings after reload.
+- Planning does not deduct stock. Cooking records and deducts actual usage.
+- Shopping covers remaining uncooked meals and subtracts usable stock once.
+- Show estimated meal cost separately from expected checkout spending.
+- Keep historical cooking and meal facts stable when their source data changes.
+
+These statements describe the destination, not features already delivered.
 
 ## Scope
 
-First release: a web app for **one household**, single user, no authentication
-(arrives at step 46). Deterministic code owns units, nutrition, money, inventory,
-constraints and planning. AI (Anthropic SDK) only assists unstructured input —
-recipe text extraction (stage 10) and leaflet/offer extraction (stage 11) — and
-every AI output is a reviewable draft, never auto-committed to planning data.
+First release: one household, responsive web, dinners and kcal. Preserve the stack
+and data. Deterministic code owns scaling, units, nutrition, inventory, money and
+constraints. Models assist reviewed extraction; pasted recipe text comes first.
+Basic shopping by aisle must work before offers or scheduled leaflet ingestion exist.
 
-## Planned mobile phase (not now)
+Use the design canvas's **Now** boards as the visual reference. Older mobile boards
+supply layout, not lunch/macro requirements. Authentication is required before public
+access; a local build can precede it. Session and ownership design depend on the actual
+release audience, not an assumed future native app.
 
-A native mobile client is a later phase. Because of this:
+Later: lunches and leftovers, macros, recipe import from links/photos, offline shopping,
+native mobile and multiple households. Retain existing per-member preference data even
+though dedicated per-person allergy management is deferred in the new UI.
 
-- The HTTP API must stay independent of any web-specific assumption.
-- Contracts live in `shared/` as plain Zod schemas — not React, not cookie-shaped.
-- Do not assume the web session/auth model will be reused unchanged on mobile;
-  step 46 keeps identity/authorization transport-independent for this reason.
-- Native screens, offline sync and mobile token flows are out of scope for the
-  48 steps in `context/build-plan.md`.
+## Source of truth and next action
 
-## Non-goals (see CLAUDE.md "Deliberately excluded")
+[build-plan.md](build-plan.md) owns the revised milestones R01–R14, acceptance criteria,
+source mapping and open decisions. [progress.md](progress.md) records actual delivery.
+[architecture.md](architecture.md) describes the current code. The historical numbered
+plan is [build-plan-v1.md](build-plan-v1.md).
 
-Kubernetes, microservices, message queues, gRPC, Redis/caching, GraphQL,
-tracing/metrics before deployment. Auth arrives at step 46, not earlier.
-
-## Source of truth
-
-`context/build-plan.md` is the numbered plan and owns requirements/acceptance
-criteria per step — they are not duplicated here. This file only records product
-intent that isn't obvious from the plan or the code.
+The user requested planning before implementation. Review the revised plan first;
+resume code changes only when the user requests a build step. No implementation
+milestone is complete merely because its requirements are documented.

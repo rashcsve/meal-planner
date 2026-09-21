@@ -1,5 +1,39 @@
 # Progress
 
+## Active roadmap — 2026-09-21
+
+**Status: revised plan written; implementation paused for user review.**
+
+The active plan is now [build-plan.md](build-plan.md), milestones **R01–R14**,
+based on the supplied `MASTER-PLAN-v2.md` and agreed product changes. All R
+milestones are planned, not started. **Next proposed milestone: R01** — settle
+the remaining contracts and prepare regression cases before changing behavior.
+
+Agreed: standard-portion calorie target ±10%, fixed member shares, preserved
+saved portions, trustworthy nutrition, consistent planning rules, expiry as a
+preference, preview/accept, persistent warnings, quantity-aware stock/cooking,
+and shopping for remaining uncooked meals. Details and unresolved defaults are
+in the active plan; this entry is not an implementation claim.
+
+**Search decision added:** R04 will replace the fixed 500 random attempts with
+systematic single-dinner improvement, final validation and a measured work limit.
+R01 will define the quality ordering and comparison fixtures. R04 will compare
+initial/random/systematic results under the same rules before rollout; advanced
+search remains contingent on evidence. This is a plan change only: current code
+still uses 500 attempts and no implementation milestone has started.
+
+An implementation attempt started before the plan was updated. Following the
+user's correction, all 19 source files changed by that attempt were restored.
+No migration was generated/applied and no application data was changed. Only
+planning documentation is being updated; the user's existing
+`.claude/settings.json` modification remains untouched. Application tests were
+not rerun for this documentation-only revision.
+
+The entries below retain their historical step numbers, statuses and evidence.
+They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes
+do not override the active roadmap above. In particular, old step 31 is the
+detail rail; step 31 in the supplied v2 means optimistic locking.
+
 Status values: `in progress`, `blocked`, `implemented—awaiting review`, `complete`.
 
 ## Steps 1–27 — `complete`

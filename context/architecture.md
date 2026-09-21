@@ -4,6 +4,12 @@ This records what the repository actually does, and decisions that resolve a
 question the build plan leaves open. `CLAUDE.md` has the conventions everyone
 must follow; this file has the current concrete shape of the system.
 
+**2026-09-21 planning update:** [build-plan.md](build-plan.md) now describes
+the future Use It Up implementation (R01–R14). The fixed-portion model and
+other proposed changes are not implemented. Architectural descriptions below
+remain about the current code; historical numeric step references point to
+[build-plan-v1.md](build-plan-v1.md).
+
 ## Layout
 
 ```
@@ -36,7 +42,7 @@ imports Hono types.
 
 ## Contracts boundary — `shared/`, not `packages/contracts`
 
-`context/build-plan.md`'s stack table names `packages/contracts` as the shared
+The historical `context/build-plan-v1.md` stack table names `packages/contracts` as the shared
 boundary. The repository already has an equivalent, safe boundary: the `shared`
 npm workspace (`shared/package.json` depends only on `zod`; nothing in
 `shared/src` imports `pg`, `drizzle-orm`, or any server-only module). Both `api`
