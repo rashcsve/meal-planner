@@ -417,9 +417,81 @@ re-added with the correct id. Final `kcalTotal` (370.3) and `status`
 line has a new database id (283, was 27) but that's an
 internal detail, not user-visible or referenced elsewhere.
 
-**Next step:** R02.3c-3 — inline amount/unit/optional editing for existing
-ingredient lines (`useEditIngredientLine`, unused since R02.3c-1), after the
-user reviews this diff.
+**R02.3c-3 — Inline amount/unit/optional editing for existing ingredient
+lines — `implemented—awaiting review` (2026-09-21).** Wires up
+`useEditIngredientLine` (added in R02.3c-1, unused until now).
+
+Blocker found while orienting, fixed as part of this slice: `PUT
+/api/recipes/:id/ingredients/:lineId` is a full replace requiring
+`ingredientId`, but `GET /api/recipes/:id`'s ingredient lines never exposed
+it (only `ingredientName`) — the exact gap R02.3c-2's data-restoration note
+flagged. Added `ingredientId` to `findIngredientLinesForRecipe`
+(`api/src/repositories/recipeIngredients.ts`) and `getRecipe`'s ingredient
+mapping (`api/src/services/recipes.ts`); no schema change, the column was
+already selected for the join. Updated the one test asserting the exact
+ingredient-line response shape (`api/tests/recipes.test.ts`).
+
+Scope decision made without a fresh user question (documented here for
+review): this slice edits only `displayAmount`/`displayUnit`/`isOptional`
+— the user-facing pair plus the optional flag — not `amountBase` (the
+normalized quantity nutrition/scaling actually reads) or which ingredient a
+line points to. Editing `amountBase` correctly needs a unit-aware
+picker against the ingredient's `baseUnit`, which is separate scope (a
+future picker slice, same shape as R02.3c-1's still-partly-unused
+ingredient list). Since the PUT is a full replace, the edit form still
+must submit `ingredientId`/`amountBase` on every save or silently null
+them out; `IngredientLineRow`'s `useForm` `defaultValues` carries both
+through unedited (react-hook-form keeps unregistered `defaultValues` keys
+in the submitted data), verified in the browser check below (`amountBase`
+stayed `150` after only `displayAmount`/`isOptional` were changed).
+
+New `web/src/features/recipes/IngredientLineRow.tsx` — presentational,
+mirrors `MemberTargetRow.tsx`'s always-editable-row pattern (a per-row
+`<form>`, react-hook-form + `zodResolver(recipeIngredientLineSchema)`,
+explicit ghost Save button) rather than inlining a form per `<li>` inside
+`RecipeDetail.tsx`, matching that file's existing row-component precedent.
+`RecipeDetail.tsx` now owns `useEditIngredientLine` alongside its existing
+`useRemoveIngredientLine`, passing `onSave`/`isSaving`/`error` down —
+same ownership split `HouseholdPage.tsx`/`MemberTargetRow.tsx` already use.
+Removed the now-redundant `ingredientLabel` formatting helper (the row's
+inputs display the amount/unit directly).
+
+`web/src/stories/IngredientLineRow.stories.tsx` (new, 5 stories: default,
+unknown amount, optional, saving, save-failed) — required a `decorators`
+wrapper (`<ul>{Story()}</ul>`) since the component renders an `<li>`;
+without it `@storybook/addon-a11y`'s axe check failed ("list item does not
+have a `<ul>`/`<ol>` parent"), a real accessibility rule, not a test
+artifact.
+
+Verified 2026-09-21: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing unrelated `web` warnings); `npm run format --
+--check` clean on touched files. `npm run test -w api` → 10 files / 111
+tests pass (was 106 — the exact-shape test now also asserts `ingredientId`,
+no other count change). `npm run test -w web` → 21 files / 48 tests pass
+(was 20/43 — 5 new stories, no a11y violations, no console errors). Manual
+browser verification (dev api+web servers against dev Postgres via `npm
+run dev:all`, Playwright driving real headless Chromium — `chromium-cli`
+still unavailable in this environment, same as prior manual checks):
+opened Chia puding's detail rail, edited "Řecký jogurt"'s amount 150→175,
+unit unchanged "g", checked "optional"; saved; a follow-up
+`GET /api/recipes/1` confirmed `displayAmount: 175`, `isOptional: true`,
+and — the key correctness check — `amountBase` unchanged at `150` and
+`ingredientId` unchanged at `19`, not nulled out by the full-replace PUT.
+No console errors during the flow. Seed data was then restored to its
+original values (`displayAmount: 150`, `isOptional: false`) via a direct
+`PUT`, confirmed with a follow-up `GET`.
+
+**Not yet done, left for later slices:** editing `amountBase` directly, or
+reassigning a line's ingredient — both need the unit-aware picker this
+slice deliberately deferred; no confirmation dialog or optimistic
+update/rollback on save (same minimal-mutation pattern R02.3c-2 used for
+remove); no keyboard-specific test beyond the a11y check the new stories
+already run.
+
+**Next step:** either R02.3c-4 (the add-line picker UI R02.3c was
+originally scoped to include) or R02.4 (yield editing) or R02.5 (archiving,
+needs a decision first), per the user's choice, after the user reviews
+this diff.
 
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes

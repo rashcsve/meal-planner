@@ -30,6 +30,7 @@ export async function getRecipe(id: number) {
   const lines = await findIngredientLinesForRecipe(id);
   const ingredients = lines.map((line) => ({
     id: line.id,
+    ingredientId: line.ingredientId,
     ingredientName: line.ingredientName,
     displayAmount: line.displayAmount,
     displayUnit: line.displayUnit,

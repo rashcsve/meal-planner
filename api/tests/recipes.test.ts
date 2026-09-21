@@ -157,6 +157,7 @@ describe("GET /api/recipes/:id", () => {
     const res = await app.request(`/api/recipes/${recipe.id}`);
     const body = (await res.json()) as {
       ingredients: {
+        ingredientId: number;
         ingredientName: string;
         displayAmount: number;
         displayUnit: string;
@@ -167,6 +168,7 @@ describe("GET /api/recipes/:id", () => {
     expect(body.ingredients).toEqual([
       {
         id: line.id,
+        ingredientId: oliveOil.id,
         ingredientName: "Olive oil",
         displayAmount: 2,
         displayUnit: "lžíce",

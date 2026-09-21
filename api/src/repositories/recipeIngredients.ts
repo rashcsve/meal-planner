@@ -11,6 +11,7 @@ export async function findIngredientLinesForRecipe(recipeId: number) {
   return db
     .select({
       id: recipeIngredients.id,
+      ingredientId: recipeIngredients.ingredientId,
       ingredientName: ingredients.name,
       displayAmount: recipeIngredients.displayAmount,
       displayUnit: recipeIngredients.displayUnit,
