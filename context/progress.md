@@ -220,7 +220,7 @@ web` → 20 files / 43 tests pass, unchanged (backend-only slice).
 Not yet done: R02.2 (scaling centralization) through R02.5 (archiving,
 needs a decision first) — see `build-plan.md`.
 
-**R02.2 — Centralize yield/servings scaling — `implemented—awaiting review`
+**R02.2 — Centralize yield/servings scaling — `complete`
 (2026-09-21).** Implemented `r01-fixtures.md §2`'s design, with one
 deviation from its own tentative suggestion: the doc suggested
 `api/src/lib/units.ts` or a new `api/src/lib/scaling.ts` as "likely"
@@ -258,21 +258,58 @@ framing calls for.
 Verified 2026-09-21: `npm run typecheck` (api+web) clean; `npm run lint`
 clean (same 2 pre-existing `web` warnings, unrelated).
 **`npm run test -w web` → 20 files / 43 tests pass, unchanged.**
-**`npm run test -w api` — blocked:** Docker Desktop was unresponsive for
-this session (`docker info`, and a Docker-independent-looking
-`vitest run tests/scaling.test.ts` invocation — blocked anyway because
-`api/vitest.config.ts`'s global setup starts the Postgres testcontainer for
-every run regardless of which file is selected — all hung with no output
-for several minutes). The new `scaling.test.ts` and the existing
-`planner.test.ts`/`nutrition.test.ts` suites (which already assert
-`validateWeeklyBudget`'s numeric output and would catch any behavior change
-from this refactor) have **not** been run against real Postgres this slice.
-Not claiming this passed — an explicit blocker, per this project's own rule
-not to claim a check passed without running it.
 
-**Next step:** re-run `npm run test -w api` once Docker is available and
-confirm the new/existing tests pass before treating R02.2 as verified; then
-R02.3, R02.4, or R02.5 (needs a decision first) per the user's choice.
+**`npm run test -w api` — re-verified 2026-09-21, no longer blocked.** Docker
+Desktop's daemon was hung again this session (socket present, every request
+timed out — same symptom as before); quit and relaunched it, then confirmed
+the daemon actually answered (`curl --unix-socket .../docker.sock
+.../v1.41/info` returning 200) before retrying, rather than assuming a
+relaunch fixed it. `npm run test -w api` → **8 files / 87 tests pass** (was
+7/84 before `scaling.test.ts`'s 3 tests): `scaling.test.ts` and the existing
+`planner.test.ts`/`validateWeeklyBudget` assertions all pass unchanged,
+confirming the refactor's "no behavior change" intent. Re-ran
+`npm run typecheck` and `npm run lint` (both api+web) after the restart —
+still clean, same 2 pre-existing unrelated `web` warnings.
+
+R02.2 is now fully verified — status is `complete`, not
+`implemented—awaiting review`.
+
+**Next step:** R02.3, R02.4, or R02.5 (needs a decision first) per the
+user's choice.
+
+**R02.3 — Ingredient-line writing and editing — `in progress`.** Broken
+into three further sub-slices before implementing, since "add/edit/remove
+ingredient lines (API + UI)" alone is too large for one diff: R02.3a
+(ingredients API), R02.3b (recipe ingredient-line CRUD), R02.3c (frontend
+picker + line editor). Decision made with the user first: creating a
+brand-new ingredient (name/baseUnit/optional kcal-macros) inline while
+editing a recipe is in scope, not deferred — R02.3a's `POST /api/ingredients`
+exists for this reason, not just as a read-side prerequisite for a picker.
+
+**R02.3a — Ingredients API — `complete` (2026-09-21).** New
+`GET /api/ingredients` (list) and `POST /api/ingredients` (create: name,
+baseUnit, optional kcalPer100g/proteinPer100g/carbsPer100g/fatPer100g) —
+previously ingredients only entered the database via test fixtures and
+`api/scripts/seed-aktin.ts`, with no API at all. `shared/src/ingredients.ts`
+(new `createIngredientSchema`); `api/src/repositories/ingredients.ts`,
+`api/src/services/ingredients.ts`, `api/src/routes/ingredients.ts` (new,
+mirroring `recipes.ts`'s list/create/409-on-duplicate pattern exactly —
+`ingredients.name` is already unique-constrained, same as `recipes.title`);
+`DuplicateIngredientNameError` added to `api/src/lib/errors.ts`; mounted at
+`/api/ingredients` in `api/src/index.ts`. No schema/migration change — the
+`ingredients` table already had every column this needed. No UI this
+sub-slice (R02.3c).
+
+`api/tests/ingredients.test.ts` (new, 7 tests): empty list, seeded list,
+create with nutrition data, create with none (nulls, not invented), 409 on
+duplicate name, 422 on invalid `baseUnit`, 422 on missing name.
+
+Verified 2026-09-21: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing unrelated `web` warnings); `npm run test -w api`
+→ 9 files / 94 tests pass (was 8/87 — 7 new).
+
+**Next step:** R02.3b (recipe ingredient-line CRUD — add/edit/remove a line
+on a specific recipe), after the user reviews this diff.
 
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes

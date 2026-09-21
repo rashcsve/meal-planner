@@ -5,6 +5,13 @@ export class DuplicateTitleError extends Error {
   }
 }
 
+export class DuplicateIngredientNameError extends Error {
+  constructor(name: string) {
+    super(`An ingredient named "${name}" already exists`);
+    this.name = "DuplicateIngredientNameError";
+  }
+}
+
 export class MissingIngredientDensityError extends Error {
   constructor(unit: string, baseUnit: string) {
     super(

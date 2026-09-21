@@ -1,6 +1,14 @@
 {
   "permissions": {
-    "deny": ["Bash(*DROP*)", "Bash(*TRUNCATE*)", "Read(.env)"],
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(echo \"EXIT=$?\")"
+    ],
+    "deny": [
+      "Bash(*DROP*)",
+      "Bash(*TRUNCATE*)",
+      "Read(.env)"
+    ],
     "ask": [
       "Bash(npx drizzle-kit migrate*)",
       "Bash(npx drizzle-kit push*)",

@@ -134,6 +134,13 @@
       "when": 1789653276482,
       "tag": "0018_add_household_settings_timezone",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790002907454,
+      "tag": "0019_fluffy_zarek",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { recipesRoute } from "./routes/recipes.js";
+import { ingredientsRoute } from "./routes/ingredients.js";
 import { pantryRoute } from "./routes/pantry.js";
 import { plansRoute } from "./routes/plans.js";
 import { householdRoute } from "./routes/household.js";
@@ -20,6 +21,7 @@ const routes = app
     return c.json({ status: "ok" });
   })
   .route("/api/recipes", recipesRoute)
+  .route("/api/ingredients", ingredientsRoute)
   .route("/api/pantry", pantryRoute)
   .route("/api/plans", plansRoute)
   .route("/api/household", householdRoute);

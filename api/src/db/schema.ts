@@ -59,7 +59,7 @@ export const ingredients = pgTable(
   "ingredients",
   {
     id: serial("id").primaryKey(),
-    name: text("name").notNull().unique(),
+    name: text("name").notNull(),
     baseUnit: text("base_unit").notNull(),
     kcalPer100g: numeric("kcal_per_100g", { mode: "number" }),
     proteinPer100g: numeric("protein_per_100g", { mode: "number" }),
@@ -70,6 +70,7 @@ export const ingredients = pgTable(
   },
   (table) => [
     check("ingredients_base_unit_check", sql`${table.baseUnit} IN (${sqlInList(BASE_UNITS)})`),
+    uniqueIndex("ingredients_name_lower_idx").on(sql`lower(${table.name})`),
   ],
 );
 
