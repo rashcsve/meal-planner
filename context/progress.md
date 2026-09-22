@@ -1752,4 +1752,26 @@ Verified: typecheck/lint/prettier clean; api 11 files/134 pass (was 133). Web no
 
 **Not yet done:** R04.4–R04.15.
 
-**Next step:** R04.4 (needs a decision first), after review.
+## R04.5 — Distinguish unknown recipe cost from zero cost — `complete` (2026-09-22)
+
+Skipped ahead of R04.4 (still needs its own decision). R04.5 also needed a decision
+("Budget before offers" row): asked user, keep excluding unknown-cost recipes from
+planning vs. make them plannable with an explicit "unknown" status. User chose **keep
+excluding** (matches R02.1's unknown-calorie precedent).
+
+Audit before asking found no "unknown read as zero" bug exists anywhere:
+`PlannerRecipe.costCzk` is non-nullable; `plan-inputs.ts` already excludes
+`cost === null` recipes before the planner sees them; manual swap
+(`plans.ts`) and web display all null-check/exclude consistently. So this
+slice is **no code change** — only a regression test, since none existed:
+`plans.test.ts`'s new "recipe eligibility" describe seeds a null-cost dinner
+recipe, generates a week, asserts it's never assigned.
+
+`build-plan.md`'s R04.5 entry updated from "needs a decision" to "resolved,"
+noting this only closes the zero-vs-unknown half of "Budget before offers" —
+whether enforcement can be optional before checkout pricing exists is still open.
+
+Verified: typecheck/lint clean (same 2 pre-existing web warnings); prettier clean on
+the touched test file; api 11 files/135 pass (was 134, +1 new test, no regressions).
+
+**Next step:** R04.4 (needs a decision first) or another R04 slice, after review.

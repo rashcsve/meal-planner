@@ -466,6 +466,41 @@ describe("household configuration", () => {
   });
 });
 
+describe("recipe eligibility", () => {
+  it("never assigns a recipe with no cost, and still generates successfully", async () => {
+    const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
+    const [noCostIngredient] = await db
+      .insert(ingredients)
+      .values({ name: "Dinner base 3", baseUnit: "g", kcalPer100g: 400 })
+      .returning();
+    const [noCostRecipe] = await db
+      .insert(recipes)
+      .values({ title: "Test dinner no cost", time: 20, cost: null, meal: "dinner", servings: 1 })
+      .returning();
+    await db.insert(recipeIngredients).values({
+      recipeId: noCostRecipe!.id,
+      ingredientId: noCostIngredient!.id,
+      amountBase: 100,
+      isOptional: false,
+    });
+
+    const res = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
+    const dinnerSlots = body.slots.filter((s) => s.mealSlot === "dinner");
+    expect(dinnerSlots).toHaveLength(7);
+    for (const slot of dinnerSlots) {
+      expect([dinnerRecipe.id, dinnerRecipe2.id]).toContain(slot.recipeId);
+    }
+  });
+});
+
 describe("member servings persistence", () => {
   it("persists each member's servings and returns them from generate and a subsequent GET", async () => {
     const { dinnerRecipe, member } = await seedPlannableHousehold();

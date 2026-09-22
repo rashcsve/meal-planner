@@ -443,12 +443,18 @@ way R01 resolved its own four, not by guessing during implementation.
    meal" extends without pretending to solve lot allocation early. **Needs a decision
    first**, since the plan text only says "check existing coverage," not how to define it
    without quantities.
-5. **R04.5 — Distinguish unknown recipe cost from zero cost.** **Needs a decision first**
-   — the "Budget before offers" row in this document's decision table (still open, tagged
-   R04) covers exactly this: whether a recipe with unknown cost is excluded from planning
-   (today's behavior, via `plan-inputs.ts` omitting it) or included with an explicit
-   "unknown" cost status that budget validation must handle without silently reading it as
-   zero.
+5. **R04.5 — Distinguish unknown recipe cost from zero cost.** **Resolved 2026-09-22**
+   — user decision: keep excluding a recipe with unknown cost from planning
+   (`plan-inputs.ts`'s existing `recipe.cost === null` filter), not made plannable with
+   a new "unknown" status. Matches R02.1's precedent for unknown calories. Confirmed by
+   code audit that no path today reads a missing cost as zero — the planner, manual swap
+   (`plans.ts`) and web display (`deriveWeekRows.ts`, `RecipesPage.tsx`,
+   `RecipeDetail.tsx`) all either exclude the recipe entirely or explicitly null-check
+   and render "unknown"/"—". This slice therefore added no code change, only a
+   regression test locking in the existing exclusion (`api/tests/plans.test.ts`'s
+   "recipe eligibility" describe block). This resolves only the zero-vs-unknown half of
+   the "Budget before offers" decision-table row; whether budget enforcement itself can
+   be optional before checkout pricing exists remains open.
 6. **R04.6 — Real weekday/timezone-aware date semantics.** **Needs a decision first** — the
    "Dates and expiry" row (still open, tagged R04/R08): derive actual weekdays from the
    requested week-start date for weeknight scoring, and use `household_settings.timezone`
