@@ -224,6 +224,31 @@ describe("locks", () => {
     expect(salmonPlacements).toHaveLength(1);
     expect(violations).toEqual([]);
   });
+
+  it("still reports a violation when a lock uses the ingredient after the constraint's deadline", () => {
+    const ctx = buildPlannerContext(
+      FIXTURE_RECIPES,
+      FIXTURE_PRICES,
+      FIXTURE_PREFERENCES,
+      FIXTURE_TARGETS,
+    );
+    // Salmon expires today (deadlineDay 0) with no other candidate recipe, but the
+    // only lock using salmon is on day 6 - too late to save this batch.
+    const constraints = [
+      { ingredientId: INGREDIENT_ID.salmon, deadlineDay: 0, candidateRecipeIds: [] },
+    ];
+    const locked = [{ day: 6, mealSlot: "dinner" as const, recipeId: RECIPE_ID.dinnerSalmon }];
+
+    const { violations } = placeMustUseConstraints(constraints, ctx.recipesById, locked, () => 0);
+
+    expect(violations).toEqual([
+      {
+        slot: null,
+        constraint: "pantry_expiry",
+        detail: `no free slot by day 0 for ingredient ${INGREDIENT_ID.salmon}`,
+      },
+    ]);
+  });
 });
 
 describe("hard constraint: weekly budget", () => {
