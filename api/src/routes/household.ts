@@ -59,6 +59,9 @@ export const householdRoute = new Hono()
         ) {
           throw new HTTPException(422, { message: err.message });
         }
+        if (err instanceof HouseholdMemberNotFoundError) {
+          throw new HTTPException(404, { message: err.message });
+        }
         throw err;
       }
     },

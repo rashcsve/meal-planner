@@ -4,6 +4,7 @@ import { db } from "../src/db/index.js";
 import { householdMembers, householdSettings } from "../src/db/schema.js";
 import { householdRoute } from "../src/routes/household.js";
 import { errorHandler } from "../src/lib/errorHandler.js";
+import { confirmHouseholdShares } from "../src/services/householdShares.js";
 
 const app = new Hono().onError(errorHandler).route("/api/household", householdRoute);
 
@@ -227,5 +228,32 @@ describe("POST /api/household/confirm-shares", () => {
       body: JSON.stringify({ targetKcal: 520, shares: [{ memberId: member.id, share: 1 }] }),
     });
     expect(res.status).toBe(422);
+  });
+
+  it("rolls back the settings write when a later member write fails", async () => {
+    await seedSettings();
+    const a = await seedMember({ name: "A", dinnerCalorieTarget: 500 });
+    const b = await seedMember({ name: "B", dinnerCalorieTarget: 800 });
+
+    await expect(
+      confirmHouseholdShares({
+        targetKcal: 800,
+        shares: [
+          { memberId: a.id, share: 0.75 },
+          { memberId: b.id, share: 10 },
+        ],
+      }),
+    ).rejects.toThrow();
+
+    const settingsRes = await app.request("/api/household/settings");
+    const settingsBody = (await settingsRes.json()) as { standardPortionTargetKcal: number | null };
+    expect(settingsBody.standardPortionTargetKcal).toBeNull();
+
+    const membersRes = await app.request("/api/household/members");
+    const membersBody = (await membersRes.json()) as {
+      id: number;
+      confirmedShare: number | null;
+    }[];
+    expect(membersBody.find((m) => m.id === a.id)?.confirmedShare).toBeNull();
   });
 });

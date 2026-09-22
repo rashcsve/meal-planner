@@ -5,6 +5,7 @@ import { findAllHouseholdMembers, confirmMemberShare } from "../repositories/hou
 import { confirmStandardPortionTarget } from "../repositories/householdSettings.js";
 import {
   HouseholdMemberMissingDinnerTargetError,
+  HouseholdMemberNotFoundError,
   HouseholdSettingsNotConfiguredError,
   InvalidStandardPortionTargetError,
   HouseholdShareMemberMismatchError,
@@ -51,7 +52,11 @@ export async function confirmHouseholdShares(input: ConfirmHouseholdSharesInput)
     if (!settings) throw new HouseholdSettingsNotConfiguredError();
 
     const members = await Promise.all(
-      input.shares.map((s) => confirmMemberShare(s.memberId, s.share, tx)),
+      input.shares.map(async (s) => {
+        const member = await confirmMemberShare(s.memberId, s.share, tx);
+        if (!member) throw new HouseholdMemberNotFoundError(s.memberId);
+        return member;
+      }),
     );
     return { settings, members };
   });
