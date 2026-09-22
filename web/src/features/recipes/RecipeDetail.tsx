@@ -6,11 +6,13 @@ import { Stat } from "../../shared/ui/Stat";
 import { formatTime } from "../../shared/lib/formatTime";
 import { IngredientLineRow } from "./IngredientLineRow";
 import { AddIngredientLineForm } from "./AddIngredientLineForm";
+import { ServingsField } from "./ServingsField";
 import { useCreateIngredient, useIngredients } from "./useIngredients";
 import { firstMutationError, lineMutationError } from "./mutationError";
 import {
   useAddIngredientLine,
   useEditIngredientLine,
+  useEditRecipeServings,
   useRecipe,
   useRemoveIngredientLine,
   type RecipeWithIngredients,
@@ -31,6 +33,7 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
   const { data: recipe, isLoading, error } = useRecipe(id);
   const editLine = useEditIngredientLine();
   const removeLine = useRemoveIngredientLine();
+  const editServings = useEditRecipeServings();
   const {
     data: ingredients,
     error: ingredientsError,
@@ -78,7 +81,13 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
               <span className="type-label text-9 text-faint">Portion</span>
               <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-2">
                 <Stat label="Weight" value={recipe.weightG} unit="g" />
-                <Stat label="Servings" value={recipe.servings} />
+                <ServingsField
+                  key={recipe.id}
+                  servings={recipe.servings}
+                  onSave={(servings) => editServings.mutate({ recipeId: id, data: { servings } })}
+                  isSaving={editServings.isPending}
+                  error={firstMutationError(editServings)}
+                />
               </div>
             </div>
           )}

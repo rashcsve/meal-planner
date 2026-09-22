@@ -793,7 +793,65 @@ already exercises the real Postgres path R02.4b's UI will call.
 **Not yet done:** R02.4b (frontend hook + inline UI to edit servings from
 `RecipeDetail.tsx`'s existing read-only "Servings" `Stat`).
 
-**Next step:** R02.4b, when the user asks to continue.
+**R02.4b — Frontend hook + inline UI to edit servings — `implemented—awaiting
+review` (2026-09-22).** Wires up R02.4a's `PUT /api/recipes/:id`.
+
+`web/src/features/recipes/useRecipes.ts` gained `useEditRecipeServings()`,
+same shape as `useEditIngredientLine`: invalidates `recipesKeys.detail(id)`
+on success rather than writing the response into cache, since `PUT /:id`
+returns the raw `recipes` row (no `kcalPerServing`, no `ingredients`) — the
+same shape gap R02.3c-1 already found for ingredient-line mutations.
+
+New `web/src/features/recipes/ServingsField.tsx` — presentational,
+always-editable-row pattern (mirrors `MemberTargetRow.tsx`: a `<form>`,
+react-hook-form + `zodResolver(updateRecipeServingsSchema)`, ghost Save
+button). `RecipeDetail.tsx` now owns `useEditRecipeServings()` and replaces
+the static `Stat label="Servings"` with `ServingsField`, reusing the
+existing `firstMutationError` helper for its error prop, same as the
+add-line form's error wiring.
+
+Scope decision, not asked about separately: this slice only covers editing
+servings when the "Portion" section already renders (`weightG` or
+`servings` non-null) — a recipe with neither has no way to *set* an initial
+servings value through this control. `weightG` editing and adding servings
+to a portion-less recipe are both out of scope, matching R02.4a's own
+"editing, not reinterpreting" framing.
+
+`web/src/stories/ServingsField.stories.tsx` (new, 4 stories: default,
+saving, save-failed, and a `play`-function story asserting the submitted
+payload is the edited number).
+
+Verified 2026-09-22: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing unrelated `web` warnings); `npx prettier --check`
+clean on all touched files. `npm run test -w web` → 23 files / 59 tests
+pass (was 22/55 — 4 new stories, no a11y violations). `npm run test -w api`
+not re-run — no api-side change this sub-slice. Manual browser verification
+(`npm run dev:all` against dev Postgres, a scratch-installed Playwright
+driving real headless Chromium since `chromium-cli` remains unavailable in
+this environment): opened Chia puding's detail rail (`/recipes/1`), changed
+Servings 2→4, saved — input reflected `4` after save, no console errors; a
+follow-up `GET /api/recipes/1` confirmed `servings: 4` and `kcalPerServing`
+correctly rescaled 185.15→92.575 (`kcalTotal` unchanged at 370.3, proving
+ingredient amounts were not touched). Restored via a direct `PUT` back to
+`servings: 2`, confirmed `kcalPerServing` back to 185.15.
+
+**Bug found by user, fixed same slice:** editing servings then switching to
+another recipe and back showed the old value until a full reload.
+`ServingsField`'s uncontrolled RHF input had no `key`, so it never remounted
+across recipe switches. Fix: `<ServingsField key={recipe.id} .../>` in
+`RecipeDetail.tsx`. Re-verified via Playwright (puding 2→3→save→wraps→back
+to puding shows 3, no reload); typecheck/lint/prettier clean; web tests
+unchanged (bug was in wiring, not `ServingsField` itself, so no new story).
+
+**Not yet done:** editing `weightG`; setting servings on a recipe with no
+existing portion info.
+
+R02.4 (yield editing) is now complete — both R02.4a and R02.4b are done.
+
+**Next step:** R02.5 (archiving, needs a decision first) — the only
+remaining piece of R02 — or the user may choose to start R03, per the
+build plan's dependency note that R03 needs R02's reliable calories/scaling,
+already in place.
 
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes

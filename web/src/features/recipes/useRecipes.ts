@@ -1,5 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { CreateRecipeInput, RecipeIngredientLineInput } from "shared";
+import type {
+  CreateRecipeInput,
+  RecipeIngredientLineInput,
+  UpdateRecipeServingsInput,
+} from "shared";
 import { apiClient } from "../../app/apiClient";
 import { unwrapEmptyResponse, unwrapResponse } from "../../shared/api/unwrapResponse";
 import {
@@ -30,6 +34,29 @@ export function useCreateRecipe() {
     mutationFn: postRecipe,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: recipesKeys.list });
+    },
+  });
+}
+
+export interface EditRecipeServingsVariables {
+  recipeId: number;
+  data: UpdateRecipeServingsInput;
+}
+
+async function putRecipeServings({ recipeId, data }: EditRecipeServingsVariables) {
+  const res = await apiClient.api.recipes[":id"].$put({
+    param: { id: String(recipeId) },
+    json: data,
+  });
+  return unwrapResponse(res);
+}
+
+export function useEditRecipeServings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: putRecipeServings,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: recipesKeys.detail(variables.recipeId) });
     },
   });
 }
