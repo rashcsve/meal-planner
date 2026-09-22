@@ -7,3 +7,4 @@ export * from "./preferences.js";
 export * from "./plans.js";
 export * from "./household.js";
 export * from "./scaling.js";
+export * from "./householdShares.js";

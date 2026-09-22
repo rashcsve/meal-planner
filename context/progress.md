@@ -1501,3 +1501,51 @@ the manual Playwright verification above, matching this project's existing
 practice of manual-only verification for query-owning feature containers.
 
 **Next step: 32** (Optimistic locking), after the user reviews this diff.
+
+**Note (2026-09-22): this "next step: 32" pointer is stale/superseded.** It refers to
+`build-plan-v1.md`'s numbering, which `build-plan.md` explicitly says not to follow as
+the active roadmap. The R02.x entries earlier in this file (dated 2026-09-22) are the
+current status: R02 is complete, and the user chose to continue with R03 next — see the
+R03.1 entry below.
+
+## R03.1 — Propose household target and member shares — `implemented—awaiting review` (2026-09-22)
+
+Started R03 (Fixed portion shares, end to end). R03 had no implementation-slices
+breakdown yet, so wrote one into `build-plan.md` (R03.1–R03.4, same reasoning as R02's
+own slice list) before implementing only the first slice.
+
+**Implemented:** `shared/src/householdShares.ts` — pure `proposeHouseholdSharePlan`,
+the "R01 resolutions" formula from `build-plan.md`: proposed target = max of members'
+`dinnerCalorieTarget`; each proposed share = `round((memberTarget / target) / 0.25) ×
+0.25`, clamped to 0.25–4. Reuses the existing `MemberDinnerTarget` type from
+`shared/src/planner.ts` rather than redeclaring it (typecheck caught the duplicate
+export name on the first pass). No schema, API, planner or UI change — R03.2 (schema),
+R03.3 (confirm API) and R03.4 (household UI) are separate, not-yet-started slices;
+planner/eligibility use of confirmed values is R04's dependency, not R03's.
+
+**Interpretation flagged to the user, not yet explicitly confirmed:** with zero members
+carrying a `dinnerCalorieTarget`, the function returns the documented default target
+(520) and an empty share list, rather than inventing a share with no member to attach
+it to.
+
+**Found by `/review`, not yet acted on:** `MAX_SHARE` (4) is unreachable as written —
+`targetKcal` is always `Math.max(...)` over the same members whose shares are then
+computed against it, so every member's ratio is ≤ 1 and the upper clamp can never bind.
+`shares[i].share` is therefore currently guaranteed to be in `[0.25, 1]`, not the
+documented `[0.25, 4]`, which R03.3/R03.4 should know before building on this contract.
+No test exercises the upper clamp for the same reason — the path is untestable as
+written, not an oversight.
+
+New tests in `api/tests/householdShares.test.ts`: the plan's own worked example (500 &
+800 → target 800, shares 0.75 & 1), a lone member's share against their own target, the
+0.25-floor clamp for an implausibly small target, and the no-members default.
+
+Verified 2026-09-22: `npm run test -w api -- householdShares` → 1 file / 4 tests pass;
+`npm run typecheck` (api+web) clean; `npm run lint` clean (same 2 pre-existing `web`
+warnings, unrelated to this change). `context/build-plan.md`'s existing Prettier
+formatting warning predates this change (confirmed via `git stash`), not introduced by
+it. No manual browser check — no UI in this slice.
+
+**Not yet done:** R03.2 (schema), R03.3 (confirm API), R03.4 (household UI).
+
+**Next step: R03.2** (schema), after the user reviews this diff.

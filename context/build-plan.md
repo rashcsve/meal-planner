@@ -334,6 +334,23 @@ old recipe IDs, yields, legacy calorie targets, preferences and saved assignment
 **Risk / rollback:** deploy schema additively; no deletion of legacy fields. Gate new
 planning until API/UI support it together. Reverting readers must not reinterpret v2 data.
 
+#### R03 implementation slices
+
+Written 2026-09-22 while implementing R03.1, same reasoning as the R02 slice list above.
+
+1. **R03.1 — Propose household target and member shares (pure function).** Implements
+   the "R01 resolutions" formula: target = max of members' `dinnerCalorieTarget`; each
+   share = `round((memberTarget / target) / 0.25) × 0.25`, clamped to 0.25–4. No schema,
+   API or UI change — a standalone, unit-tested calculation only, matching how R02.2
+   shipped `scaleToServings` before anything called it.
+2. **R03.2 — Schema.** Additive columns for the household's confirmed standard-portion
+   target and each member's confirmed share/confirmation timestamp, per R01's "once
+   confirmed, the share is an independent setting" resolution.
+3. **R03.3 — Confirm API.** Endpoint(s) surfacing R03.1's proposal and persisting
+   confirmed values via R03.2's columns, with band/share validation.
+4. **R03.4 — Household UI.** Show the proposal, require explicit confirmation, display
+   total portions. Planner/eligibility use of the confirmed values is R04, not R03.
+
 ### R04 — One planning rule set and a trustworthy result
 
 **Goal:** automatic choices, expiry suggestions, locks and replacements agree on validity.
