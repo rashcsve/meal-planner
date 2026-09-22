@@ -664,7 +664,8 @@ export function buildProteinVarietyReason(
 // ---------------------------------------------------------------------------
 
 export function isWeekday(day: number, targets: PlannerTargets): boolean {
-  const dayOfWeek = (targets.startDayOfWeek + day) % 7;
+  const weekStartWeekday = new Date(`${targets.weekStartDate}T00:00:00Z`).getUTCDay();
+  const dayOfWeek = (weekStartWeekday + day) % 7;
   return dayOfWeek !== 0 && dayOfWeek !== 6;
 }
 

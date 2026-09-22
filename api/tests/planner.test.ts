@@ -4,6 +4,7 @@ import {
   buildPlannerContext,
   eligibleRecipes,
   placeMustUseConstraints,
+  isWeekday,
 } from "../src/services/planner.js";
 import {
   FIXTURE_PANTRY,
@@ -300,6 +301,15 @@ describe("empty price catalog and preferences are valid states, not errors", () 
         1,
       ),
     ).not.toThrow();
+  });
+});
+
+describe("isWeekday", () => {
+  it("derives weekday from weekStartDate, not the startDayOfWeek setting", () => {
+    const targets = { ...FIXTURE_TARGETS, startDayOfWeek: 0 };
+    expect(isWeekday(0, targets)).toBe(true);
+    expect(isWeekday(5, targets)).toBe(false);
+    expect(isWeekday(6, targets)).toBe(false);
   });
 });
 

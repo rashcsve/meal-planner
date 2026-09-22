@@ -122,7 +122,10 @@ async function buildPlannerPreferences(members: HouseholdMember[]): Promise<Plan
   return { neverIngredientIds: [...neverIngredientIds] };
 }
 
-async function buildPlannerTargets(members: HouseholdMember[]): Promise<PlannerTargets> {
+async function buildPlannerTargets(
+  members: HouseholdMember[],
+  weekStartDate: string,
+): Promise<PlannerTargets> {
   const settings = await getHouseholdSettings();
   if (!settings) throw new HouseholdSettingsNotConfiguredError();
 
@@ -137,6 +140,7 @@ async function buildPlannerTargets(members: HouseholdMember[]): Promise<PlannerT
     memberTargets,
     weeklyBudgetCzk: settings.weeklyBudgetCzk,
     startDayOfWeek: settings.startDayOfWeek,
+    weekStartDate,
   };
 }
 
@@ -149,7 +153,7 @@ export async function getPlanInputs(weekStartDate: string): Promise<PlanInputs> 
     buildPlannerPrices(weekStartDate),
     buildPlannerPantry(weekStartDate),
     buildPlannerPreferences(members),
-    buildPlannerTargets(members),
+    buildPlannerTargets(members, weekStartDate),
   ]);
 
   return { recipes, prices, pantry, preferences, targets };

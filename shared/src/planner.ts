@@ -44,6 +44,7 @@ export interface PlannerTargets {
   memberTargets: MemberDinnerTarget[];
   weeklyBudgetCzk: number;
   startDayOfWeek: number;
+  weekStartDate: string;
 }
 
 export const PLANNER_VERSION = "1.0.0";

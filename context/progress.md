@@ -1790,3 +1790,28 @@ deadlines → exactly one placement, no violations.
 Verified: typecheck/lint/prettier clean; api 11/136 pass (was 135, +1).
 
 **Next step:** R04.6 (needs a decision first) or another R04 slice, after review.
+
+## R04.6a — Derive weekday from weekStartDate, not startDayOfWeek setting — `implemented—awaiting review` (2026-09-22)
+
+Split R04.6 into weekday derivation (this slice) and timezone-based "today"
+for expiry (R04.6b, blocked on the decision below).
+
+`isWeekday` (`planner.ts`) now derives each day's weekday from
+`targets.weekStartDate` (`Date.getUTCDay()`) instead of the stored
+`startDayOfWeek` setting, which could drift out of sync with the actual date
+being planned. `PlannerTargets` gained `weekStartDate`; `buildPlannerTargets`
+(`plan-inputs.ts`) now takes it as a param. `startDayOfWeek` stays (frontend
+week-start picker still uses it) but `isWeekday` no longer reads it.
+
+Asked the user first, per build-plan.md's "needs a decision" flag: how should
+pantry-expiry "today" behave for weeks other than the one containing today
+(WeekPage has working prev/next nav, so this is reachable). Chosen: skip
+must-use expiry constraints/violations entirely for weeks not containing
+today — R04.6b, not yet implemented.
+
+New `isWeekday` test (`planner.test.ts`): overrides `startDayOfWeek` to a
+wrong value while `weekStartDate` stays real, proves the fix is load-bearing.
+
+Verified: typecheck/lint/prettier clean; api 11/137 pass (was 136, +1).
+
+**Next step:** R04.6b, after review.
