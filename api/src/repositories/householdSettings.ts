@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db } from "../db/index.js";
+import { db, type DbClient } from "../db/index.js";
 import { householdSettings } from "../db/schema.js";
 
 const SETTINGS_ROW_ID = 1;
@@ -30,4 +30,17 @@ export async function upsertHouseholdSettings(data: HouseholdSettingsInput) {
     })
     .returning();
   return settings!;
+}
+
+export async function confirmStandardPortionTarget(targetKcal: number, client: DbClient = db) {
+  const [settings] = await client
+    .update(householdSettings)
+    .set({
+      standardPortionTargetKcal: targetKcal,
+      standardPortionConfirmedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(householdSettings.id, SETTINGS_ROW_ID))
+    .returning();
+  return settings;
 }

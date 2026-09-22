@@ -106,9 +106,7 @@ export class RecipeIngredientLineNotFoundError extends Error {
 
 export class HouseholdSettingsNotConfiguredError extends Error {
   constructor() {
-    super(
-      "Cannot plan without household settings: weekly budget and start day of week are not set",
-    );
+    super("Household settings are not configured: weekly budget and start day of week are not set");
     this.name = "HouseholdSettingsNotConfiguredError";
   }
 }
@@ -122,7 +120,7 @@ export class NoHouseholdMembersError extends Error {
 
 export class HouseholdMemberMissingDinnerTargetError extends Error {
   constructor(memberName: string) {
-    super(`Cannot plan: household member "${memberName}" has no dinner calorie target set`);
+    super(`Household member "${memberName}" has no dinner calorie target set`);
     this.name = "HouseholdMemberMissingDinnerTargetError";
   }
 }
@@ -131,6 +129,25 @@ export class HouseholdMemberNotFoundError extends Error {
   constructor(id: number) {
     super(`No household member with id ${id}`);
     this.name = "HouseholdMemberNotFoundError";
+  }
+}
+
+export class InvalidStandardPortionTargetError extends Error {
+  constructor(targetKcal: number, proposedTargetKcal: number, bandRatio: number) {
+    const low = proposedTargetKcal * (1 - bandRatio);
+    const high = proposedTargetKcal * (1 + bandRatio);
+    super(
+      `Standard portion target ${targetKcal} is outside the allowed range ${low}-${high} ` +
+        `around the current proposal (${proposedTargetKcal})`,
+    );
+    this.name = "InvalidStandardPortionTargetError";
+  }
+}
+
+export class HouseholdShareMemberMismatchError extends Error {
+  constructor() {
+    super("Confirmed shares must cover exactly the household's current members");
+    this.name = "HouseholdShareMemberMismatchError";
   }
 }
 

@@ -21,3 +21,22 @@ export const updateMemberDinnerTargetSchema = z.object({
 });
 
 export type UpdateMemberDinnerTargetInput = z.infer<typeof updateMemberDinnerTargetSchema>;
+
+export const confirmHouseholdSharesSchema = z.object({
+  targetKcal: z
+    .number({ error: "Standard portion target must be a number" })
+    .positive("Standard portion target must be greater than 0"),
+  shares: z
+    .array(
+      z.object({
+        memberId: z.number().int().positive(),
+        share: z
+          .number({ error: "Share must be a number" })
+          .min(0.25, "Share must be at least 0.25")
+          .max(4, "Share must be at most 4"),
+      }),
+    )
+    .min(1, "At least one member share is required"),
+});
+
+export type ConfirmHouseholdSharesInput = z.infer<typeof confirmHouseholdSharesSchema>;

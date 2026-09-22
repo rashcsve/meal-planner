@@ -1606,3 +1606,44 @@ dropped or defaulted.
 **Not yet done:** R03.3 (confirm API), R03.4 (household UI).
 
 **Next step:** R03.3 (confirm API), after the user reviews this diff.
+
+## R03.3a — Read-only share-proposal endpoint — `implemented—awaiting review` (2026-09-22)
+
+Split R03.3 into a read side and a write side (same reasoning as R02.3/R02.4/R02.5).
+This slice: `GET /api/household/share-proposal` (new `services/householdShares.ts` +
+route), no persistence. Reuses `HouseholdMemberMissingDinnerTargetError` (422) for a
+member with no `dinnerCalorieTarget`; dropped its "Cannot plan:" prefix since it's no
+longer only thrown by planning (no test pinned the old string).
+
+`api/tests/household.test.ts` (+3): no members → default 520/empty; two members →
+worked-example target/shares; missing target → 422.
+
+Verified: typecheck/lint/prettier clean; api tests 11 files/125 pass (was 122).
+
+**Not yet done:** R03.3b (transactional confirm/persist endpoint, band/share
+validation); R03.4 (household UI).
+
+**Next step:** R03.3b, after review.
+
+## R03.3b — Transactional confirm/persist endpoint — `implemented—awaiting review` (2026-09-22)
+
+New `POST /api/household/confirm-shares`: recomputes the proposal server-side, rejects
+a target outside ±10% of it, rejects a share set that doesn't exactly match current
+member ids, writes both tables in one `db.transaction`.
+
+`shared/src/household.ts` (`confirmHouseholdSharesSchema`); `errors.ts`
+(`InvalidStandardPortionTargetError`, `HouseholdShareMemberMismatchError`; also fixed
+`HouseholdSettingsNotConfiguredError`'s stale "Cannot plan..." wording); repository
+functions take the `DbClient`/`tx` param `plans.ts` already established;
+`confirmStandardPortionTarget` is a plain `UPDATE`, not upsert (settings row must
+already exist). `services/householdShares.ts` (`confirmHouseholdShares`).
+
+`api/tests/household.test.ts` (+4): persists both tables, 422 outside band, 422 on
+member mismatch, 422 when settings unconfigured.
+
+Verified: typecheck/lint/prettier clean; api 11 files/129 pass (was 125); web
+unchanged 24/64. Manual `curl` check against the real dev DB, then restored to `NULL`.
+
+**Not yet done:** R03.4 (household UI).
+
+**Next step:** R03.4, after review.

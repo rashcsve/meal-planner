@@ -121,3 +121,111 @@ describe("PUT /api/household/members/:id", () => {
     expect(res.status).toBe(422);
   });
 });
+
+describe("GET /api/household/share-proposal", () => {
+  it("returns the default target and no shares when there are no members", async () => {
+    const res = await app.request("/api/household/share-proposal");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ targetKcal: 520, shares: [] });
+  });
+
+  it("proposes the max target and each member's derived share", async () => {
+    const a = await seedMember({ name: "A", dinnerCalorieTarget: 500 });
+    const b = await seedMember({ name: "B", dinnerCalorieTarget: 800 });
+
+    const res = await app.request("/api/household/share-proposal");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      targetKcal: number;
+      shares: { memberId: number; share: number }[];
+    };
+    expect(body.targetKcal).toBe(800);
+    expect(body.shares).toEqual(
+      expect.arrayContaining([
+        { memberId: a.id, share: 0.75 },
+        { memberId: b.id, share: 1 },
+      ]),
+    );
+  });
+
+  it("422s when a member has no dinner calorie target", async () => {
+    await seedMember({ dinnerCalorieTarget: null });
+
+    const res = await app.request("/api/household/share-proposal");
+    expect(res.status).toBe(422);
+  });
+});
+
+async function seedSettings() {
+  await db.insert(householdSettings).values({ id: 1, weeklyBudgetCzk: 2500, startDayOfWeek: 1 });
+}
+
+describe("POST /api/household/confirm-shares", () => {
+  it("persists the target and each member's share in one call", async () => {
+    await seedSettings();
+    const a = await seedMember({ name: "A", dinnerCalorieTarget: 500 });
+    const b = await seedMember({ name: "B", dinnerCalorieTarget: 800 });
+
+    const res = await app.request("/api/household/confirm-shares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetKcal: 800,
+        shares: [
+          { memberId: a.id, share: 0.75 },
+          { memberId: b.id, share: 1 },
+        ],
+      }),
+    });
+    expect(res.status).toBe(200);
+
+    const settingsRes = await app.request("/api/household/settings");
+    const settingsBody = (await settingsRes.json()) as {
+      standardPortionTargetKcal: number;
+      standardPortionConfirmedAt: string;
+    };
+    expect(settingsBody.standardPortionTargetKcal).toBe(800);
+    expect(settingsBody.standardPortionConfirmedAt).not.toBeNull();
+
+    const membersRes = await app.request("/api/household/members");
+    const membersBody = (await membersRes.json()) as { id: number; confirmedShare: number }[];
+    expect(membersBody.find((m) => m.id === a.id)?.confirmedShare).toBe(0.75);
+    expect(membersBody.find((m) => m.id === b.id)?.confirmedShare).toBe(1);
+  });
+
+  it("422s when the target is outside the ±10% band around the current proposal", async () => {
+    await seedSettings();
+    const member = await seedMember({ dinnerCalorieTarget: 520 });
+
+    const res = await app.request("/api/household/confirm-shares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetKcal: 600, shares: [{ memberId: member.id, share: 1 }] }),
+    });
+    expect(res.status).toBe(422);
+  });
+
+  it("422s when the shares don't cover exactly the current members", async () => {
+    await seedSettings();
+    const a = await seedMember({ name: "A", dinnerCalorieTarget: 500 });
+    await seedMember({ name: "B", dinnerCalorieTarget: 800 });
+
+    const res = await app.request("/api/household/confirm-shares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetKcal: 800, shares: [{ memberId: a.id, share: 0.75 }] }),
+    });
+    expect(res.status).toBe(422);
+  });
+
+  it("422s when household settings have never been configured", async () => {
+    const member = await seedMember({ dinnerCalorieTarget: 520 });
+
+    const res = await app.request("/api/household/confirm-shares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetKcal: 520, shares: [{ memberId: member.id, share: 1 }] }),
+    });
+    expect(res.status).toBe(422);
+  });
+});
