@@ -14,7 +14,6 @@ import type {
   MealSlot,
 } from "shared";
 import { createRng } from "../lib/rng.js";
-import { EmptyPreferencesError, EmptyPriceCatalogError } from "../lib/errors.js";
 
 // ---------------------------------------------------------------------------
 // Slot addressing: the week is a 7 x 4 grid (day 0-6 x MEAL_SLOTS). Every
@@ -901,9 +900,6 @@ const DEFAULT_LOCAL_SEARCH_ITERATIONS = 500;
  *
  * @returns the 28 slots, any violations, and the seed/version used.
  *
- * @throws {EmptyPriceCatalogError} if prices is empty.
- * @throws {EmptyPreferencesError} if preferences.neverIngredientIds is empty.
- *
  * @example
  * plan(..., seed: 42) always returns the identical 28-slot result for
  * the same inputs - that's what makes a bad plan reproducible.
@@ -917,11 +913,6 @@ export function plan(
   targets: PlannerTargets,
   seed: number,
 ): PlanResult {
-  if (prices.length === 0) throw new EmptyPriceCatalogError();
-  if (preferences.neverIngredientIds.length === 0) {
-    throw new EmptyPreferencesError();
-  }
-
   const rng = createRng(seed);
   const ctx = buildPlannerContext(recipes, prices, preferences, targets);
   const violations: PlanViolation[] = [];

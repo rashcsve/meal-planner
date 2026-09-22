@@ -21,8 +21,6 @@ import {
   HouseholdSettingsNotConfiguredError,
   NoHouseholdMembersError,
   HouseholdMemberMissingDinnerTargetError,
-  EmptyPriceCatalogError,
-  EmptyPreferencesError,
   StaleRevisionError,
   ExpectedRevisionRequiredError,
 } from "../lib/errors.js";
@@ -60,8 +58,6 @@ function mapPlanError(err: unknown): never {
     err instanceof HouseholdSettingsNotConfiguredError ||
     err instanceof NoHouseholdMembersError ||
     err instanceof HouseholdMemberMissingDinnerTargetError ||
-    err instanceof EmptyPriceCatalogError ||
-    err instanceof EmptyPreferencesError ||
     err instanceof RecipeNotEligibleError
   ) {
     throw new HTTPException(422, {

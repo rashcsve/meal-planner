@@ -1698,3 +1698,27 @@ Verified: api 11 files/132 pass; typecheck/lint clean.
 **Not yet done:** R04 (planner/eligibility use of confirmed values).
 
 **Next step:** R04, after review.
+
+## R04.1 — Empty price catalog / empty exclusions are valid states, not errors — `implemented—awaiting review` (2026-09-22)
+
+`plan()` threw `EmptyPriceCatalogError`/`EmptyPreferencesError` whenever `prices` or
+`preferences.neverIngredientIds` was empty, conflating two legitimate states ("no
+promos this week", "household excludes nothing") with "settings never configured."
+Neither array is ever indexed unconditionally elsewhere in the pipeline (only
+mapped/filtered/iterated), so removing both guards is safe. The real "not configured"
+cases (`NoHouseholdMembersError`, `HouseholdMemberMissingDinnerTargetError`,
+`HouseholdSettingsNotConfiguredError`) live in `plan-inputs.ts`, are unrelated to
+these two arrays, and still block generation.
+
+Removed `EmptyPriceCatalogError`/`EmptyPreferencesError` entirely (`lib/errors.ts`,
+their `mapPlanError` branches in `routes/plans.ts`, the `@throws` doc lines in
+`planner.ts`) rather than keeping unused dead classes.
+
+`api/tests/planner.test.ts`: replaced the two "throws" tests with two "plans
+successfully" tests for the same empty-input cases.
+
+Verified: api 11 files/132 pass (unchanged count); typecheck/lint/prettier clean.
+
+**Not yet done:** R04.2–R04.15.
+
+**Next step:** R04.2 (pantry-exclusion bypass fix), after review.

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { plan, buildPlannerContext, eligibleRecipes } from "../src/services/planner.js";
-import { EmptyPreferencesError, EmptyPriceCatalogError } from "../src/lib/errors.js";
 import {
   FIXTURE_PANTRY,
   FIXTURE_PREFERENCES,
@@ -181,14 +180,14 @@ describe("infeasible input", () => {
   });
 });
 
-describe("rejects unevaluable hard constraints instead of running with defaults", () => {
-  it("throws EmptyPriceCatalogError when prices is empty", () => {
+describe("empty price catalog and preferences are valid states, not errors", () => {
+  it("plans successfully with no tracked prices (no promos this week)", () => {
     expect(() =>
       plan(FIXTURE_RECIPES, [], FIXTURE_PANTRY, FIXTURE_PREFERENCES, [], FIXTURE_TARGETS, 1),
-    ).toThrow(EmptyPriceCatalogError);
+    ).not.toThrow();
   });
 
-  it("throws EmptyPreferencesError when neverIngredientIds is empty", () => {
+  it("plans successfully with no household exclusions", () => {
     expect(() =>
       plan(
         FIXTURE_RECIPES,
@@ -199,7 +198,7 @@ describe("rejects unevaluable hard constraints instead of running with defaults"
         FIXTURE_TARGETS,
         1,
       ),
-    ).toThrow(EmptyPreferencesError);
+    ).not.toThrow();
   });
 });
 

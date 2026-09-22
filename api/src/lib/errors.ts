@@ -35,22 +35,6 @@ export class IngredientNotFoundError extends Error {
   }
 }
 
-export class EmptyPriceCatalogError extends Error {
-  constructor() {
-    super(
-      "Cannot plan with an empty price catalog: promo detection and store consolidation have nothing to work with",
-    );
-    this.name = "EmptyPriceCatalogError";
-  }
-}
-
-export class EmptyPreferencesError extends Error {
-  constructor() {
-    super("Cannot plan without household preferences: neverIngredientIds is empty");
-    this.name = "EmptyPreferencesError";
-  }
-}
-
 export class WeekAlreadyGeneratedError extends Error {
   constructor(weekStartDate: string) {
     super(`A plan for the week of ${weekStartDate} was already generated`);

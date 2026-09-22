@@ -8,7 +8,6 @@ import {
   householdMembers,
   householdSettings,
   ingredientPrices,
-  ingredientPreferences,
   planWeeks,
   planSlots,
 } from "../src/db/schema.js";
@@ -20,7 +19,6 @@ const app = new Hono().onError(errorHandler).route("/api/plans", plansRoute);
 afterEach(async () => {
   await db.delete(planSlots);
   await db.delete(planWeeks);
-  await db.delete(ingredientPreferences);
   await db.delete(ingredientPrices);
   await db.delete(householdSettings);
   await db.delete(householdMembers);
@@ -46,11 +44,6 @@ async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) 
   const [dinnerIngredient2] = await db
     .insert(ingredients)
     .values({ name: "Dinner base 2", baseUnit: "g", kcalPer100g: 800 })
-    .returning();
-  // Unused by any recipe, so marking it "never" satisfies the planner's non-empty-preferences check without excluding a recipe.
-  const [unusedIngredient] = await db
-    .insert(ingredients)
-    .values({ name: "Unused ingredient", baseUnit: "g", kcalPer100g: 100 })
     .returning();
 
   const [lunchRecipe] = await db
@@ -119,9 +112,6 @@ async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) 
       isPromo: true,
     },
   ]);
-  await db
-    .insert(ingredientPreferences)
-    .values({ ingredientId: unusedIngredient!.id, rule: "never", memberId: null });
 
   return {
     lunchRecipe: lunchRecipe!,
