@@ -753,6 +753,48 @@ needed it and had to fall back to direct SQL).
 **Next step:** R02.4 (yield editing) or R02.5 (archiving, needs a decision
 first), per the user's choice — this closes out R02.3.
 
+**R02.4 — Yield editing — `in progress`.** User chose to continue with R02.4
+over R02.5 (still blocked on the snapshot-shape decision). Split into API
+first, UI after, same reasoning as every R02.3 hooks-then-UI sub-slice.
+
+**R02.4a — API endpoint to edit a recipe's `servings` — `implemented—awaiting
+review` (2026-09-22).** New `PUT /api/recipes/:id` accepting `{ servings }`
+only — mirrors `PUT /household/members/:id`'s single-field
+(`dinnerCalorieTarget`) pattern exactly, not a general recipe-edit endpoint.
+No reinterpretation of ingredient lines: `amountBase`/`displayAmount` are
+never touched, per R01's "Recipe amount storage" resolution — every
+downstream calorie/cost figure already reads `recipe.servings` live via
+R02.2's `scaleToServings`/`computeKcalPerServing`, so changing the column is
+the entire fix.
+
+`shared/src/recipes.ts` (`updateRecipeServingsSchema`: `servings` required,
+positive integer); `api/src/repositories/recipes.ts`
+(`updateRecipeServings`); `api/src/services/recipes.ts`
+(`editRecipeServings`, 404s via the existing `RecipeNotFoundError` if the
+`UPDATE ... RETURNING` matches no row); `api/src/routes/recipes.ts` (new
+`PUT /:id`, same `idParamSchema`/`zValidator` pattern as every other route
+here).
+
+`api/tests/recipes.test.ts` (+4 tests): servings persists and is reflected
+in a follow-up `GET`; changing servings 2→4 rescales `kcalPerServing`
+(165→82.5 for a fixed 330 kcal total) while the ingredient line's
+`amountBase` stays unchanged at 200 — the concrete proof this doesn't
+reinterpret source quantities; 404 for a nonexistent recipe; 422 for
+`servings: 0`.
+
+Verified 2026-09-22: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing unrelated `web` warnings); `npx prettier --check`
+clean on all touched files. `npm run test -w api` → 10 files / 115 tests
+pass (was 111 — 4 new, no regressions). `npm run test -w web` not re-run —
+no web-side change this sub-slice, same rationale as R02.3c-1/c-4/c-6. No
+manual browser check — this sub-slice has no UI; the integration test
+already exercises the real Postgres path R02.4b's UI will call.
+
+**Not yet done:** R02.4b (frontend hook + inline UI to edit servings from
+`RecipeDetail.tsx`'s existing read-only "Servings" `Stat`).
+
+**Next step:** R02.4b, when the user asks to continue.
+
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes
 do not override the active roadmap above. In particular, old step 31 is the

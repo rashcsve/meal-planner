@@ -60,9 +60,7 @@ export const createRecipeSchema = z.object({
     .min(1, "Cuisine can't be blank")
     .max(100, "Cuisine must be 100 characters or fewer")
     .optional(),
-  proteinSource: z
-    .enum(PROTEIN_SOURCES, { error: "Select a valid protein source" })
-    .optional(),
+  proteinSource: z.enum(PROTEIN_SOURCES, { error: "Select a valid protein source" }).optional(),
   diet: z.enum(DIET_TYPES, { error: "Select a valid diet" }).optional(),
   source: z
     .string({ error: "Source can't be blank" })
@@ -81,3 +79,12 @@ export const createRecipeSchema = z.object({
 });
 
 export type CreateRecipeInput = z.infer<typeof createRecipeSchema>;
+
+export const updateRecipeServingsSchema = z.object({
+  servings: z
+    .number({ error: "Servings must be a number" })
+    .int("Servings must be a whole number")
+    .positive("Servings must be greater than 0"),
+});
+
+export type UpdateRecipeServingsInput = z.infer<typeof updateRecipeServingsSchema>;

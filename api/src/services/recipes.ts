@@ -1,6 +1,12 @@
 import type { CreateRecipeInput } from "shared";
-import { findAllRecipes, findRecipeById, insertRecipe } from "../repositories/recipes.js";
+import {
+  findAllRecipes,
+  findRecipeById,
+  insertRecipe,
+  updateRecipeServings,
+} from "../repositories/recipes.js";
 import { findIngredientLinesForRecipe } from "../repositories/recipeIngredients.js";
+import { RecipeNotFoundError } from "../lib/errors.js";
 import {
   EMPTY_KCAL_SUMMARY,
   computeKcalPerServing,
@@ -53,4 +59,10 @@ export async function getRecipe(id: number) {
 export async function createRecipe(data: CreateRecipeInput) {
   const recipe = await insertRecipe(data);
   return { ...recipe, ...EMPTY_KCAL_SUMMARY, kcalPerServing: null, ingredients: [] };
+}
+
+export async function editRecipeServings(id: number, servings: number) {
+  const recipe = await updateRecipeServings(id, servings);
+  if (!recipe) throw new RecipeNotFoundError(id);
+  return recipe;
 }

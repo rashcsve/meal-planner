@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { createRecipeSchema, recipeIngredientLineSchema } from "shared";
+import { createRecipeSchema, recipeIngredientLineSchema, updateRecipeServingsSchema } from "shared";
 import { idParamSchema, recipeIngredientLineParamSchema } from "../lib/params.js";
-import { createRecipe, getRecipe, listRecipes } from "../services/recipes.js";
+import { createRecipe, editRecipeServings, getRecipe, listRecipes } from "../services/recipes.js";
 import {
   addIngredientLine,
   editIngredientLine,
@@ -59,6 +59,38 @@ export const recipesRoute = new Hono()
       } catch (err) {
         if (err instanceof DuplicateTitleError) {
           throw new HTTPException(409, { message: err.message });
+        }
+        throw err;
+      }
+    },
+  )
+  .put(
+    "/:id",
+    zValidator("param", idParamSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(400, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
+    zValidator("json", updateRecipeServingsSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(422, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { servings } = c.req.valid("json");
+      try {
+        const recipe = await editRecipeServings(id, servings);
+        return c.json(recipe);
+      } catch (err) {
+        if (err instanceof RecipeNotFoundError) {
+          throw new HTTPException(404, { message: err.message });
         }
         throw err;
       }

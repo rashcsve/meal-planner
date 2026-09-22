@@ -209,6 +209,67 @@ describe("GET /api/recipes/:id", () => {
   });
 });
 
+describe("PUT /api/recipes/:id", () => {
+  it("updates servings and persists it", async () => {
+    const recipe = await seedRecipe({ title: "Pancakes", servings: 2 });
+
+    const putRes = await app.request(`/api/recipes/${recipe.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ servings: 4 }),
+    });
+    expect(putRes.status).toBe(200);
+    expect(await putRes.json()).toMatchObject({ servings: 4 });
+
+    const getRes = await app.request(`/api/recipes/${recipe.id}`);
+    expect(await getRes.json()).toMatchObject({ servings: 4 });
+  });
+
+  it("rescales kcalPerServing from the new servings without touching ingredient amounts", async () => {
+    const recipe = await seedRecipe({ title: "Pancakes", servings: 2 });
+    const chicken = await seedIngredient({ name: "Chicken breast", kcalPer100g: 165 });
+    await seedRecipeIngredient({ recipeId: recipe.id, ingredientId: chicken.id, amountBase: 200 });
+
+    await app.request(`/api/recipes/${recipe.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ servings: 4 }),
+    });
+
+    const getRes = await app.request(`/api/recipes/${recipe.id}`);
+    const body = (await getRes.json()) as {
+      kcalTotal: number;
+      kcalPerServing: number;
+      ingredients: { amountBase: number }[];
+    };
+    expect(body.kcalTotal).toBe(330);
+    expect(body.kcalPerServing).toBeCloseTo(82.5);
+    expect(body.ingredients[0]?.amountBase).toBe(200);
+  });
+
+  it("returns 404 for an id that does not exist", async () => {
+    const res = await app.request("/api/recipes/999999", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ servings: 4 }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body).toEqual({ error: { message: "No recipe with id 999999" } });
+  });
+
+  it("returns 422 for a non-positive servings value", async () => {
+    const recipe = await seedRecipe({ title: "Pancakes" });
+
+    const res = await app.request(`/api/recipes/${recipe.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ servings: 0 }),
+    });
+    expect(res.status).toBe(422);
+  });
+});
+
 describe("POST /api/recipes", () => {
   it("creates a recipe and persists it", async () => {
     const postRes = await app.request("/api/recipes", {
