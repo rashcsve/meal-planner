@@ -134,8 +134,8 @@ export class HouseholdMemberNotFoundError extends Error {
 
 export class InvalidStandardPortionTargetError extends Error {
   constructor(targetKcal: number, proposedTargetKcal: number, bandRatio: number) {
-    const low = proposedTargetKcal * (1 - bandRatio);
-    const high = proposedTargetKcal * (1 + bandRatio);
+    const low = Math.round(proposedTargetKcal * (1 - bandRatio));
+    const high = Math.round(proposedTargetKcal * (1 + bandRatio));
     super(
       `Standard portion target ${targetKcal} is outside the allowed range ${low}-${high} ` +
         `around the current proposal (${proposedTargetKcal})`,

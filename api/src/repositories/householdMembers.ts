@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db, type DbClient } from "../db/index.js";
 import { householdMembers } from "../db/schema.js";
 
 export async function findAllHouseholdMembers() {
-  return db.select().from(householdMembers);
+  return db.select().from(householdMembers).orderBy(asc(householdMembers.id));
 }
 
 export async function updateDinnerCalorieTarget(id: number, dinnerCalorieTarget: number) {

@@ -3,11 +3,14 @@ import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
 import { HouseholdSettingsForm } from "./HouseholdSettingsForm";
 import { MemberTargetRow } from "./MemberTargetRow";
+import { ShareProposal } from "./ShareProposal";
 import {
   useHouseholdSettings,
   useHouseholdMembers,
+  useHouseholdShareProposal,
   useUpdateHouseholdSettings,
   useUpdateMemberDinnerTarget,
+  useConfirmHouseholdShares,
 } from "./useHousehold";
 
 const DEFAULT_SETTINGS: UpdateHouseholdSettingsInput = {
@@ -19,8 +22,10 @@ const DEFAULT_SETTINGS: UpdateHouseholdSettingsInput = {
 export function HouseholdPage() {
   const settingsQuery = useHouseholdSettings();
   const membersQuery = useHouseholdMembers();
+  const proposalQuery = useHouseholdShareProposal();
   const updateSettings = useUpdateHouseholdSettings();
   const updateMemberTarget = useUpdateMemberDinnerTarget();
+  const confirmShares = useConfirmHouseholdShares();
 
   if (settingsQuery.isLoading || membersQuery.isLoading) {
     return (
@@ -85,6 +90,18 @@ export function HouseholdPage() {
             />
           ))}
         </div>
+
+        <ShareProposal
+          proposal={proposalQuery.data}
+          isLoading={proposalQuery.isLoading}
+          error={proposalQuery.error?.message}
+          members={membersQuery.data ?? []}
+          isConfirmed={settingsQuery.data?.standardPortionTargetKcal != null}
+          confirmedAt={settingsQuery.data?.standardPortionConfirmedAt ?? null}
+          onConfirm={(proposal) => confirmShares.mutate(proposal)}
+          isConfirming={confirmShares.isPending}
+          confirmError={confirmShares.error?.message}
+        />
       </div>
     </div>
   );

@@ -1647,3 +1647,40 @@ unchanged 24/64. Manual `curl` check against the real dev DB, then restored to `
 **Not yet done:** R03.4 (household UI).
 
 **Next step:** R03.4, after review.
+
+## R03.4 — Household UI — `implemented—awaiting review` (2026-09-22)
+
+New `ShareProposal.tsx` card on `/household`: shows proposed target kcal, each
+member's proposed share, total portions; Confirm posts it as-is (no edit form — user
+chose confirm-as-is over editable). Shows "Confirmed <date>" badge, button relabels
+"Re-confirm" once set. `onConfirm` takes the proposal as an arg instead of a
+null-check in the handler, per user's mid-implementation feedback. `useHousehold.ts`:
+`useHouseholdShareProposal`, `useConfirmHouseholdShares`. Story file covers Default,
+Confirmed, Loading, ProposalError, ConfirmError, Confirming. No backend/schema
+changes — R03.3 already shipped both endpoints.
+
+Verified: typecheck/lint/prettier clean; web 25 files/70 tests pass (was 64), a11y
+enforced. Manual Playwright check against the real dev server: proposal renders,
+Confirm persists and flips card to confirmed state, no console errors; confirmed
+columns reset to `NULL` afterward via `psql` to restore dev DB.
+
+**Bug found manually, fixed same step:** `useUpdateMemberDinnerTarget` didn't
+invalidate `householdKeys.shareProposal`, so editing a target left a stale proposal
+that failed confirm against the server's fresh band. Fixed. Also rounded
+`InvalidStandardPortionTargetError`'s band bounds (`api/src/lib/errors.ts`) — floating
+point was producing "810-990.0000000000001"; no test pinned the message. Re-verified:
+api 11 files/130 pass, web typecheck/lint/prettier clean.
+
+## R03.4 recovery — unordered member list — 2026-09-22
+
+User-reported: editing svetlana's target moved her row to second place. Root cause:
+`findAllHouseholdMembers()` had no `ORDER BY`; an `UPDATE` writes a new MVCC row
+version that can land later in scan order. Pre-existing since step 30, exposed by
+R03.4's more-watched `/share-proposal`. Fix: `.orderBy(asc(householdMembers.id))`.
+Regression test added (`household.test.ts`) — fails without the fix.
+
+Verified: api 11 files/131 pass (was 130); typecheck/lint/prettier clean.
+
+**Not yet done:** R04 (planner/eligibility use of confirmed values).
+
+**Next step:** R04, after review.

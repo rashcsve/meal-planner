@@ -77,6 +77,21 @@ describe("GET /api/household/members", () => {
     const body = (await res.json()) as { name: string }[];
     expect(body.map((m) => m.name).sort()).toEqual(["Partner", "Svetlana"]);
   });
+
+  it("keeps list order stable after updating one member's target", async () => {
+    const a = await seedMember({ name: "A", dinnerCalorieTarget: 500 });
+    const b = await seedMember({ name: "B", dinnerCalorieTarget: 800 });
+
+    await app.request(`/api/household/members/${a.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dinnerCalorieTarget: 510 }),
+    });
+
+    const res = await app.request("/api/household/members");
+    const body = (await res.json()) as { id: number }[];
+    expect(body.map((m) => m.id)).toEqual([a.id, b.id]);
+  });
 });
 
 describe("PUT /api/household/members/:id", () => {
