@@ -436,13 +436,15 @@ way R01 resolved its own four, not by guessing during implementation.
 3. **R04.3 — Fix locked-slot-already-covers-expiry false violation.** Implements
    [r01-fixtures.md §5](r01-fixtures.md)'s proposed fix: precompute `lockedIngredientIds`
    from `locked` only, skip already-covered constraints before searching for a placement.
-4. **R04.4 — Generalize "existing coverage" beyond locked slots.** R04.3 deliberately
-   excluded must-use placements made earlier in the same run and the still-open
-   "two same-ingredient pantry lots" case (no quantity/lot tracking exists before R08) — this
-   slice decides and implements how far "check existing coverage before suggesting another
-   meal" extends without pretending to solve lot allocation early. **Needs a decision
-   first**, since the plan text only says "check existing coverage," not how to define it
-   without quantities.
+4. **R04.4 — Generalize "existing coverage" beyond locked slots.** **Resolved
+   2026-09-22** — `PlannerPantryItem` has no lot/row identity (only `ingredientId` +
+   `daysUntilExpiry`), so two expiring lots of the same ingredient are indistinguishable
+   from one constraint at the data level; true lot-level tracking isn't representable
+   without a bigger change, and stays R08's job. Given that, `placeMustUseConstraints`'s
+   `lockedIngredientIds` (R04.3) is generalized to `coveredIngredientIds`, growing as
+   each constraint is placed in the same pass, not just from `locked`. User decision on
+   the remaining question — silent skip vs. a distinct partial-coverage note for the
+   skipped constraint: **silent skip**, matching R04.3's own behavior exactly.
 5. **R04.5 — Distinguish unknown recipe cost from zero cost.** **Resolved 2026-09-22**
    — user decision: keep excluding a recipe with unknown cost from planning
    (`plan-inputs.ts`'s existing `recipe.cost === null` filter), not made plannable with

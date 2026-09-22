@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { plan, buildPlannerContext, eligibleRecipes } from "../src/services/planner.js";
+import {
+  plan,
+  buildPlannerContext,
+  eligibleRecipes,
+  placeMustUseConstraints,
+} from "../src/services/planner.js";
 import {
   FIXTURE_PANTRY,
   FIXTURE_PREFERENCES,
@@ -183,6 +188,40 @@ describe("locks", () => {
 
     const day0Dinner = result.slots.find((slot) => slot.day === 0 && slot.mealSlot === "dinner");
     expect(day0Dinner?.recipeId).toBe(RECIPE_ID.dinnerSalmon);
+  });
+
+  it("skips a second must-use constraint for an ingredient already placed earlier this pass", () => {
+    const ctx = buildPlannerContext(
+      FIXTURE_RECIPES,
+      FIXTURE_PRICES,
+      FIXTURE_PREFERENCES,
+      FIXTURE_TARGETS,
+    );
+    // Two pantry lots of salmon (no per-lot identity yet - see planner.ts),
+    // expiring on different days, both only usable via dinnerSalmon.
+    const constraints = [
+      {
+        ingredientId: INGREDIENT_ID.salmon,
+        deadlineDay: 0,
+        candidateRecipeIds: [RECIPE_ID.dinnerSalmon],
+      },
+      {
+        ingredientId: INGREDIENT_ID.salmon,
+        deadlineDay: 1,
+        candidateRecipeIds: [RECIPE_ID.dinnerSalmon],
+      },
+    ];
+
+    const { assigned, violations } = placeMustUseConstraints(
+      constraints,
+      ctx.recipesById,
+      [],
+      () => 0,
+    );
+
+    const salmonPlacements = [...assigned.values()].filter((id) => id === RECIPE_ID.dinnerSalmon);
+    expect(salmonPlacements).toHaveLength(1);
+    expect(violations).toEqual([]);
   });
 });
 

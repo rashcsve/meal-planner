@@ -1774,4 +1774,19 @@ whether enforcement can be optional before checkout pricing exists is still open
 Verified: typecheck/lint clean (same 2 pre-existing web warnings); prettier clean on
 the touched test file; api 11 files/135 pass (was 134, +1 new test, no regressions).
 
-**Next step:** R04.4 (needs a decision first) or another R04 slice, after review.
+## R04.4 — Generalize "existing coverage" beyond locked slots — `complete` (2026-09-22)
+
+No lot/row id on `PlannerPantryItem`, so true lot tracking isn't representable
+(R08's job) — only remaining question: silent skip vs. a partial-coverage note.
+User chose **silent** (matches R04.3).
+
+`placeMustUseConstraints`: `lockedIngredientIds` → `coveredIngredientIds`, now
+also grows from each placement made this pass, not just `locked`.
+
+New `planner.test.ts` test (direct `placeMustUseConstraints` call, not full
+`plan()`, to avoid other-search interference): two salmon lots, different
+deadlines → exactly one placement, no violations.
+
+Verified: typecheck/lint/prettier clean; api 11/136 pass (was 135, +1).
+
+**Next step:** R04.6 (needs a decision first) or another R04 slice, after review.

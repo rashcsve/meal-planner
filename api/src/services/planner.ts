@@ -352,6 +352,8 @@ function findPlacementOptions(
  * Drops locked slots straight into the grid, then places each expiry
  * constraint into a random valid slot, tightest deadline first. A
  * constraint with no valid slot becomes a violation, not a thrown error.
+ * An ingredient already covered - by a lock or an earlier placement this
+ * pass - skips its constraint silently, no extra placement or violation.
  *
  * @param constraints - must-use-by-day-X rules from resolveExpiryConstraints.
  * @param recipesById - lookup used to check candidate recipes' mealType.
@@ -376,7 +378,7 @@ export function placeMustUseConstraints(
     assigned.set(slotKey(lockedSlot.day, lockedSlot.mealSlot), lockedSlot.recipeId);
   }
 
-  const lockedIngredientIds = new Set(
+  const coveredIngredientIds = new Set(
     locked.flatMap((lockedSlot) => recipesById.get(lockedSlot.recipeId)?.ingredientIds ?? []),
   );
 
@@ -386,7 +388,7 @@ export function placeMustUseConstraints(
   const sortedByDeadline = [...constraints].sort((a, b) => a.deadlineDay - b.deadlineDay);
 
   for (const constraint of sortedByDeadline) {
-    if (lockedIngredientIds.has(constraint.ingredientId)) continue;
+    if (coveredIngredientIds.has(constraint.ingredientId)) continue;
 
     const options = findPlacementOptions(constraint, assigned, recipesById);
 
@@ -402,6 +404,9 @@ export function placeMustUseConstraints(
     const choice = pickRandom(options, rng);
     if (!choice) continue;
     assigned.set(choice.key, choice.recipeId);
+    for (const ingredientId of recipesById.get(choice.recipeId)?.ingredientIds ?? []) {
+      coveredIngredientIds.add(ingredientId);
+    }
   }
 
   return { assigned, violations };
