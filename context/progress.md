@@ -1721,4 +1721,22 @@ Verified: api 11 files/132 pass (unchanged count); typecheck/lint/prettier clean
 
 **Not yet done:** R04.2–R04.15.
 
-**Next step:** R04.2 (pantry-exclusion bypass fix), after review.
+## R04.2 — Fix pantry-exclusion bypass — `implemented—awaiting review` (2026-09-22)
+
+Implemented [r01-fixtures.md §4](r01-fixtures.md)'s fix exactly: `plan()` (`planner.ts`)
+called `resolveExpiryConstraints(pantry, recipes)` against the raw recipe list, so an
+excluded ingredient expiring soon could force-place its recipe with no violation. Now
+called with `PLANNED_MEAL_SLOTS.flatMap((mealSlot) => ctx.eligibleRecipesBySlot.get(mealSlot)
+?? [])` instead; `resolveExpiryConstraints` itself unchanged. Also reworded the "no recipe
+uses ingredient X" violation to "no eligible recipe uses ingredient X" (no test pinned the
+old string), per the fixture doc.
+
+New test in `api/tests/planner.test.ts`'s existing "pantry items expiring soon" block:
+shrimp (never-ingredient) expiring today, 5 seeds, asserts never scheduled + exactly one
+`pantry_expiry` violation with the new wording.
+
+Verified 2026-09-22: api tests 11 files/133 pass (was 132); typecheck/lint/prettier clean.
+
+**Not yet done:** R04.3–R04.15.
+
+**Next step:** R04.3 (locked-slot-already-covers-expiry false violation), after review.

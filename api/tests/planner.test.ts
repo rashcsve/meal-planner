@@ -6,6 +6,7 @@ import {
   FIXTURE_PRICES,
   FIXTURE_RECIPES,
   FIXTURE_TARGETS,
+  INGREDIENT_ID,
   NEVER_INGREDIENT_RECIPE_IDS,
   RECIPE_ID,
 } from "./fixtures/plannerFixtures.js";
@@ -121,6 +122,39 @@ describe("hard constraint: pantry items expiring soon are used", () => {
     expect(placements.some((slot) => slot.day <= 2)).toBe(true);
     const withinDeadline = placements.find((slot) => slot.day <= 2)!;
     expect(withinDeadline.reasons).toContain("uses salmon expiring in 2 day(s)");
+  });
+
+  it("does not force-place a never-ingredient recipe to use up an expiring exclusion", () => {
+    const pantryWithExpiringShrimp = [
+      ...FIXTURE_PANTRY,
+      { ingredientId: INGREDIENT_ID.shrimp, daysUntilExpiry: 0 },
+    ];
+
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const result = plan(
+        FIXTURE_RECIPES,
+        FIXTURE_PRICES,
+        pantryWithExpiringShrimp,
+        FIXTURE_PREFERENCES,
+        [],
+        FIXTURE_TARGETS,
+        seed,
+      );
+
+      for (const slot of result.slots) {
+        expect(NEVER_INGREDIENT_RECIPE_IDS).not.toContain(slot.recipeId);
+      }
+
+      const shrimpViolations = result.violations.filter(
+        (violation) =>
+          violation.constraint === "pantry_expiry" &&
+          violation.detail.includes(`ingredient ${INGREDIENT_ID.shrimp}`),
+      );
+      expect(shrimpViolations).toHaveLength(1);
+      expect(shrimpViolations[0]!.detail).toBe(
+        `no eligible recipe uses ingredient ${INGREDIENT_ID.shrimp}, expiring in 0 day(s)`,
+      );
+    }
   });
 });
 

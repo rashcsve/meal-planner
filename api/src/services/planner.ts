@@ -288,7 +288,7 @@ export function resolveExpiryConstraints(
       violations.push({
         slot: null,
         constraint: "pantry_expiry",
-        detail: `no recipe uses ingredient ${item.ingredientId}, expiring in ${item.daysUntilExpiry} day(s)`,
+        detail: `no eligible recipe uses ingredient ${item.ingredientId}, expiring in ${item.daysUntilExpiry} day(s)`,
       });
     } else {
       constraints.push({
@@ -918,7 +918,10 @@ export function plan(
   const violations: PlanViolation[] = [];
 
   // Pantry items expiring soon must land on a specific day-or-earlier.
-  const expiry = resolveExpiryConstraints(pantry, recipes);
+  const expiry = resolveExpiryConstraints(
+    pantry,
+    PLANNED_MEAL_SLOTS.flatMap((mealSlot) => ctx.eligibleRecipesBySlot.get(mealSlot) ?? []),
+  );
   violations.push(...expiry.violations);
 
   // Locked slots and expiry-forced placements claim their slots first.
