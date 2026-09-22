@@ -298,11 +298,16 @@ R04: this milestone bundles distinct pieces of work and CLAUDE.md caps a step at
 4. **R02.4 — Yield editing.** Edit a recipe's `servings`/yield after creation, keeping
    `amountBase` as each line's original source quantity (per R01's "Recipe amount storage"
    resolution) rather than reinterpreting it.
-5. **R02.5 — Archive before physical delete; historical snapshot/version data.** **Needs a
-   decision first** — R02's own text says to "define the historical snapshot/version data
-   required before edits can affect old meals," which is not yet specified. Resolve what a
-   snapshot captures (recipe + ingredient lines at generation time? a version pointer?)
-   before implementing, the same way R01 resolved R04's blocking rows up front.
+5. **R02.5 — Archive before physical delete.** **Resolved 2026-09-22** — the user chose
+   to split this slice's two bundled questions rather than resolve both the same way: build
+   archive/soft-delete now (R02.5a: `archivedAt` column, `DELETE /api/recipes/:id` archives
+   instead of removing, archived recipes excluded from the active list and planning
+   eligibility but still readable by id); defer the historical-snapshot/version-data half
+   to R05, whose own dependency line already names "historical editing/snapshots from
+   R02/R03" and whose preview/accept flow is a concrete trigger point R02 doesn't have.
+   Until R05 lands, editing a recipe still retroactively changes what an already-generated
+   plan week displays — a known, accepted gap while no real production data exists (R01's
+   legacy-plan-editing resolution).
 
 ### R03 — Fixed portion shares, end to end
 

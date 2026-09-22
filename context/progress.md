@@ -848,10 +848,71 @@ existing portion info.
 
 R02.4 (yield editing) is now complete — both R02.4a and R02.4b are done.
 
-**Next step:** R02.5 (archiving, needs a decision first) — the only
-remaining piece of R02 — or the user may choose to start R03, per the
-build plan's dependency note that R03 needs R02's reliable calories/scaling,
-already in place.
+**R02.5 — Archive recipes before physical deletion — `in progress`.** Split
+into API first, UI after, same reasoning as every other R02.3/R02.4 hooks-
+or-API-then-UI sub-slice.
+
+Decision resolved with the user before implementing (build-plan.md's
+`build-plan.md` "R02 implementation slices" §5 updated to match): R02.5's
+two bundled questions — "should archiving exist yet" and "how do past plan
+weeks survive a later recipe edit" — don't need the same answer. Archiving:
+yes, build it now, since it's the concrete feature the plan names. Historical
+snapshot/version data: deferred to R05, whose own dependency line already
+claims this and whose preview/accept flow is a real trigger point R02.5 does
+not have. Until R05 ships this, editing a recipe still retroactively changes
+what an already-generated plan week would display — an accepted, currently
+low-stakes gap since no real production data exists yet (R01's legacy-plan-
+editing resolution).
+
+**R02.5a — Archive/soft-delete API — `implemented—awaiting review`
+(2026-09-22).** New `DELETE /api/recipes/:id` archives instead of removing.
+Confirmed before implementing (via a repo agent, not the plan's prose): no
+recipe delete endpoint existed at all yet, and no historical snapshot exists
+anywhere — `plan_slots` stores only `recipe_id`; `getWeek()`/`plan-inputs.ts`
+both read recipe data live at request time. `recipe_ingredients.recipe_id`
+already cascades on delete and `plan_slots.recipe_id` already sets null on
+delete, but neither path is reachable today since nothing deletes a recipe.
+
+`api/src/db/schema.ts` gained a nullable `archivedAt` timestamp on `recipes`
+(migration `0020_simple_the_twelve.sql`, additive `ALTER TABLE ADD COLUMN`,
+applied to the dev database). `api/src/repositories/recipes.ts`:
+`findAllRecipes` now filters `WHERE archived_at IS NULL` — the single shared
+call site both `listRecipes()` (active list) and `plan-inputs.ts`'s
+`buildPlannerRecipes()` (planning eligibility) already go through, so both
+exclude archived recipes with no caller-side change; new `archiveRecipe(id)`
+does `UPDATE ... WHERE id = ? AND archived_at IS NULL RETURNING *` — the
+`archived_at IS NULL` condition means archiving an already-archived recipe
+matches zero rows rather than silently re-archiving it (which would also
+overwrite the true first-archive timestamp). `findRecipeById` is unchanged,
+so `GET /api/recipes/:id` still returns an archived recipe by id — the point
+of archiving over hard deletion, since `plan_slots` may still reference it.
+`api/src/services/recipes.ts` gained `archiveRecipe`, throwing the existing
+`RecipeNotFoundError` when zero rows were updated (same not-found-on-
+already-gone convention `removeIngredientLine` already uses).
+`api/src/routes/recipes.ts` gained `DELETE /:id`, same `idParamSchema`
+pattern as every other route here, mapping `RecipeNotFoundError` to 404.
+
+`api/tests/recipes.test.ts` (+3 tests): archiving removes a recipe from
+`GET /api/recipes` but it remains fetchable by id via `GET /api/recipes/:id`;
+404 for a nonexistent id; 404 for archiving an already-archived recipe.
+
+Verified 2026-09-22: `npm run typecheck` (api+web) clean; `npm run lint`
+clean (same 2 pre-existing unrelated `web` warnings); `npx prettier --check`
+clean on all touched files. `npm run test -w api` → 10 files / 118 tests
+pass (was 111 — 4 R02.4a tests already counted plus 3 new archive tests
+land this count). `npm run test -w web` not re-run — no web-side change
+this sub-slice. No manual browser check — no UI yet, that's R02.5b.
+
+**Not yet done:** R02.5b (frontend delete button/hook, likely with a
+confirmation given deletion is harder to walk back than the existing
+single-click ingredient-line remove); no "unarchive" endpoint (not
+requested); the historical-snapshot half of R02.5's original scope,
+deliberately deferred to R05.
+
+**Next step:** R02.5b (frontend archive UI) — the only remaining piece of
+R02 — or the user may choose to start R03 first, per the build plan's
+dependency note that R03 needs R02's reliable calories/scaling, already in
+place.
 
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes

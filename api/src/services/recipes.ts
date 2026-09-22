@@ -1,5 +1,6 @@
 import type { CreateRecipeInput } from "shared";
 import {
+  archiveRecipe as archiveRecipeRow,
   findAllRecipes,
   findRecipeById,
   insertRecipe,
@@ -63,6 +64,12 @@ export async function createRecipe(data: CreateRecipeInput) {
 
 export async function editRecipeServings(id: number, servings: number) {
   const recipe = await updateRecipeServings(id, servings);
+  if (!recipe) throw new RecipeNotFoundError(id);
+  return recipe;
+}
+
+export async function archiveRecipe(id: number) {
+  const recipe = await archiveRecipeRow(id);
   if (!recipe) throw new RecipeNotFoundError(id);
   return recipe;
 }

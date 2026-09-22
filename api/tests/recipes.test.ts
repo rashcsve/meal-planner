@@ -270,6 +270,37 @@ describe("PUT /api/recipes/:id", () => {
   });
 });
 
+describe("DELETE /api/recipes/:id", () => {
+  it("archives the recipe instead of removing it", async () => {
+    const recipe = await seedRecipe({ title: "Pancakes" });
+
+    const deleteRes = await app.request(`/api/recipes/${recipe.id}`, { method: "DELETE" });
+    expect(deleteRes.status).toBe(204);
+
+    const listRes = await app.request("/api/recipes");
+    expect(await listRes.json()).toEqual([]);
+
+    const getRes = await app.request(`/api/recipes/${recipe.id}`);
+    expect(getRes.status).toBe(200);
+    expect(await getRes.json()).toMatchObject({ id: recipe.id, title: "Pancakes" });
+  });
+
+  it("returns 404 for an id that does not exist", async () => {
+    const res = await app.request("/api/recipes/999999", { method: "DELETE" });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body).toEqual({ error: { message: "No recipe with id 999999" } });
+  });
+
+  it("returns 404 when archiving an already-archived recipe", async () => {
+    const recipe = await seedRecipe({ title: "Pancakes" });
+    await app.request(`/api/recipes/${recipe.id}`, { method: "DELETE" });
+
+    const res = await app.request(`/api/recipes/${recipe.id}`, { method: "DELETE" });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("POST /api/recipes", () => {
   it("creates a recipe and persists it", async () => {
     const postRes = await app.request("/api/recipes", {

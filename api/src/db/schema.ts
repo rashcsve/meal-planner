@@ -42,6 +42,7 @@ export const recipes = pgTable(
     source: text("source"),
     weightG: numeric("weight_g", { mode: "number" }),
     servings: integer("servings"),
+    archivedAt: timestamp("archived_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

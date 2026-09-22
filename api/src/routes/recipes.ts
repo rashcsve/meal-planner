@@ -4,7 +4,13 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { createRecipeSchema, recipeIngredientLineSchema, updateRecipeServingsSchema } from "shared";
 import { idParamSchema, recipeIngredientLineParamSchema } from "../lib/params.js";
-import { createRecipe, editRecipeServings, getRecipe, listRecipes } from "../services/recipes.js";
+import {
+  archiveRecipe,
+  createRecipe,
+  editRecipeServings,
+  getRecipe,
+  listRecipes,
+} from "../services/recipes.js";
 import {
   addIngredientLine,
   editIngredientLine,
@@ -88,6 +94,29 @@ export const recipesRoute = new Hono()
       try {
         const recipe = await editRecipeServings(id, servings);
         return c.json(recipe);
+      } catch (err) {
+        if (err instanceof RecipeNotFoundError) {
+          throw new HTTPException(404, { message: err.message });
+        }
+        throw err;
+      }
+    },
+  )
+  .delete(
+    "/:id",
+    zValidator("param", idParamSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(400, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      try {
+        await archiveRecipe(id);
+        return c.body(null, 204);
       } catch (err) {
         if (err instanceof RecipeNotFoundError) {
           throw new HTTPException(404, { message: err.message });
