@@ -52,7 +52,7 @@ export async function confirmHouseholdShares(input: ConfirmHouseholdSharesInput)
     if (!settings) throw new HouseholdSettingsNotConfiguredError();
 
     const members = await Promise.all(
-      input.shares.map(async (s) => {
+      proposal.shares.map(async (s) => {
         const member = await confirmMemberShare(s.memberId, s.share, tx);
         if (!member) throw new HouseholdMemberNotFoundError(s.memberId);
         return member;

@@ -322,7 +322,9 @@ retain old target fields and saved `memberServings`; show the new controls and t
 portions. Store the calculation policy/settings used by new plans, bump the planner
 version, and distinguish legacy plans without interpreting old values under new rules.
 Changing settings must invalidate dependent candidate/evaluation queries, not silently
-rewrite accepted plans. Add member creation/editing required by the household screen.
+rewrite accepted plans. Member creation/editing is deferred to a later app phase, not
+this build plan (user decision, 2026-09-22) — R03's household screen works against the
+household's existing members only.
 
 **Dependencies:** R02 reliable calories/scaling; R01 defaults and legacy edit policy.
 

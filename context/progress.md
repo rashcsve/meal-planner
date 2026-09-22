@@ -1681,6 +1681,20 @@ Regression test added (`household.test.ts`) — fails without the fix.
 
 Verified: api 11 files/131 pass (was 130); typecheck/lint/prettier clean.
 
+## R03 `/review` fixes — 2026-09-22
+
+`confirmHouseholdShares` validated the target band and member-id set against the
+recomputed proposal but persisted client-submitted `share` values unchecked. Fixed:
+writes `proposal.shares` (recomputed), not `input.shares`. `household.test.ts`: added a
+stale-share regression test; rewrote "rolls back the settings write" (its old
+DB-constraint trigger is no longer reachable) to simulate a vanished member via a spy,
+also covering `HouseholdMemberNotFoundError` for the first time.
+
+Member creation/editing (`build-plan.md`'s R03 "Changes") deferred to a later app phase
+— user decision, doc updated.
+
+Verified: api 11 files/132 pass; typecheck/lint clean.
+
 **Not yet done:** R04 (planner/eligibility use of confirmed values).
 
 **Next step:** R04, after review.

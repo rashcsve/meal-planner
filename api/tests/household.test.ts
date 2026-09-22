@@ -1,10 +1,12 @@
 import { Hono } from "hono";
-import { afterEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { db } from "../src/db/index.js";
 import { householdMembers, householdSettings } from "../src/db/schema.js";
 import { householdRoute } from "../src/routes/household.js";
 import { errorHandler } from "../src/lib/errorHandler.js";
 import { confirmHouseholdShares } from "../src/services/householdShares.js";
+import * as householdMembersRepo from "../src/repositories/householdMembers.js";
 
 const app = new Hono().onError(errorHandler).route("/api/household", householdRoute);
 
@@ -209,6 +211,29 @@ describe("POST /api/household/confirm-shares", () => {
     expect(membersBody.find((m) => m.id === b.id)?.confirmedShare).toBe(1);
   });
 
+  it("persists the recomputed share, not a stale client-submitted one", async () => {
+    await seedSettings();
+    const a = await seedMember({ name: "A", dinnerCalorieTarget: 500 });
+    const b = await seedMember({ name: "B", dinnerCalorieTarget: 800 });
+
+    const res = await app.request("/api/household/confirm-shares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetKcal: 800,
+        shares: [
+          { memberId: a.id, share: 4 },
+          { memberId: b.id, share: 1 },
+        ],
+      }),
+    });
+    expect(res.status).toBe(200);
+
+    const membersRes = await app.request("/api/household/members");
+    const membersBody = (await membersRes.json()) as { id: number; confirmedShare: number }[];
+    expect(membersBody.find((m) => m.id === a.id)?.confirmedShare).toBe(0.75);
+  });
+
   it("422s when the target is outside the ±10% band around the current proposal", async () => {
     await seedSettings();
     const member = await seedMember({ dinnerCalorieTarget: 520 });
@@ -245,20 +270,25 @@ describe("POST /api/household/confirm-shares", () => {
     expect(res.status).toBe(422);
   });
 
-  it("rolls back the settings write when a later member write fails", async () => {
+  it("rolls back the settings write when a member vanishes before the write completes", async () => {
     await seedSettings();
     const a = await seedMember({ name: "A", dinnerCalorieTarget: 500 });
     const b = await seedMember({ name: "B", dinnerCalorieTarget: 800 });
+
+    const members = await householdMembersRepo.findAllHouseholdMembers();
+    vi.spyOn(householdMembersRepo, "findAllHouseholdMembers").mockResolvedValueOnce(members);
+    await db.delete(householdMembers).where(eq(householdMembers.id, b.id));
 
     await expect(
       confirmHouseholdShares({
         targetKcal: 800,
         shares: [
           { memberId: a.id, share: 0.75 },
-          { memberId: b.id, share: 10 },
+          { memberId: b.id, share: 1 },
         ],
       }),
     ).rejects.toThrow();
+    vi.restoreAllMocks();
 
     const settingsRes = await app.request("/api/household/settings");
     const settingsBody = (await settingsRes.json()) as { standardPortionTargetKcal: number | null };
