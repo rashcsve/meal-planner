@@ -1546,6 +1546,22 @@ warnings, unrelated to this change). `context/build-plan.md`'s existing Prettier
 formatting warning predates this change (confirmed via `git stash`), not introduced by
 it. No manual browser check — no UI in this slice.
 
+**`MAX_SHARE` dead-clamp fix (2026-09-22):** the unreachable upper clamp flagged
+above was removed, not left as-is — `MAX_SHARE` (4) was deleted and
+`proposeHouseholdSharePlan` now only applies the reachable `MIN_SHARE` (0.25)
+floor. No behavior change for any real input, since the upper clamp never
+fired (`targetKcal` is always the max of the members whose shares are computed
+against it, so every ratio is provably ≤ 1). The real 0.25–4 range from
+`build-plan.md`'s "R01 resolutions" still holds as a product rule, but it
+belongs to R03.3's confirm/edit API — where a user could later set a share
+above 1 independent of this proposal formula — not to this pure proposal
+function, which cannot produce a value above 1 by construction.
+
+Re-verified: `npm run test -w api -- householdShares` → 1 file / 4 tests pass
+(unchanged, no test exercised the dead upper clamp); `npm run typecheck`
+(api+web) clean; `npm run lint` clean (same 2 pre-existing `web` warnings);
+`npx prettier --check shared/src/householdShares.ts` clean.
+
 **Not yet done:** R03.2 (schema), R03.3 (confirm API), R03.4 (household UI).
 
 **Next step: R03.2** (schema), after the user reviews this diff.
