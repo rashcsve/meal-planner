@@ -7,10 +7,12 @@ import { formatTime } from "../../shared/lib/formatTime";
 import { IngredientLineRow } from "./IngredientLineRow";
 import { AddIngredientLineForm } from "./AddIngredientLineForm";
 import { ServingsField } from "./ServingsField";
+import { ArchiveRecipeControl } from "./ArchiveRecipeControl";
 import { useCreateIngredient, useIngredients } from "./useIngredients";
 import { firstMutationError, lineMutationError } from "./mutationError";
 import {
   useAddIngredientLine,
+  useArchiveRecipe,
   useEditIngredientLine,
   useEditRecipeServings,
   useRecipe,
@@ -41,6 +43,7 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
   } = useIngredients();
   const addLine = useAddIngredientLine();
   const createIngredient = useCreateIngredient();
+  const archiveRecipe = useArchiveRecipe();
   const tags = recipe
     ? [recipe.cuisine, recipe.proteinSource, recipe.diet].filter((tag): tag is string =>
         Boolean(tag),
@@ -135,6 +138,16 @@ export function RecipeDetail({ id, onClose }: RecipeDetailProps) {
           {recipe.source && (
             <p className="border-t border-hair pt-2 text-10 text-faint">Source: {recipe.source}</p>
           )}
+
+          <div className="border-t border-hair pt-2.5">
+            <ArchiveRecipeControl
+              key={recipe.id}
+              onArchive={() => archiveRecipe.mutate(id, { onSuccess: onClose })}
+              onCancel={() => archiveRecipe.reset()}
+              isArchiving={archiveRecipe.isPending}
+              error={firstMutationError(archiveRecipe)}
+            />
+          </div>
         </div>
       )}
     </DetailRail>

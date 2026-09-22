@@ -909,10 +909,44 @@ single-click ingredient-line remove); no "unarchive" endpoint (not
 requested); the historical-snapshot half of R02.5's original scope,
 deliberately deferred to R05.
 
-**Next step:** R02.5b (frontend archive UI) — the only remaining piece of
-R02 — or the user may choose to start R03 first, per the build plan's
-dependency note that R03 needs R02's reliable calories/scaling, already in
-place.
+**R02.5b — Frontend archive UI — `implemented—awaiting review`
+(2026-09-22).** Wires up `DELETE /api/recipes/:id`. Closes R02.5 and R02.
+
+New `ArchiveRecipeControl.tsx` (click-to-reveal confirm/cancel toggle, same
+pattern `AddIngredientLineForm.tsx`'s `isNew` toggle uses — no modal
+primitive exists in this codebase, so none was added). Ghost "Archive
+recipe" button at rest; confirming shows a message plus `variant="danger"`
+"Confirm archive" (`Button.tsx`'s `danger` variant, previously unused) and
+a ghost "Cancel". New `useArchiveRecipe()` in `useRecipes.ts`, invalidating
+`recipesKeys.list` and `.detail`. `RecipeDetail.tsx` renders it at the
+bottom of the rail and passes the rail's existing `onClose` as
+`onSuccess`, so the rail closes once its recipe leaves the active list.
+5 new stories in `ArchiveRecipeControl.stories.tsx`.
+
+Verified 2026-09-22: typecheck/lint/prettier clean; `npm run test -w web` →
+24 files / 64 tests pass (was 23/59). Manual browser check (Playwright, via
+subagent): archived "Řecký salát s fetou" (id 6) — confirm/cancel toggle
+worked, archiving closed the rail and removed the row, no console errors;
+`GET /api/recipes/6` still returned it with `archivedAt` set (soft archive
+confirmed), `GET /api/recipes` excluded it. Restored via direct SQL (no
+unarchive endpoint), confirmed back to 33 active rows.
+
+**Bug found during understanding-check, fixed same slice:** `ArchiveRecipeControl`
+had no `key={recipe.id}`, so switching recipes without closing the rail
+mid-confirm left its `confirming` state showing for the wrong recipe — the
+same remount gap R02.4b already hit and fixed once for `ServingsField` in
+this same file. Fixed identically: `<ArchiveRecipeControl key={recipe.id}
+.../>`. Re-verified `npm run typecheck -w web` and `npx prettier --check`
+clean; no story change needed (the bug was in `RecipeDetail.tsx`'s wiring,
+not the component itself).
+
+**Not yet done:** unarchive endpoint/UI; the historical-snapshot half of
+R02.5, still deferred to R05.
+
+R02 is now complete pending user review — all five slices (R02.1–R02.5)
+implemented and verified.
+
+**Next step:** user review, then R03 or R04.1 per the user's choice.
 
 The entries below retain their historical step numbers, statuses and evidence.
 They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes

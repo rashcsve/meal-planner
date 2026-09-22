@@ -129,3 +129,18 @@ export function useRemoveIngredientLine() {
     },
   });
 }
+
+async function deleteRecipe(recipeId: number) {
+  const res = await apiClient.api.recipes[":id"].$delete({ param: { id: String(recipeId) } });
+  return unwrapEmptyResponse(res);
+}
+
+export function useArchiveRecipe() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteRecipe,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recipesKeys.list });
+    },
+  });
+}
