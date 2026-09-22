@@ -124,6 +124,8 @@ export const householdMembers = pgTable(
       mode: "number",
     }).notNull(),
     dinnerCalorieTarget: numeric("dinner_calorie_target", { mode: "number" }),
+    confirmedShare: numeric("confirmed_share", { mode: "number" }),
+    shareConfirmedAt: timestamp("share_confirmed_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -131,6 +133,10 @@ export const householdMembers = pgTable(
     check(
       "household_members_dinner_calorie_target_check",
       sql`${table.dinnerCalorieTarget} IS NULL OR ${table.dinnerCalorieTarget} > 0`,
+    ),
+    check(
+      "household_members_confirmed_share_check",
+      sql`${table.confirmedShare} IS NULL OR (${table.confirmedShare} BETWEEN 0.25 AND 4)`,
     ),
   ],
 );
@@ -142,6 +148,8 @@ export const householdSettings = pgTable(
     weeklyBudgetCzk: numeric("weekly_budget_czk", { mode: "number" }).notNull(),
     startDayOfWeek: integer("start_day_of_week").notNull(),
     timezone: text("timezone").notNull().default("Europe/Prague"),
+    standardPortionTargetKcal: numeric("standard_portion_target_kcal", { mode: "number" }),
+    standardPortionConfirmedAt: timestamp("standard_portion_confirmed_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -152,6 +160,10 @@ export const householdSettings = pgTable(
       sql`${table.startDayOfWeek} BETWEEN 0 AND 6`,
     ),
     check("household_settings_weekly_budget_czk_check", sql`${table.weeklyBudgetCzk} >= 0`),
+    check(
+      "household_settings_standard_portion_target_kcal_check",
+      sql`${table.standardPortionTargetKcal} IS NULL OR ${table.standardPortionTargetKcal} > 0`,
+    ),
   ],
 );
 

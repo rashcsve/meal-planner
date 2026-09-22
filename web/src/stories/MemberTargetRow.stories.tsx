@@ -7,6 +7,8 @@ const member: HouseholdMember = {
   name: "Svetlana",
   dailyCalorieTarget: 1500,
   dinnerCalorieTarget: 500,
+  confirmedShare: null,
+  shareConfirmedAt: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };

@@ -1565,3 +1565,44 @@ Re-verified: `npm run test -w api -- householdShares` → 1 file / 4 tests pass
 **Not yet done:** R03.2 (schema), R03.3 (confirm API), R03.4 (household UI).
 
 **Next step: R03.2** (schema), after the user reviews this diff.
+
+## R03.2 — Schema for confirmed household target and member shares — `implemented—awaiting review` (2026-09-22)
+
+Additive columns only, per R01's "once confirmed, the share is an independent setting"
+resolution: nothing reads or writes them yet (that's R03.3/R03.4), and nothing in the
+planner changes (R04).
+
+`api/src/db/schema.ts`: `household_settings` gained `standard_portion_target_kcal`
+(nullable numeric, `CHECK (... IS NULL OR ... > 0)`) and `standard_portion_confirmed_at`
+(nullable timestamp) — the household's confirmed standard-portion target and when it was
+confirmed. `household_members` gained `confirmed_share` (nullable numeric, `CHECK (...
+IS NULL OR ... BETWEEN 0.25 AND 4)`) and `share_confirmed_at` (nullable timestamp) — the
+0.25–4 band is `build-plan.md`'s "R01 resolutions" documented range for a confirmed
+share, not something only the R03.1 proposal function enforces; asked and confirmed with
+the user before adding the check constraint, since R03.1's proposal function can never
+itself produce a share above 1 (target is always the max of member targets) but R03.3's
+confirm/edit API is expected to allow one — the DB constraint guards that future write
+path the same way `dinner_calorie_target > 0`/`weekly_budget_czk >= 0` already guard
+theirs, not just the current callers.
+
+Migration `0021_robust_captain_america.sql`: four `ALTER TABLE ADD COLUMN` (no defaults,
+no rewrite) plus two `ADD CONSTRAINT CHECK`, both trivially satisfied by existing rows
+(all NULL). Applied to the dev database.
+
+**Found and fixed as a direct side effect, not separate scope:** the new columns flow
+through Drizzle's inferred row type into the household member API response type and then
+into `web/src/stories/MemberTargetRow.stories.tsx`'s hand-written fixture object, which
+broke `tsc -b` for `web`. Added `confirmedShare: null, shareConfirmedAt: null` to the
+fixture — no behavior change, just keeping the type honest.
+
+Verified 2026-09-22: `npm run typecheck` (api+web) clean; `npm run lint` clean (same 2
+pre-existing unrelated `web` warnings); `npx prettier --check` clean on all touched
+files. `npm run test -w api` → 11 files / 122 tests pass (unchanged count — no new
+logic, schema only). `npm run test -w web` → 24 files / 64 tests pass (unchanged count).
+Confirmed via `\d household_members`/`\d household_settings` and a direct `SELECT` that
+existing rows (2 members, 1 settings row) still load with the new columns `NULL`, not
+dropped or defaulted.
+
+**Not yet done:** R03.3 (confirm API), R03.4 (household UI).
+
+**Next step:** R03.3 (confirm API), after the user reviews this diff.
