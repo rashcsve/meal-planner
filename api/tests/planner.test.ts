@@ -158,6 +158,34 @@ describe("hard constraint: pantry items expiring soon are used", () => {
   });
 });
 
+describe("locks", () => {
+  it("does not report a false pantry_expiry violation when a locked slot already uses the expiring ingredient", () => {
+    const pantryWithSalmonExpiringToday = [
+      { ingredientId: INGREDIENT_ID.salmon, daysUntilExpiry: 0 },
+    ];
+
+    const result = plan(
+      FIXTURE_RECIPES,
+      FIXTURE_PRICES,
+      pantryWithSalmonExpiringToday,
+      FIXTURE_PREFERENCES,
+      [{ day: 0, mealSlot: "dinner", recipeId: RECIPE_ID.dinnerSalmon }],
+      FIXTURE_TARGETS,
+      3,
+    );
+
+    const salmonViolations = result.violations.filter(
+      (violation) =>
+        violation.constraint === "pantry_expiry" &&
+        violation.detail.includes(`ingredient ${INGREDIENT_ID.salmon}`),
+    );
+    expect(salmonViolations).toEqual([]);
+
+    const day0Dinner = result.slots.find((slot) => slot.day === 0 && slot.mealSlot === "dinner");
+    expect(day0Dinner?.recipeId).toBe(RECIPE_ID.dinnerSalmon);
+  });
+});
+
 describe("hard constraint: weekly budget", () => {
   it("stays within budget and reports no weekly_budget violation when the budget is achievable", () => {
     const result = runPlan(5);

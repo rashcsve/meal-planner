@@ -376,12 +376,18 @@ export function placeMustUseConstraints(
     assigned.set(slotKey(lockedSlot.day, lockedSlot.mealSlot), lockedSlot.recipeId);
   }
 
+  const lockedIngredientIds = new Set(
+    locked.flatMap((lockedSlot) => recipesById.get(lockedSlot.recipeId)?.ingredientIds ?? []),
+  );
+
   const violations: PlanViolation[] = [];
   // Tightest deadline first: a constraint with 1 day left has fewer valid
   // slots than one with 3, so it should claim its slot before options narrow.
   const sortedByDeadline = [...constraints].sort((a, b) => a.deadlineDay - b.deadlineDay);
 
   for (const constraint of sortedByDeadline) {
+    if (lockedIngredientIds.has(constraint.ingredientId)) continue;
+
     const options = findPlacementOptions(constraint, assigned, recipesById);
 
     if (options.length === 0) {

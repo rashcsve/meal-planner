@@ -1739,4 +1739,17 @@ Verified 2026-09-22: api tests 11 files/133 pass (was 132); typecheck/lint/prett
 
 **Not yet done:** R04.3–R04.15.
 
-**Next step:** R04.3 (locked-slot-already-covers-expiry false violation), after review.
+## R04.3 — Fix locked-slot-already-covers-expiry false violation — `implemented—awaiting review` (2026-09-22)
+
+r01-fixtures.md §5 fix: `placeMustUseConstraints` now computes `lockedIngredientIds`
+from `locked` only, skips a constraint already covered by a locked recipe before
+searching for a placement. Same-lot/same-ingredient case (R04.4) untouched.
+
+New `describe("locks", ...)` in `planner.test.ts`: lock day 0 dinner to `dinnerSalmon`,
+salmon expiring day 0 → no `pantry_expiry` violation, lock stays.
+
+Verified: typecheck/lint/prettier clean; api 11 files/134 pass (was 133). Web not re-run.
+
+**Not yet done:** R04.4–R04.15.
+
+**Next step:** R04.4 (needs a decision first), after review.
