@@ -14,6 +14,7 @@ import { findAllIngredientPreferences } from "../repositories/ingredientPreferen
 import { listIngredientPreferencesForMember } from "./ingredientPreferences.js";
 import { getHouseholdSettings } from "./householdSettings.js";
 import { getKcalSummariesByRecipe, computeKcalPerServing } from "./nutrition.js";
+import { DAYS_PER_WEEK } from "./planner.js";
 import {
   HouseholdSettingsNotConfiguredError,
   NoHouseholdMembersError,
@@ -21,6 +22,7 @@ import {
 } from "../lib/errors.js";
 
 type HouseholdMember = Awaited<ReturnType<typeof findAllHouseholdMembers>>[number];
+type HouseholdSettings = NonNullable<Awaited<ReturnType<typeof getHouseholdSettings>>>;
 
 export interface PlanInputs {
   recipes: PlannerRecipe[];
@@ -34,6 +36,22 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 function daysBetween(from: string, to: string): number {
   return Math.round((new Date(to).getTime() - new Date(from).getTime()) / MS_PER_DAY);
+}
+
+function todayInTimezone(timezone: string): string {
+  const parts = new Intl.DateTimeFormat("cs-CZ", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day}`;
+}
+
+function weekContainsToday(weekStartDate: string, timezone: string): boolean {
+  const offset = daysBetween(weekStartDate, todayInTimezone(timezone));
+  return offset >= 0 && offset < DAYS_PER_WEEK;
 }
 
 async function buildPlannerRecipes(): Promise<PlannerRecipe[]> {
@@ -96,12 +114,17 @@ async function buildPlannerPrices(weekStartDate: string): Promise<PlannerIngredi
   }));
 }
 
-async function buildPlannerPantry(weekStartDate: string): Promise<PlannerPantryItem[]> {
+async function buildPlannerPantry(
+  weekStartDate: string,
+  timezone: string,
+): Promise<PlannerPantryItem[]> {
   const items = await findAllPantryItems();
+  const trackExpiry = weekContainsToday(weekStartDate, timezone);
 
   return items.map((item) => ({
     ingredientId: item.ingredientId,
-    daysUntilExpiry: item.expiresOn ? daysBetween(weekStartDate, item.expiresOn) : null,
+    daysUntilExpiry:
+      trackExpiry && item.expiresOn ? daysBetween(weekStartDate, item.expiresOn) : null,
   }));
 }
 
@@ -122,13 +145,11 @@ async function buildPlannerPreferences(members: HouseholdMember[]): Promise<Plan
   return { neverIngredientIds: [...neverIngredientIds] };
 }
 
-async function buildPlannerTargets(
+function buildPlannerTargets(
   members: HouseholdMember[],
   weekStartDate: string,
-): Promise<PlannerTargets> {
-  const settings = await getHouseholdSettings();
-  if (!settings) throw new HouseholdSettingsNotConfiguredError();
-
+  settings: HouseholdSettings,
+): PlannerTargets {
   const memberTargets = members.map((member) => {
     if (member.dinnerCalorieTarget === null) {
       throw new HouseholdMemberMissingDinnerTargetError(member.name);
@@ -148,13 +169,16 @@ export async function getPlanInputs(weekStartDate: string): Promise<PlanInputs> 
   const members = await findAllHouseholdMembers();
   if (members.length === 0) throw new NoHouseholdMembersError();
 
-  const [recipes, prices, pantry, preferences, targets] = await Promise.all([
+  const settings = await getHouseholdSettings();
+  if (!settings) throw new HouseholdSettingsNotConfiguredError();
+
+  const [recipes, prices, pantry, preferences] = await Promise.all([
     buildPlannerRecipes(),
     buildPlannerPrices(weekStartDate),
-    buildPlannerPantry(weekStartDate),
+    buildPlannerPantry(weekStartDate, settings.timezone),
     buildPlannerPreferences(members),
-    buildPlannerTargets(members, weekStartDate),
   ]);
+  const targets = buildPlannerTargets(members, weekStartDate, settings);
 
   return { recipes, prices, pantry, preferences, targets };
 }

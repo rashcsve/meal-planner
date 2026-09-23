@@ -9,7 +9,13 @@ export const updateHouseholdSettingsSchema = z.object({
     .int("Start day of week must be a whole number")
     .min(0, "Start day of week must be between 0 and 6")
     .max(6, "Start day of week must be between 0 and 6"),
-  timezone: z.string({ error: "Timezone is required" }).min(1, "Timezone is required"),
+  timezone: z
+    .string({ error: "Timezone is required" })
+    .min(1, "Timezone is required")
+    .refine(
+      (value) => Intl.supportedValuesOf("timeZone").includes(value),
+      "Timezone must be a valid IANA time zone name",
+    ),
 });
 
 export type UpdateHouseholdSettingsInput = z.infer<typeof updateHouseholdSettingsSchema>;

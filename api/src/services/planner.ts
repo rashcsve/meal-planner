@@ -21,7 +21,7 @@ import { createRng } from "../lib/rng.js";
 // packed SlotKey string "day:mealSlot" used as a Map key.
 // ---------------------------------------------------------------------------
 
-const DAYS_PER_WEEK = 7;
+export const DAYS_PER_WEEK = 7;
 
 /**
  * Only dinner is generated for now; breakfast/lunch/snack_or_dessert stay in

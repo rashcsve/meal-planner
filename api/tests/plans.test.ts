@@ -8,6 +8,7 @@ import {
   householdMembers,
   householdSettings,
   ingredientPrices,
+  pantryItems,
   planWeeks,
   planSlots,
 } from "../src/db/schema.js";
@@ -23,6 +24,7 @@ afterEach(async () => {
   await db.delete(householdSettings);
   await db.delete(householdMembers);
   await db.delete(recipeIngredients);
+  await db.delete(pantryItems);
   await db.delete(recipes);
   await db.delete(ingredients);
 });
@@ -32,7 +34,10 @@ afterEach(async () => {
 // them: dinnerRecipe (400 kcal/serving, no promo) and dinnerRecipe2 (800
 // kcal/serving, its ingredient on promo) give distinct, hand-checkable
 // memberServings/reasons depending on which one a test picks.
-async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) {
+async function seedPlannableHousehold(
+  dinnerCalorieTarget: number | null = 400,
+  timezone = "Europe/Prague",
+) {
   const [lunchIngredient] = await db
     .insert(ingredients)
     .values({ name: "Lunch base", baseUnit: "g", kcalPer100g: 500 })
@@ -84,7 +89,9 @@ async function seedPlannableHousehold(dinnerCalorieTarget: number | null = 400) 
     .insert(householdMembers)
     .values({ name: "Tester", dailyCalorieTarget: 900, dinnerCalorieTarget })
     .returning();
-  await db.insert(householdSettings).values({ id: 1, weeklyBudgetCzk: 5000, startDayOfWeek: 1 });
+  await db
+    .insert(householdSettings)
+    .values({ id: 1, weeklyBudgetCzk: 5000, startDayOfWeek: 1, timezone });
   await db.insert(ingredientPrices).values([
     {
       ingredientId: lunchIngredient!.id,
@@ -498,6 +505,86 @@ describe("recipe eligibility", () => {
     for (const slot of dinnerSlots) {
       expect([dinnerRecipe.id, dinnerRecipe2.id]).toContain(slot.recipeId);
     }
+  });
+});
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+describe("pantry expiry across weeks", () => {
+  it("enforces expiry constraints only for the week containing today", async () => {
+    await seedPlannableHousehold(400, "UTC");
+    const [strayIngredient] = await db
+      .insert(ingredients)
+      .values({ name: "Stray herb", baseUnit: "g", kcalPer100g: 10 })
+      .returning();
+
+    const today = new Date();
+    const expiresOn = isoDate(new Date(today.getTime() + 1 * MS_PER_DAY));
+    const weekStartDateThisWeek = isoDate(today);
+    const weekStartDateFarFuture = isoDate(new Date(today.getTime() + 30 * MS_PER_DAY));
+
+    await db.insert(pantryItems).values({
+      ingredientId: strayIngredient!.id,
+      amountBase: 50,
+      expiresOn,
+    });
+
+    const thisWeekRes = await postJson("/api/plans/generate", {
+      weekStartDate: weekStartDateThisWeek,
+      seed: 1,
+    });
+    expect(thisWeekRes.status).toBe(200);
+    const thisWeekBody = (await thisWeekRes.json()) as { violations: { constraint: string }[] };
+    expect(thisWeekBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(true);
+
+    const futureWeekRes = await postJson("/api/plans/generate", {
+      weekStartDate: weekStartDateFarFuture,
+      seed: 1,
+    });
+    expect(futureWeekRes.status).toBe(200);
+    const futureWeekBody = (await futureWeekRes.json()) as {
+      violations: { constraint: string }[];
+    };
+    expect(futureWeekBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(false);
+  });
+
+  it("treats day 6 as the boundary of the week containing today", async () => {
+    await seedPlannableHousehold(400, "UTC");
+    const [strayIngredient] = await db
+      .insert(ingredients)
+      .values({ name: "Stray herb 2", baseUnit: "g", kcalPer100g: 10 })
+      .returning();
+
+    const today = new Date();
+    const weekStartDateIncluded = isoDate(new Date(today.getTime() - 6 * MS_PER_DAY));
+    const weekStartDateExcluded = isoDate(new Date(today.getTime() - 7 * MS_PER_DAY));
+    const expiresOn = isoDate(new Date(today.getTime() - 5 * MS_PER_DAY));
+
+    await db.insert(pantryItems).values({
+      ingredientId: strayIngredient!.id,
+      amountBase: 50,
+      expiresOn,
+    });
+
+    const includedRes = await postJson("/api/plans/generate", {
+      weekStartDate: weekStartDateIncluded,
+      seed: 1,
+    });
+    expect(includedRes.status).toBe(200);
+    const includedBody = (await includedRes.json()) as { violations: { constraint: string }[] };
+    expect(includedBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(true);
+
+    const excludedRes = await postJson("/api/plans/generate", {
+      weekStartDate: weekStartDateExcluded,
+      seed: 1,
+    });
+    expect(excludedRes.status).toBe(200);
+    const excludedBody = (await excludedRes.json()) as { violations: { constraint: string }[] };
+    expect(excludedBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(false);
   });
 });
 

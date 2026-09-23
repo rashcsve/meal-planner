@@ -1815,3 +1815,53 @@ wrong value while `weekStartDate` stays real, proves the fix is load-bearing.
 Verified: typecheck/lint/prettier clean; api 11/137 pass (was 136, +1).
 
 **Next step:** R04.6b, after review.
+
+## R04.4 follow-up — Lock coverage must respect the constraint's deadline day — `complete` (2026-09-22)
+
+Bug in R04.4's `coveredIngredientIds`: a lock was treated as covering *any*
+constraint on that ingredient, regardless of day. A lock placed after a
+constraint's deadline can't actually save the expiring lot — it arrives too
+late. `placeMustUseConstraints` now checks `lockedSlot.day <=
+constraint.deadlineDay` before treating a lock as coverage; earlier-placement
+coverage (the rest of R04.4) is unchanged, since sorting tightest-deadline-first
+already guarantees those placements land on-or-before every later deadline.
+
+New `planner.test.ts` test: lock uses salmon on day 6, constraint deadline is
+day 0, no other candidate recipe — still a violation.
+
+Verified: typecheck/lint clean (same 2 pre-existing web warnings); api 11/138 pass (was 137, +1).
+
+**Next step:** R04.6b, after review.
+
+## R04.6b — Skip expiry constraints for weeks not containing today — `implemented—awaiting review` (2026-09-23)
+
+`buildPlannerPantry` (`plan-inputs.ts`) now nulls out `daysUntilExpiry` for every
+pantry item when the requested `weekStartDate` isn't the week containing today,
+using `household_settings.timezone` (default `Europe/Prague`) to decide what
+"today" means — a server running in UTC could otherwise disagree with the
+household about which calendar day it is near midnight. No change needed in
+`planner.ts`: `resolveExpiryConstraints` already treats a null
+`daysUntilExpiry` as "no constraint," so nulling it out there is enough to
+silence both the must-use placement logic and the "expiring in N days" reason
+text for other weeks.
+
+New helpers `todayInTimezone`/`weekContainsToday` in `plan-inputs.ts`, both
+local (not exported — no existing pattern here for unit-testing pure
+date logic without DB access, and the behavior only matters wired through
+`getPlanInputs`). `buildPlannerTargets` no longer calls `getHouseholdSettings`
+itself; `getPlanInputs` now fetches settings once and passes it to both
+`buildPlannerPantry` (for `timezone`) and `buildPlannerTargets`, avoiding a
+duplicate query.
+
+New `plans.test.ts` integration test ("pantry expiry across weeks"): seeds a
+household on `timezone: "UTC"` (deterministic against the test's own UTC date
+math), a pantry item on an ingredient no recipe uses, expiring tomorrow.
+Generating the current week reports a `pantry_expiry` violation; generating a
+week 30 days out reports none. `seedPlannableHousehold` gained an optional
+`timezone` param (default `Europe/Prague`, matching the schema default) to
+support this without touching the 14 existing call sites.
+
+Verified: typecheck/lint/prettier clean (same 2 pre-existing web warnings);
+api 11/139 pass (was 138, +1).
+
+**Next step:** R04.7 (needs a decision first) or another R04 slice, after review.
