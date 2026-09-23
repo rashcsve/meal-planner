@@ -249,6 +249,129 @@ describe("locks", () => {
       },
     ]);
   });
+
+  it("reports a locked_slot_conflict when a lock's recipe uses a now-excluded ingredient", () => {
+    // FIXTURE_PREFERENCES already excludes shrimp; locking dinnerShrimp
+    // simulates a lock made before that exclusion existed.
+    const result = plan(
+      FIXTURE_RECIPES,
+      FIXTURE_PRICES,
+      FIXTURE_PANTRY,
+      FIXTURE_PREFERENCES,
+      [{ day: 0, mealSlot: "dinner", recipeId: RECIPE_ID.dinnerShrimp }],
+      FIXTURE_TARGETS,
+      3,
+    );
+
+    const conflictViolations = result.violations.filter(
+      (violation) => violation.constraint === "locked_slot_conflict",
+    );
+    expect(conflictViolations).toEqual([
+      {
+        slot: { day: 0, mealSlot: "dinner" },
+        constraint: "locked_slot_conflict",
+        detail: `recipe uses excluded ingredient ${INGREDIENT_ID.shrimp}`,
+      },
+    ]);
+
+    // The lock still wins the slot - reporting the conflict doesn't drop it.
+    const day0Dinner = result.slots.find((slot) => slot.day === 0 && slot.mealSlot === "dinner");
+    expect(day0Dinner?.recipeId).toBe(RECIPE_ID.dinnerShrimp);
+  });
+
+  it("reports a locked_slot_conflict when a lock's recipe no longer exists in the planning set", () => {
+    // Simulates a recipe archived (or made otherwise ineligible - unknown
+    // cost, incomplete nutrition) after it was locked: it's absent from
+    // FIXTURE_RECIPES entirely, the same shape buildPlannerRecipes produces
+    // for an archived recipe.
+    const goneRecipeId = 999;
+    const result = plan(
+      FIXTURE_RECIPES,
+      FIXTURE_PRICES,
+      FIXTURE_PANTRY,
+      FIXTURE_PREFERENCES,
+      [{ day: 0, mealSlot: "dinner", recipeId: goneRecipeId }],
+      FIXTURE_TARGETS,
+      3,
+    );
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        {
+          slot: { day: 0, mealSlot: "dinner" },
+          constraint: "locked_slot_conflict",
+          detail: `locked recipe ${goneRecipeId} is no longer available for planning`,
+        },
+      ]),
+    );
+
+    const day0Dinner = result.slots.find((slot) => slot.day === 0 && slot.mealSlot === "dinner");
+    expect(day0Dinner?.recipeId).toBe(goneRecipeId);
+  });
+
+  it("reports a locked_slot_conflict when a lock's recipe's meal type no longer matches its slot", () => {
+    // Simulates the recipe's meal type being edited to "lunch" after
+    // dinnerChicken was locked into a dinner slot.
+    const recipesWithEditedMealType = FIXTURE_RECIPES.map((recipe) =>
+      recipe.id === RECIPE_ID.dinnerChicken ? { ...recipe, mealType: "lunch" } : recipe,
+    );
+    const result = plan(
+      recipesWithEditedMealType,
+      FIXTURE_PRICES,
+      FIXTURE_PANTRY,
+      FIXTURE_PREFERENCES,
+      [{ day: 0, mealSlot: "dinner", recipeId: RECIPE_ID.dinnerChicken }],
+      FIXTURE_TARGETS,
+      3,
+    );
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        {
+          slot: { day: 0, mealSlot: "dinner" },
+          constraint: "locked_slot_conflict",
+          detail: "recipe's meal type ('lunch') doesn't match slot 'dinner'",
+        },
+      ]),
+    );
+
+    const day0Dinner = result.slots.find((slot) => slot.day === 0 && slot.mealSlot === "dinner");
+    expect(day0Dinner?.recipeId).toBe(RECIPE_ID.dinnerChicken);
+  });
+
+  it("reports a locked_slot_conflict when a lock's recipe needs an implausible portion for a member's current target", () => {
+    // dinnerTooBig (50 kcal/serving) needs 16 servings for the 800-kcal
+    // member - implausible, but an exact multiple, so actualCalories lands
+    // precisely on target and never trips member_dinner_calories; this is
+    // the one case checkSlotEligibility catches that the whole-plan calorie
+    // validator doesn't.
+    const result = plan(
+      FIXTURE_RECIPES,
+      FIXTURE_PRICES,
+      FIXTURE_PANTRY,
+      FIXTURE_PREFERENCES,
+      [{ day: 0, mealSlot: "dinner", recipeId: RECIPE_ID.dinnerTooBig }],
+      FIXTURE_TARGETS,
+      3,
+    );
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        {
+          slot: { day: 0, mealSlot: "dinner" },
+          constraint: "locked_slot_conflict",
+          detail:
+            "recipe's calories-per-serving would need an implausible portion (under 0.25 or over 4 servings) for a household member",
+        },
+      ]),
+    );
+    expect(
+      result.violations.filter((violation) => violation.constraint === "member_dinner_calories"),
+    ).toEqual([]);
+
+    const day0Dinner = result.slots.find((slot) => slot.day === 0 && slot.mealSlot === "dinner");
+    expect(day0Dinner?.recipeId).toBe(RECIPE_ID.dinnerTooBig);
+  });
 });
 
 describe("hard constraint: weekly budget", () => {

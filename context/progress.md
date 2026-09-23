@@ -1865,3 +1865,65 @@ Verified: typecheck/lint/prettier clean (same 2 pre-existing web warnings);
 api 11/139 pass (was 138, +1).
 
 **Next step:** R04.7 (needs a decision first) or another R04 slice, after review.
+
+## R04.7 — Report conflicting locks instead of silently keeping them uncontested — `implemented—awaiting review` (2026-09-23)
+
+Decision (user, before implementing): a stale lock reports through the
+existing `PlanViolation` shape with a new `locked_slot_conflict` constraint,
+not a distinct plan-level status — no schema change, no dependency on R04.8.
+
+New `validateLockedSlots` (`planner.ts`) reuses `checkSlotEligibility` (the
+same check `indexEligibleRecipesBySlot`/`replaceSlot` use) against each
+locked slot's recipe; wired into `plan()` alongside the other final-check
+validators. The recipe stays in the slot either way — reporting, not
+dropping, per the plan's stated intent.
+
+New `planner.test.ts` test ("locks" describe block): locks `dinnerShrimp`
+into day 0 dinner while `FIXTURE_PREFERENCES` excludes shrimp, asserting the
+`locked_slot_conflict` violation and that the recipe still occupies the slot.
+
+**Two issues found by `/review`, both fixed (2026-09-23):** (1) the original
+scope note above claimed calorie/budget conflicts were already covered by
+the existing whole-plan validators, so `validateLockedSlots` was scoped to
+"exclusion/meal-type eligibility only" — inaccurate on two counts. First,
+`checkSlotEligibility` also has a third branch (implausible per-member
+portion count from a changed target), which the code already exercised;
+proven not redundant with `validateMemberDinnerCalories` using
+`dinnerTooBig` (50 kcal/serving, 16 servings for the 800-kcal member): that
+lands on an exact multiple, so `actualCalories` matches the target exactly
+and `member_dinner_calories` never fires, while `locked_slot_conflict`
+correctly does. Second, this branch and the meal-type-mismatch branch had
+no test coverage at all — only the excluded-ingredient case was tested.
+Fixed by adding both missing cases as tests, not by narrowing the code
+(the behavior already matched build-plan.md's own R04.7 framing, "a new
+exclusion, a changed target"; only the write-up and the test coverage were
+wrong).
+
+(2) `validateLockedSlots` silently skipped (`if (!recipe) continue`) any
+locked slot whose recipe was absent from `ctx.recipesById` — which happens
+for exactly the most severe staleness case: the recipe itself is gone from
+the planning set (archived via R02.5, or has regressed to unknown cost or
+incomplete nutrition, both of which `buildPlannerRecipes` already filters
+out before recipes ever reach `plan()`). Verified before fixing: locking a
+recipe id absent from `recipes` produced `violations: []` while the recipe
+still occupied its slot — the exact "silently keeping them uncontested"
+failure this step exists to close. Fixed: when `recipesById.get(...)` finds
+nothing, `validateLockedSlots` now reports a `locked_slot_conflict` directly
+("locked recipe {id} is no longer available for planning") instead of
+skipping the slot.
+
+`planner.test.ts` gained three more tests in the "locks" describe block: a
+lock referencing a recipe id absent from `recipes` (simulating an archived
+recipe), a lock whose recipe's `mealType` no longer matches its slot
+(simulating a post-lock recipe edit), and the `dinnerTooBig` implausible-
+portion case above (which also asserts no `member_dinner_calories`
+violation accompanies it, locking in that this is a genuinely distinct
+check, not a duplicate).
+
+Re-verified: `npm run typecheck -w api` clean; `npm run lint -w api` clean;
+`npx prettier --check` clean on both touched files; `npx vitest run
+tests/planner.test.ts` → 23/23 pass (was 20, +3). Full Docker-backed
+`npm run test -w api` not re-run this pass — not re-verified against the
+rest of the suite.
+
+**Next step:** another R04 slice (R04.8 or R04.9), after review.

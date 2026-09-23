@@ -169,9 +169,10 @@ export function isServingsPlausible(
 
 /**
  * Why a recipe can't fill this slot, or null if it's eligible. Shared by
- * indexEligibleRecipesBySlot (bulk filtering during generation) and
- * replaceSlot's server-side validation of a single manually-picked recipe,
- * so the two can never disagree about what's eligible.
+ * indexEligibleRecipesBySlot (bulk filtering during generation), replaceSlot's
+ * server-side validation of a single manually-picked recipe, and
+ * validateLockedSlots (re-checking an already-placed lock), so none of the
+ * three can ever disagree about what's eligible.
  *
  * @example
  * checkSlotEligibility(lunchOnlyRecipe, "dinner", new Set(), []) ->
@@ -467,9 +468,51 @@ export function fillRemainingSlots(
 }
 
 // ---------------------------------------------------------------------------
-// 4. Check the whole finished plan: each member's dinner calories, and the
-//    weekly budget.
+// 4. Check the whole finished plan: locked slots gone stale, each member's
+//    dinner calories, and the weekly budget.
 // ---------------------------------------------------------------------------
+
+/**
+ * A locked slot always wins its place in the grid (placeMustUseConstraints
+ * never checks eligibility before dropping it in), so a lock set before a
+ * new exclusion, a meal-type change, or a changed member target can go
+ * stale without the plan ever saying so - including the recipe itself
+ * having since become unavailable for planning (archived, or missing the
+ * cost/servings/nutrition a plan needs). This runs the same
+ * checkSlotEligibility used for unlocked slots against each lock (or, if
+ * the recipe is gone entirely, reports that directly) and reports a
+ * violation instead - the recipe stays in place either way, per R04.7's
+ * "don't silently drop a lock".
+ *
+ * @example
+ * A locked dinner recipe uses an ingredient added to neverIngredientIds
+ * after the lock was set -> one locked_slot_conflict violation; the recipe
+ * remains in that slot.
+ */
+export function validateLockedSlots(locked: LockedSlot[], ctx: PlannerContext): PlanViolation[] {
+  const violations: PlanViolation[] = [];
+
+  for (const lockedSlot of locked) {
+    const recipe = ctx.recipesById.get(lockedSlot.recipeId);
+    const reason = recipe
+      ? checkSlotEligibility(
+          recipe,
+          lockedSlot.mealSlot,
+          ctx.neverIngredientIds,
+          ctx.targets.memberTargets,
+        )
+      : `locked recipe ${lockedSlot.recipeId} is no longer available for planning`;
+    if (reason) {
+      violations.push({
+        slot: { day: lockedSlot.day, mealSlot: lockedSlot.mealSlot },
+        constraint: "locked_slot_conflict",
+        detail: reason,
+      });
+    }
+  }
+
+  return violations;
+}
 
 const CALORIE_TOLERANCE = 0.1;
 
@@ -955,6 +998,7 @@ export function plan(
   localSearch(assigned, ctx, protectedKeys, rng, DEFAULT_LOCAL_SEARCH_ITERATIONS);
 
   // Final check against the finished plan.
+  violations.push(...validateLockedSlots(locked, ctx));
   violations.push(...validateMemberDinnerCalories(ctx, assigned));
   violations.push(...validateWeeklyBudget(ctx, assigned));
 

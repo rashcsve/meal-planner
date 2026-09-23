@@ -463,10 +463,15 @@ way R01 resolved its own four, not by guessing during implementation.
    (already stored since step 30, not yet read by planning) for "today" when computing
    pantry expiry deadlines.
 7. **R04.7 — Report conflicting locks instead of silently keeping them uncontested.**
-   **Needs a decision first** — the "Locks and changed rules" row (still open, tagged
-   R04/R05): when a locked slot's recipe now fails current eligibility (a new exclusion, a
-   changed target), what "report a conflict" means operationally (a violation entry? a
-   distinct plan status?) before implementing it.
+   **Resolved 2026-09-23** — user decision: a stale lock reports through the existing
+   `PlanViolation` shape (`locked_slot_conflict`), not a distinct plan-level status — no
+   schema change, no dependency on R04.8. Implemented: `validateLockedSlots` (`planner.ts`)
+   reuses `checkSlotEligibility` against each locked slot's recipe (exclusion, meal-type,
+   implausible-portion, or the recipe missing entirely from the planning set) and reports a
+   violation without dropping the lock. This resolves only the "report a conflict" half of
+   the "Locks and changed rules" row; "require repair or an allowed explicit override" is
+   still open, and the violation isn't yet persisted — it's lost on reload until R04.8 adds
+   storage. Full history in `context/progress.md`'s "R04.7" entry.
 8. **R04.8 — Persist evaluation status, input versions and staleness.** Schema work
    (additive migration) plus service logic: store `violations`/evaluation status and the
    input versions used at generation time on `plan_weeks` (today, `plans.ts:92` returns
