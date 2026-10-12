@@ -3,9 +3,15 @@ name: step-review
 description: Perform a read-only review of the current step or diff against project context, architecture, tests, and production risks. Use only when the user explicitly invokes /step-review.
 argument-hint: "[step-id-or-scope]"
 disable-model-invocation: true
+context: fork
+model: opus
+effort: high
 ---
 
 # Review without editing
+
+You run in a fresh context with no memory of how this work was built. Judge only what is
+in the repository.
 
 Review `$ARGUMENTS`. If no scope is supplied, review the current uncommitted diff and the
 step marked current in `context/progress.md`.
@@ -18,6 +24,7 @@ format code, update progress, commit, push, or deploy.
 Read:
 
 - `CLAUDE.md` and its imported instructions;
+- `.claude/rules/api.md` and/or `.claude/rules/web.md` for whichever side the diff touches;
 - `context/product.md`, `context/architecture.md`, and `context/code-standards.md` when present;
 - the relevant section of `context/build-plan.md`;
 - `context/progress.md`;
@@ -47,6 +54,19 @@ Review in this order:
 8. **Product fit:** Identify scope creep, missing acceptance states, or behaviour that weakens
    the core planning loop.
 
+Also check these project rules, which no hook enforces. Each violation is at least
+**Important**:
+
+- suggests restarting the project or changing the stack — fix in place instead
+- hand-writes a type that mirrors the backend — types are inferred (`z.infer`, `hc<AppType>`)
+- builds a Card, Modal or Dropdown primitive the step did not ask for — primitives on demand only
+- asks a model to do arithmetic — deterministic code owns numbers
+- stores scaled amounts — amounts are per portion and scaled at read time (immutable
+  records of what was actually cooked are the exception)
+- filters swap candidates in the client — the planner's constraint checker decides what fits
+- changes a layout during a token-only design slice — tokens first, layouts after
+- deletes an import without rebuilding the current shopping list — deletion cascades
+
 Run read-only checks when useful, but do not mutate the workspace to make them pass. Report
 the exact command and result. Distinguish a verified defect from a concern that needs more
 evidence.
@@ -74,3 +94,6 @@ Then include:
 
 Do not invent findings to fill categories. If no blocking issue is found, say so and name
 the residual risks or untested areas. Do not provide a large replacement implementation.
+
+Your report goes back to the main conversation, which shows it to the user. The user
+decides what gets fixed.
