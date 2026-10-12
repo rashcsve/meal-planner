@@ -86,15 +86,25 @@ server-only modules into its runtime bundle.
 
 ## 5. Update progress
 
-Update `context/progress.md` only after verification. Preserve useful history without
-turning it into a transcript. Record:
+Update `context/progress.md` only after verification. It is an evidence log, not a
+transcript: keep each entry to about 15 lines. Record:
 
 - step identifier and status;
 - outcome and important files changed;
 - commands run and results;
-- decisions and their reasons;
-- known limitations or follow-ups;
+- decisions, one line each with the reason;
 - exact next step.
+
+Long reasoning does not go in the entry. A durable fact about module boundaries or data
+goes in `context/architecture.md`; a product decision goes in `context/build-plan.md`.
+
+Anything left open — "not yet done", a deliberate gap, "revisit when…", an unverified
+check — goes in the **Open follow-ups** list at the top of `progress.md`, one line naming
+the milestone that should resolve it. Remove a line from that list when it is resolved.
+
+When a milestone is complete and reviewed, move its entries verbatim to
+`context/progress-archive.md` and add one index row per entry. Its open follow-ups stay
+in the list until resolved.
 
 If the step is incomplete, mark it `blocked` or `in progress`; never mark it complete based
 only on code generation.
