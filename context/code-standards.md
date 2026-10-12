@@ -1,7 +1,7 @@
 # Code standards
 
 Conventions live primarily in `CLAUDE.md`. This file adds the executable
-verification commands the skills (`/build-step`, `/review`, `/recover`) should
+verification commands the skills (`/build-step`, `/step-review`, `/recover`) should
 actually run, plus the couple of standards CLAUDE.md doesn't spell out.
 
 ## Verification commands
@@ -23,7 +23,7 @@ actually run, plus the couple of standards CLAUDE.md doesn't spell out.
 A check that "cannot run" (e.g. Docker unavailable) must be reported as an
 explicit blocker, not silently skipped or assumed to pass.
 
-## Layering (from `CLAUDE.md`, restated for `/review`)
+## Layering (from `CLAUDE.md`, restated for `/step-review`)
 
 `routes/` → `services/` → `repositories/` → `db/`. A service must not import
 Hono types or know it was called by HTTP versus a test. Transaction boundaries

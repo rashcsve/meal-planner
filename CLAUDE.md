@@ -122,7 +122,7 @@ and executable verification commands. Requirements live in the plan, not
 duplicated into skills or here.
 
 Three skills drive the workflow: `/build-step <id>` implements and verifies one
-plan step, `/review <id>` is a read-only review of a step or diff, `/recover
+plan step, `/step-review <id>` is a read-only review of a step or diff, `/recover
 <error>` fixes one failed attempt after a normal correction didn't work.
 
 ## Structure

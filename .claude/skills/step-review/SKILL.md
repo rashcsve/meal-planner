@@ -1,6 +1,6 @@
 ---
-name: review
-description: Perform a read-only review of the current step or diff against project context, architecture, tests, and production risks. Use only when the user explicitly invokes /review.
+name: step-review
+description: Perform a read-only review of the current step or diff against project context, architecture, tests, and production risks. Use only when the user explicitly invokes /step-review.
 argument-hint: "[step-id-or-scope]"
 disable-model-invocation: true
 ---

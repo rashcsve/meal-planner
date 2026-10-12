@@ -85,6 +85,6 @@ Report:
 
 Update `context/progress.md` only when the recovery changes a durable project decision,
 known limitation, or step status. Do not mark the build step complete; completion remains
-the responsibility of `/build-step` followed by `/review`.
+the responsibility of `/build-step` followed by `/step-review`.
 
 Do not commit, push, deploy, or continue with unrelated work unless explicitly asked.

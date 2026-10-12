@@ -1,20 +1,14 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(npm run *)",
-      "Bash(echo \"EXIT=$?\")",
-      "Bash(npx prettier *)"
-    ],
-    "deny": [
-      "Bash(*DROP*)",
-      "Bash(*TRUNCATE*)",
-      "Read(.env)"
-    ],
+    "defaultMode": "plan",
+    "allow": ["Bash(npm run *)", "Bash(echo \"EXIT=$?\")", "Bash(npx prettier *)"],
+    "deny": ["Bash(*DROP*)", "Bash(*TRUNCATE*)", "Read(.env)"],
     "ask": [
       "Bash(npx drizzle-kit migrate*)",
       "Bash(npx drizzle-kit push*)",
       "Bash(*psql*)",
-      "Bash(docker exec*)"
+      "Bash(docker exec*)",
+      "Bash(npm run migrate*)"
     ]
   },
   "hooks": {
