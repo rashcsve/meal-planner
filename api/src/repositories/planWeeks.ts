@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import type { PlanViolation } from "shared";
 import { db, type DbClient } from "../db/index.js";
 import { planWeeks } from "../db/schema.js";
 import { WeekAlreadyGeneratedError } from "../lib/errors.js";
@@ -8,6 +9,10 @@ export interface PlanWeekInput {
   weekStartDate: string;
   seed: number;
   plannerVersion: string;
+  violations?: PlanViolation[];
+  recipesVersionAt?: Date | null;
+  targetsVersionAt?: Date | null;
+  exclusionsVersionAt?: Date | null;
 }
 
 export async function findPlanWeekByDate(weekStartDate: string) {
@@ -34,7 +39,7 @@ export async function insertPlanWeek(data: PlanWeekInput, client: DbClient = db)
 export async function casIncrementRevision(
   id: number,
   expectedRevision: number,
-  data: Partial<Pick<PlanWeekInput, "seed" | "plannerVersion">> = {},
+  data: Partial<Omit<PlanWeekInput, "weekStartDate">> = {},
   client: DbClient = db,
 ) {
   const [week] = await client

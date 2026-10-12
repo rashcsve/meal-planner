@@ -1927,3 +1927,100 @@ tests/planner.test.ts` → 23/23 pass (was 20, +3). Full Docker-backed
 rest of the suite.
 
 **Next step:** another R04 slice (R04.8 or R04.9), after review.
+
+## R04.8a — Schema for persisted violations and input-version watermarks — `implemented—awaiting review` (2026-09-23)
+
+R04.8 itself already flagged "likely splits further into a migration slice and a
+service-logic slice, given its size" — split accordingly, same reasoning as R03.2's
+schema-only slice. Nothing reads or writes these columns yet; that's R04.8b.
+
+`plan_weeks` gained four nullable columns, no defaults, no rewrite: `violations`
+(jsonb, `PlanViolation[]`) and `recipes_version_at`/`targets_version_at`/
+`exclusions_version_at` (timestamps). Null is deliberate, not a placeholder default —
+an existing week genuinely has no recorded evaluation under this system, and null says
+that honestly rather than `[]` (which would misread as "evaluated, zero violations").
+The three version columns are meant as snapshots of `MAX(updated_at)` across each
+input category (`recipes`; `household_members` + `household_settings`; `ingredient_preferences`)
+taken at generation time — R04.8b will populate them and compare against live `MAX(updated_at)`
+to decide staleness, per build-plan.md's "mark an evaluation stale when recipes/targets/
+exclusions change since." Deliberately excludes `prices`/`pantry` from the staleness
+categories, matching build-plan.md's own wording — those change every week by design and
+would make almost every evaluation stale trivially.
+
+Migration `0022_lyrical_grey_gargoyle.sql`: four `ALTER TABLE ADD COLUMN`, no defaults, no
+rewrite. Applied to the dev database.
+
+Verified 2026-09-23: typecheck/lint/prettier clean (api+web, same 2 pre-existing unrelated
+`web` warnings); `npm run test -w api` → 11 files/144 tests pass, unchanged (schema only, no
+new tests this slice). Confirmed via `\d plan_weeks` and a direct `SELECT` that all 4 existing
+rows still load with the new columns `NULL`, not dropped.
+
+**Not yet done:** R04.8b (persist `violations` and the three watermarks at generation time;
+compute and expose staleness on `GET`).
+
+**Next step:** R04.8b, after review.
+
+## R04.8b — Persist violations and input-version watermarks at generation time — `implemented—awaiting review` (2026-09-23)
+
+Write side only, per R04.8a's own "not yet done" line — staleness-on-`GET` (comparing
+stored watermarks against live data) is left for a further slice, same split R03.2→R03.3
+used for schema vs. API.
+
+New `api/src/repositories/planInputVersions.ts` — `getCurrentInputVersions()` runs 5
+parallel `MAX(updated_at)` queries (`recipes`, `recipe_ingredients`, `household_members`,
+`household_settings`, `ingredient_preferences`) and folds them into the three watermark
+categories the schema already has columns for: `recipesVersionAt` takes the later of
+`recipes`/`recipe_ingredients` (an ingredient-line edit changes a recipe's kcal/eligibility
+without touching `recipes.updated_at` itself — confirmed by reading `recipeIngredients.ts`'s
+repository, which bumps only its own table's timestamp); `targetsVersionAt` takes the later
+of `household_members`/`household_settings`. An empty table (e.g. no preferences configured
+yet) yields `NULL` via `MAX`, not a default `now()` — carried through as a genuine `null`
+watermark, consistent with R04.8a's schema decision and R04.1's "empty exclusions is a valid
+state" precedent.
+
+`plans.ts`'s `generatePlan` fetches `getCurrentInputVersions()` alongside `getPlanInputs`
+and writes both it and `result.violations` into `insertPlanWeek`/`casIncrementRevision` —
+`planWeeks.ts`'s `PlanWeekInput` gained the four optional fields and `casIncrementRevision`'s
+`data` param widened from a two-key `Pick` to `Omit<PlanWeekInput, "weekStartDate">` rather
+than growing an ever-longer `Pick` list. `generatePlan`'s returned object still explicitly
+overrides `violations: result.violations` after the `{...week}` spread — not redundant: the
+column type is nullable (an unregenerated legacy week has none), but a response from
+`generatePlan` itself always has a definite, just-computed value, so the explicit override
+keeps that response's type non-null. Caught this by running `npm run typecheck -w web`
+first, which broke on `WeekPage.tsx` assuming non-null `violations` — restoring the override
+was the fix, not loosening the frontend's type.
+
+`api/tests/plans.test.ts` (+2, new "persisted evaluation (R04.8b)" describe block): generating
+then reloading returns matching `violations`/watermarks (with `exclusionsVersionAt` asserted
+`null`, not "not null" — this fixture seeds zero ingredient preferences, so that's the
+honest answer, not a bug); regenerating after an ingredient line's `displayAmount` changes
+(with `updatedAt` bumped explicitly, since this schema has no DB-level trigger for it — only
+application code sets it) advances `recipesVersionAt` past its prior value.
+
+Verified 2026-09-23: typecheck/lint/prettier clean (api+web); `npm run test -w api` → 11
+files/146 tests pass (was 144, +2, no regressions); `npm run test -w web` not re-run, no
+web-side change. No manual browser/dev-server check — no UI this slice, and
+`plans.test.ts` already exercises the real Postgres path end to end (same rationale as
+R02.4a). Confirmed via a direct `SELECT` that the 4 pre-existing dev-database rows are
+untouched (tests run against a separate Testcontainers Postgres instance).
+
+**Not yet done:** staleness computed and exposed on `GET /api/plans/:weekStartDate` (compare
+stored watermarks against a fresh `getCurrentInputVersions()` call); the deliberate,
+documented gap that `recipesVersionAt` doesn't cover `ingredients.updated_at` (nutrition
+edits) — including the whole `ingredients` table would false-flag every plan as stale
+whenever *any* ingredient anywhere is touched, not just one actually used in that week.
+
+**Deliberate gap (decided in review):** persisted `violations` and the watermarks are a
+snapshot as of *generation*. `setSlotLocked` and `replaceSlot` bump `revision` but do not
+re-evaluate, so after a lock or swap `GET /api/plans/:weekStartDate` can return violations
+describing the pre-swap plan. No evaluate-existing-slots function exists (`violations` is
+only produced inside `plan()`), so fixing it means extracting one — that belongs with R05's
+informed swaps and locks, not this slice. Revisit if the UI starts showing `violations`
+somewhere a swap could contradict it (stopgap: null them in those two
+`casIncrementRevision` calls).
+
+**Review fix:** `generatePlan` now reads `getCurrentInputVersions()` *before*
+`getPlanInputs()` (sequential, not `Promise.all`), so an edit landing between the two reads
+leaves the watermark older than the data used — a false "stale", never a false "fresh".
+
+**Next step:** the staleness-on-read slice, after review.

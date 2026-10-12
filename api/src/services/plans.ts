@@ -18,6 +18,7 @@ import {
   insertPlanWeek,
   casIncrementRevision,
 } from "../repositories/planWeeks.js";
+import { getCurrentInputVersions } from "../repositories/planInputVersions.js";
 import {
   findSlotsByWeekId,
   findLockedSlotsByWeekId,
@@ -53,6 +54,7 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
   }
 
   const locked = existingWeek ? await getLockedSlots(existingWeek.id) : [];
+  const inputVersions = await getCurrentInputVersions();
   const inputs = await getPlanInputs(weekStartDate);
 
   const result = plan(
@@ -71,7 +73,12 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
       week = await casIncrementRevision(
         existingWeek.id,
         expectedRevision!,
-        { seed: result.seed, plannerVersion: result.plannerVersion },
+        {
+          seed: result.seed,
+          plannerVersion: result.plannerVersion,
+          violations: result.violations,
+          ...inputVersions,
+        },
         tx,
       );
       if (!week) {
@@ -83,6 +90,8 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
           weekStartDate,
           seed: result.seed,
           plannerVersion: result.plannerVersion,
+          violations: result.violations,
+          ...inputVersions,
         },
         tx,
       );

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { db } from "../src/db/index.js";
 import {
@@ -455,6 +456,66 @@ describe("existing behaviour preserved", () => {
     };
     const slot = getBody.slots.find((s) => s.day === 0 && s.mealSlot === "dinner");
     expect(slot).toMatchObject({ locked: true, recipeId: assignedRecipeId });
+  });
+});
+
+describe("persisted evaluation (R04.8b)", () => {
+  it("persists violations and input-version watermarks, surviving a reload", async () => {
+    await seedPlannableHousehold();
+
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as {
+      violations: unknown[];
+      recipesVersionAt: string;
+      targetsVersionAt: string;
+      exclusionsVersionAt: string | null;
+    };
+    expect(generated.violations).toEqual([]);
+    expect(generated.recipesVersionAt).not.toBeNull();
+    expect(generated.targetsVersionAt).not.toBeNull();
+    expect(generated.exclusionsVersionAt).toBeNull();
+
+    const getRes = await app.request("/api/plans/2026-01-05");
+    const getBody = (await getRes.json()) as {
+      violations: unknown[];
+      recipesVersionAt: string;
+      targetsVersionAt: string;
+      exclusionsVersionAt: string | null;
+    };
+    expect(getBody.violations).toEqual([]);
+    expect(getBody.recipesVersionAt).toBe(generated.recipesVersionAt);
+    expect(getBody.targetsVersionAt).toBe(generated.targetsVersionAt);
+    expect(getBody.exclusionsVersionAt).toBe(generated.exclusionsVersionAt);
+  });
+
+  it("advances the recipes watermark on regeneration after an ingredient line changes", async () => {
+    const { dinnerRecipe } = await seedPlannableHousehold();
+    const firstRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const first = (await firstRes.json()) as {
+      revision: number;
+      recipesVersionAt: string;
+    };
+
+    await db
+      .update(recipeIngredients)
+      .set({ displayAmount: 999, updatedAt: new Date() })
+      .where(eq(recipeIngredients.recipeId, dinnerRecipe.id));
+
+    const secondRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 2,
+      expectedRevision: first.revision,
+    });
+    const second = (await secondRes.json()) as { recipesVersionAt: string };
+    expect(new Date(second.recipesVersionAt).getTime()).toBeGreaterThan(
+      new Date(first.recipesVersionAt).getTime(),
+    );
   });
 });
 

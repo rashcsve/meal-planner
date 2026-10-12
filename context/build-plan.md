@@ -130,22 +130,22 @@ Evidence: `api/src/services/{planner,plan-inputs,plans,nutrition}.ts`,
 These are recommendations or unresolved details, **not silently approved requirements**.
 They should not block unrelated documentation or preparatory analysis.
 
-| Decision | Recommended default / work needed | Resolve before |
-| --- | --- | --- |
-| Initial target and share values | **Resolved in R01** — see "R01 resolutions" below. | R01/R03 migration |
-| Recipe amount storage | **Resolved in R01** — see "R01 resolutions" below. | R02 |
-| Cooking adjustments | **R02-scoped slice resolved in R01** — see "R01 resolutions" below. Ingredient-specific indivisible-amount adjustment mechanics remain open for R08. | R02/R08 |
-| Budget before offers | Keep existing budget data; label recipe-cost estimates. Missing costs cannot prove compliance. Decide whether enforcement is optional before checkout pricing exists; zero must not secretly mean disabled. | R04 |
-| Rule overrides | Never-plan ingredients and invalid quantities remain blocked. Time preferences may be overridden with acknowledgement; decide calorie/budget overrides explicitly. | R04/R05 |
-| Locks and changed rules | Preserve user intent; report conflicting locks and require repair or an allowed explicit override. Do not silently drop a lock or certify a conflict. | R04/R05 |
-| Legacy plan editing | **Resolved in R01** — see "R01 resolutions" below. | R03/R05 |
-| Selected days / copy last week | Omitted days must have defined semantics. Recommend copying assignments into a new draft, then evaluating current rules/stock; preserve cooked records. | R05 |
-| Dates and expiry | Use household timezone for today and actual planned dates for weekdays. Define expiry-day inclusion, past days, and expired stock eligibility. | R04/R08 |
-| Cupboard ingredients | Explicit stock or explicit staple policy; no implicit unlimited stock. | R07/R09 |
-| Shopping checks | Stable item identity, shared between Shopping and Today; define persistence and what resets when quantities change. Checks do not add stock automatically. | R09 |
-| Waste tally | Define whether the monthly figure counts actions, lots or quantities; never sum incompatible units. Define partial removal and Undo semantics. | R08 |
-| Shop choice | Lowest known basket cost subject to a hard maximum number of stops; distance as tie-breaker; savings threshold for another stop. Define missing prices, pack sizes, purchase dates and conditional offers. | R12 |
-| Public deployment | Decide private single-household access versus a public service. Auth before exposure; no automatic JWT choice or multi-household framework solely for hypothetical native mobile. | Before exposure; R14 at latest |
+| Decision                        | Recommended default / work needed                                                                                                                                                                           | Resolve before                 |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Initial target and share values | **Resolved in R01** — see "R01 resolutions" below.                                                                                                                                                          | R01/R03 migration              |
+| Recipe amount storage           | **Resolved in R01** — see "R01 resolutions" below.                                                                                                                                                          | R02                            |
+| Cooking adjustments             | **R02-scoped slice resolved in R01** — see "R01 resolutions" below. Ingredient-specific indivisible-amount adjustment mechanics remain open for R08.                                                        | R02/R08                        |
+| Budget before offers            | Keep existing budget data; label recipe-cost estimates. Missing costs cannot prove compliance. Decide whether enforcement is optional before checkout pricing exists; zero must not secretly mean disabled. | R04                            |
+| Rule overrides                  | Never-plan ingredients and invalid quantities remain blocked. Time preferences may be overridden with acknowledgement; decide calorie/budget overrides explicitly.                                          | R04/R05                        |
+| Locks and changed rules         | Preserve user intent; report conflicting locks and require repair or an allowed explicit override. Do not silently drop a lock or certify a conflict.                                                       | R04/R05                        |
+| Legacy plan editing             | **Resolved in R01** — see "R01 resolutions" below.                                                                                                                                                          | R03/R05                        |
+| Selected days / copy last week  | Omitted days must have defined semantics. Recommend copying assignments into a new draft, then evaluating current rules/stock; preserve cooked records.                                                     | R05                            |
+| Dates and expiry                | Use household timezone for today and actual planned dates for weekdays. Define expiry-day inclusion, past days, and expired stock eligibility.                                                              | R04/R08                        |
+| Cupboard ingredients            | Explicit stock or explicit staple policy; no implicit unlimited stock.                                                                                                                                      | R07/R09                        |
+| Shopping checks                 | Stable item identity, shared between Shopping and Today; define persistence and what resets when quantities change. Checks do not add stock automatically.                                                  | R09                            |
+| Waste tally                     | Define whether the monthly figure counts actions, lots or quantities; never sum incompatible units. Define partial removal and Undo semantics.                                                              | R08                            |
+| Shop choice                     | Lowest known basket cost subject to a hard maximum number of stops; distance as tie-breaker; savings threshold for another stop. Define missing prices, pack sizes, purchase dates and conditional offers.  | R12                            |
+| Public deployment               | Decide private single-household access versus a public service. Auth before exposure; no automatic JWT choice or multi-household framework solely for hypothetical native mobile.                           | Before exposure; R14 at latest |
 
 ### R01 resolutions
 
@@ -195,7 +195,7 @@ yet. R03 therefore does not need dual-path editing compatibility for plans gener
 before the fixed-share model — existing dev/test household and plan data can be deleted
 and regenerated fresh once R03 ships, rather than building a compatible-editing or
 conversion-preview path against data nobody needs preserved. This is a scope reduction
-for *this* deployment's current data only, not a reversal of the general principle
+for _this_ deployment's current data only, not a reversal of the general principle
 (`CLAUDE.md`, `build-plan.md`'s "Scope and delivery" section: "Preserve existing recipe
 IDs... do not invent missing history") — the general preserve-real-data rule still applies
 the first time this app holds data worth keeping, and should be revisited explicitly then,
@@ -207,22 +207,22 @@ All milestones below are **planned — not started**. R01 is the next proposed s
 Dependencies override the order in the supplied v2: portion and nutrition contracts
 must exist before a picker can truthfully say whether a dinner fits.
 
-| Milestone | Result | Supplied v2 coverage |
-| --- | --- | --- |
-| R01 | Confirm contracts and reconcile existing work | 27–34, 39–40; current logic review |
-| R02 | Reliable quantities, nutrition and recipe writing | 21–24, 40; prerequisites for 41/48 |
-| R03 | Fixed household shares with preserved legacy plans | 34, 39–40 |
-| R04 | Shared planning rules and complete evaluation | 27–30, 34; known correctness repairs |
-| R05 | Preview/accept, informed swaps, locks and regeneration | 30–33, behavior behind 38 |
-| R06 | Use It Up tokens, shell and existing screen layouts | 35–38 |
-| R07 | Recipe detail with consistent scaling | 41; stock-source labels depend on R08/R09 |
-| R08 | Stock movements, cooking, reasons and Undo | 42 |
-| R09 | Aisle shopping and Today | 43–45 |
-| R10 | Pasted recipe import, review and call records | 46–49 |
-| R11 | Manual leaflet imports, safe review and measured extraction | 50–54; manual foundation for 56 |
-| R12 | Confirmed ingredient matching and shop shopping | 55–57 |
-| R13 | Scheduled leaflets, retention and quality reporting | 53, 56, 58 |
-| R14 | Mobile completion, access control and release | 59–63 |
+| Milestone | Result                                                      | Supplied v2 coverage                      |
+| --------- | ----------------------------------------------------------- | ----------------------------------------- |
+| R01       | Confirm contracts and reconcile existing work               | 27–34, 39–40; current logic review        |
+| R02       | Reliable quantities, nutrition and recipe writing           | 21–24, 40; prerequisites for 41/48        |
+| R03       | Fixed household shares with preserved legacy plans          | 34, 39–40                                 |
+| R04       | Shared planning rules and complete evaluation               | 27–30, 34; known correctness repairs      |
+| R05       | Preview/accept, informed swaps, locks and regeneration      | 30–33, behavior behind 38                 |
+| R06       | Use It Up tokens, shell and existing screen layouts         | 35–38                                     |
+| R07       | Recipe detail with consistent scaling                       | 41; stock-source labels depend on R08/R09 |
+| R08       | Stock movements, cooking, reasons and Undo                  | 42                                        |
+| R09       | Aisle shopping and Today                                    | 43–45                                     |
+| R10       | Pasted recipe import, review and call records               | 46–49                                     |
+| R11       | Manual leaflet imports, safe review and measured extraction | 50–54; manual foundation for 56           |
+| R12       | Confirmed ingredient matching and shop shopping             | 55–57                                     |
+| R13       | Scheduled leaflets, retention and quality reporting         | 53, 56, 58                                |
+| R14       | Mobile completion, access control and release               | 59–63                                     |
 
 ### R01 — Confirm contracts and prepare regression cases
 
@@ -457,7 +457,8 @@ way R01 resolved its own four, not by guessing during implementation.
    "recipe eligibility" describe block). This resolves only the zero-vs-unknown half of
    the "Budget before offers" decision-table row; whether budget enforcement itself can
    be optional before checkout pricing exists remains open.
-6. **R04.6 — Real weekday/timezone-aware date semantics.** **Needs a decision first** — the
+6. **R04.6 — Real weekday/timezone-aware date semantics.
+   **Resolved 2026-09-23** — the
    "Dates and expiry" row (still open, tagged R04/R08): derive actual weekdays from the
    requested week-start date for weeknight scoring, and use `household_settings.timezone`
    (already stored since step 30, not yet read by planning) for "today" when computing
@@ -484,7 +485,7 @@ way R01 resolved its own four, not by guessing during implementation.
 9. **R04.9 — Add `severity` to `PlanViolation`.** Populate it in
    `validateMemberDinnerCalories`/`validateWeeklyBudget` using
    [r04-search-quality.md](r04-search-quality.md)'s formulas. Purely additive — violation
-   *counts* and existing test expectations for counts/messages are unaffected.
+   _counts_ and existing test expectations for counts/messages are unaffected.
 10. **R04.10 — Replace `isBetter`'s two-tier comparison with the three-tier comparator**
     (violation count → severity sum → score), keeping the existing input-order tie-break
     unchanged. Depends on R04.9. New tests from the "incremental budget repair" fixture in

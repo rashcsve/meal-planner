@@ -155,6 +155,13 @@
       "when": 1790071814843,
       "tag": "0021_robust_captain_america",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790186167104,
+      "tag": "0022_lyrical_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

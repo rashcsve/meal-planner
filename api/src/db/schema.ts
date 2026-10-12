@@ -21,7 +21,7 @@ import {
   INGREDIENT_PREFERENCE_RULES,
   MEAL_SLOTS,
 } from "shared";
-import type { MemberServing } from "shared";
+import type { MemberServing, PlanViolation } from "shared";
 
 function sqlInList(values: readonly string[]) {
   return sql.raw(values.map((v) => `'${v.replace(/'/g, "''")}'`).join(", "));
@@ -229,6 +229,10 @@ export const planWeeks = pgTable("plan_weeks", {
   seed: integer("seed").notNull(),
   plannerVersion: text("planner_version").notNull(),
   revision: integer("revision").notNull().default(1),
+  violations: jsonb("violations").$type<PlanViolation[]>(),
+  recipesVersionAt: timestamp("recipes_version_at"),
+  targetsVersionAt: timestamp("targets_version_at"),
+  exclusionsVersionAt: timestamp("exclusions_version_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
