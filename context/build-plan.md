@@ -249,6 +249,9 @@ do not call a failing suite a finished implementation.
 
 **Risk / rollback:** documentation and tests first; no schema/data migration in R01.
 
+**Learning** (v2 27–34, 39–40): R01 is documentation; its concepts are learned in the
+milestones that implement them.
+
 ### R02 — Reliable quantities, nutrition and recipe writing
 
 **Goal:** the planner can distinguish a complete recipe from a saved draft.
@@ -272,6 +275,16 @@ historical references survive migration. Add API tests for recipe ingredients/ed
 
 **Risk / rollback:** additive migration and preserved source data. No guessed backfill
 of quantities or nutrition; old readers must remain compatible during deployment.
+
+**Learning** (v2 21–24, 40) — explain before code:
+- why ingredients need their own table; what a many-to-many relationship is and why it needs a join table
+- what foreign keys do and what the ON DELETE options mean here
+- which columns need indexes, and what an index costs
+- in a generated migration on live data: which statements are destructive and what would be lost
+- why a missing density raises a domain error instead of guessing
+
+**You write the tests** for the pure functions: a spoon of oil and a spoon of flour weigh
+differently; 2.25 portions of a one-egg recipe needs 3 eggs, not 2.25.
 
 #### R02 implementation slices
 
@@ -335,6 +348,13 @@ old recipe IDs, yields, legacy calorie targets, preferences and saved assignment
 
 **Risk / rollback:** deploy schema additively; no deletion of legacy fields. Gate new
 planning until API/UI support it together. Reverting readers must not reinterpret v2 data.
+
+**Learning** (v2 34, 39–40) — explain before code:
+- why the target is per portion and the share is per person
+- which household settings the planner reads, and which only the UI uses
+- what in the planner had to change for configurable meal slots, and what didn't
+
+**Boards:** NowHousehold (top half).
 
 #### R03 implementation slices
 
@@ -411,6 +431,11 @@ quality limitations; 500 attempts and a faster runtime alone are not success cri
 **Risk / rollback:** keep the prior saved plan while trying the new algorithm; do not
 advertise amount-level stock coverage before R08. Keep recipe-cost and checkout-cost
 rules separate. Replay needs the ordered inputs/version, not only a seed.
+
+**Learning** (v2 27–30, 34) — explain before code:
+- the algorithm in words first: where it will fail and what it can't guarantee
+- why the planner uses no AI: explicit rules, verifiable arithmetic, reproducibility
+- why generation, retained locks and swap candidates must share one constraint checker
 
 #### R04 implementation slices
 
@@ -543,6 +568,17 @@ journeys for preview → accept, cancel swap, stale preview and empty-slot repla
 new preview APIs/UI during rollout. Never silently convert legacy plans or remove
 existing editing functionality without the agreed compatibility path.
 
+**Learning** (v2 30–33) — explain before code:
+- why candidates are computed in the service, not filtered in the client
+- why the rail looks the slot up by id instead of taking it as a prop
+- what the rail shows between choosing a swap and the plan refetching
+- the onMutate / onError / onSettled cycle, and what goes wrong without cancelQueries
+- invalidating several queries from one mutation, and why query key structure decides
+  how easy that is (shape keys so shopping slots in at R09 without touching this mutation)
+- why the swap target lives in the URL, and what back and forward do mid-choice
+
+**Boards:** NowPlan (the swap panel at the top of the rail), NowSwapBrowse.
+
 ### R06 — Use It Up design refresh
 
 **Goal:** build subsequent screens in the chosen design while retaining working flows.
@@ -568,6 +604,14 @@ Use NowPlan, NowGenerate, NowFridge, NowRecipes and NowHousehold as references.
 **Risk / rollback:** separate token and layout changes. Plan mobile overflow/navigation
 now, rather than undoing fixed desktop assumptions in R14. No blanket feature rewrite.
 
+**Learning** (v2 35–38) — explain before code:
+- which primitives changed only through tokens and which needed markup changes —
+  the honest measure of how token-driven the system was
+- why a generated dish illustration beats a photo per recipe for consistency and cost,
+  and what changes if photos arrive later
+
+**Boards:** listed under Verification above.
+
 ### R07 — Recipe detail
 
 **Goal:** ingredients, cooking instructions and kcal agree at every portion setting.
@@ -588,6 +632,11 @@ not shown as complete. No stock-source claims based solely on ingredient existen
 
 **Risk / rollback:** keep original text and source quantities; unstructured legacy
 methods remain readable and explicitly unscaled where references are unresolved.
+
+**Learning** (v2 41) — explain before code:
+- how amounts inside the method follow the portion stepper without storing the text twice
+
+**Boards:** NowRecipeDetail (ignore the macro bars).
 
 ### R08 — Stock movements and cooking
 
@@ -610,6 +659,12 @@ planning/generating/swapping never changes physical stock.
 
 **Risk / rollback:** backfill opening balances, not invented use/waste history. Keep
 an audit trail and transaction rollback; test migration on a populated database copy.
+
+**Learning** (v2 42) — explain before code:
+- why the removal reason is worth a column
+- how Undo works without a delete-then-recreate round trip
+
+**Boards:** NowFridge.
 
 ### R09 — Aisle shopping and Today
 
@@ -635,6 +690,13 @@ Unknown units/prices remain explicit. Basic shopping works with no price catalog
 **Risk / rollback:** derived lists must not destroy purchase/consumption history.
 Offline sync remains deferred; client IDs/timestamps alone do not implement it.
 
+**Learning** (v2 43–45) — explain before code:
+- where shopping-list derivation belongs — service or repository — and why
+- what composing existing queries costs compared with a dedicated dashboard endpoint,
+  and when you'd switch
+
+**Boards:** NowShopping (rows and side panel; the by-shop split arrives in R12), NowDashboard.
+
 ### R10 — Pasted-text recipe import
 
 **Goal:** paste → review → save is a useful, measured flow.
@@ -657,6 +719,16 @@ Provider/API credentials stay server-side; hashes are not treated as anonymizati
 
 **Risk / rollback:** incomplete extraction remains a draft; retries do not duplicate
 recipes or unboundedly repeat paid calls. Manual recipe entry remains available.
+
+**Learning** (v2 46–49) — explain before code:
+- why constraining model output with the Zod schema beats asking for "reply in JSON"
+- where the API key lives, why not in code, and what happens when output doesn't match the schema
+- why input hash and prompt version matter for debugging later
+
+**You do by hand:** run extraction on ten real recipes, count how many came out fully
+correct, and write the number down — that is the baseline.
+
+**Boards:** NowRecipeImportEmpty → NowRecipeImport → NowImportSaved (link/photo tabs are deferred).
 
 ### R11 — Manual leaflet imports and evaluation foundation
 
@@ -682,6 +754,16 @@ failed imports. Accuracy claims come from recorded runs, not assumed percentages
 **Risk / rollback:** preserve prior active version; independent labelled records survive
 import deletion. Define permitted source access before adding an acquisition connector.
 
+**Learning** (v2 50–54) — explain before code:
+- why per-field metrics beat one aggregate score
+- why bulk review (scan for exceptions) is deliberately the opposite interaction from
+  single-recipe review (read every row), and must not be unified
+
+**You do by hand:** label 150–200 real leaflet lines with the expected JSON before
+measuring anything; measure the regex/heuristic baseline before the model.
+
+**Boards:** NowLeaflet.
+
 ### R12 — Ingredient matching and shopping by shop
 
 **Goal:** compare real purchase options with explainable limits on travel.
@@ -705,6 +787,12 @@ have hand-checkable fixtures. Unknown prices cannot create a false complete tota
 
 **Risk / rollback:** retain aisle/unpriced shopping if offers fail. Preserve existing
 price rows without inventing source provenance or discount baselines.
+
+**Learning** (v2 55–57) — explain before code:
+- answer before writing code: does precision or recall matter more for matching, and why
+- why the stop rule lives in the shopping service and not the planner
+
+**Boards:** NowShopping, the shops section of NowHousehold.
 
 ### R13 — Scheduled leaflets, retention and Quality
 
@@ -731,6 +819,13 @@ randomly block ordinary code builds; measured regressions remain visible.
 **Risk / rollback:** disable schedules per shop and fall back to manual imports.
 No new infrastructure platform is required for a small number of scheduled sources.
 
+**Learning** (v2 53, 56, 58) — explain before code:
+- the delete cascade: what is deleted, what is rebuilt, what survives — and why labelled
+  rows must not go with the import
+- how to handle model non-determinism so evaluations aren't flaky
+
+**Boards:** NowLeafletShops, NowQuality.
+
 ### R14 — Mobile completion, access control and release
 
 **Goal:** a usable private/authorized release with recovery paths.
@@ -754,6 +849,20 @@ and migration rollback/compatibility. Demo the real plan → shop → cook loop.
 
 **Risk / rollback:** separate application rollback from data migrations; preserve
 compatible readers and backups. Do not publish a local unauthenticated build.
+
+**Learning** (v2 59–63) — explain before code:
+- what changes in the shell's overflow rules between desktop and mobile, and why mobile
+  is the one place the app scrolls as a page
+- the session design chosen (tokens or cookie sessions) and why, given the actual clients
+- how production compose differs from dev: no exposed database port, secrets from the
+  environment, resource limits, restart policy, the app itself included
+
+**README must contain:** a screenshot or GIF first, an architecture diagram, "where I did
+not use an LLM and why", per-field accuracy before/after, cost per plan in Kč and p95
+latency, the legal reasoning on data sources, three things that broke and how you fixed
+them. Then a 90-second demo video.
+
+**Boards:** MShopping, MDashboard, MPlan, MPantry, MRecipes.
 
 ## Verification and delivery rules
 
