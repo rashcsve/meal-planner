@@ -80,7 +80,7 @@ into the browser build.
   for why the `plans` service, not the route layer, owns that transaction.
   A stale or missing `expectedRevision` fails the CAS or an earlier explicit
   check and is reported as a typed error, never a silent overwrite. Full
-  history in `context/progress.md`'s "Step 29.1" entry.
+  history in `context/progress-archive.md`'s "Step 29.1" entry.
 - `household_members.dinner_calorie_target` (added in step 27.1, migration
   `0016_add_household_member_dinner_calorie_target.sql`) is a nullable
   `numeric` with a `> 0` check constraint. Nullable is deliberate: an
@@ -91,7 +91,7 @@ into the browser build.
   recipe's kcal-per-serving and their own `dinner_calorie_target`. The
   older combined-household `dailyCalorieTarget` sum/check was removed from
   the planner; that column still exists for a later whole-day phase but is
-  no longer read by planning. Full history in `context/progress.md`'s "Step
+  no longer read by planning. Full history in `context/progress-archive.md`'s "Step
   27.1" entry.
 - `household_settings.timezone` (added in step 30, migration
   `0018_add_household_settings_timezone.sql`) is `text not null default
@@ -99,7 +99,7 @@ into the browser build.
   planning or date logic — added because the setting is real and the plan
   calls for it, not because something consumes it yet. Calorie tolerance
   (fixed ±10%, `planner.ts`) and currency (fixed CZK, column/type names)
-  stayed hardcoded by deliberate scope decision — see `context/progress.md`'s
+  stayed hardcoded by deliberate scope decision — see `context/progress-archive.md`'s
   "Step 30" entry.
 
 ## Error handling
