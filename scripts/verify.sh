@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bounded local verification: fast checks only, no Docker/Postgres required.
-# Used as completion evidence by /build-step; does not replace `npm test`.
+# Run by the Stop hook (.claude/hooks/verify-on-stop.mjs) and /step; does not replace `npm test`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -167,9 +167,9 @@ first rail usage that needed a non-desktop-only layout.
 
 ## Development workflow
 
-`/build-step <id>`, `/review <id>`, `/recover <error>` are the three project
+`/step <R-id>`, `/step-review <id>`, `/recover <error>` are the three project
 skills (`.claude/skills/`). They read this `context/` directory plus
 `context/build-plan.md` and `context/progress.md`. Two now-redundant review
-skills (`architecture-review`, `frontend-review`) were folded into `/review`
+skills (`architecture-review`, `frontend-review`) were folded into `/step-review`
 and removed. No other build/finish/debug skills should be added — see the
 build plan's step 29 §C.

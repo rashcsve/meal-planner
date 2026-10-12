@@ -1,7 +1,7 @@
 # Code standards
 
 Conventions live primarily in `CLAUDE.md`. This file adds the executable
-verification commands the skills (`/build-step`, `/step-review`, `/recover`) should
+verification commands the skills (`/step`, `/step-review`, `/recover`) should
 actually run, plus the couple of standards CLAUDE.md doesn't spell out.
 
 ## Verification commands
@@ -63,4 +63,4 @@ itself calls `npx prettier --write` directly and doesn't depend on this script.
 ## Commits
 
 Conventional Commits as specified in `CLAUDE.md`. Never run `git commit`
-without being asked, even inside `/build-step`.
+without being asked, even inside `/step`.
