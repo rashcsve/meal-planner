@@ -8,6 +8,9 @@ import {
   parseSlotKey,
   isWeekday,
   buildReasons,
+  slotKey,
+  validateMemberDinnerCalories,
+  validateWeeklyBudget,
 } from "../src/services/planner.js";
 import {
   FIXTURE_PANTRY,
@@ -76,6 +79,39 @@ describe("hard constraint: each member's dinner calories within ±10% of their t
     for (const violation of memberCalorieViolations) {
       expect(violation.detail).toContain("outside ±10% of 250");
     }
+  });
+
+  it("sets severity to the miss beyond the ±10% band as a fraction of the target", () => {
+    const ctx = buildPlannerContext(FIXTURE_RECIPES, FIXTURE_PRICES, FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      memberTargets: [
+        { memberId: 1, dinnerCalorieTarget: 250 },
+        { memberId: 2, dinnerCalorieTarget: 800 },
+      ],
+    });
+    const assigned = new Map([[slotKey(0, "dinner"), RECIPE_ID.dinnerSalmon]]);
+
+    const violations = validateMemberDinnerCalories(ctx, assigned);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]!.severity).toBeCloseTo(0.1);
+  });
+
+  it("sets a positive severity when a member's dinner falls under the band", () => {
+    const ctx = buildPlannerContext(FIXTURE_RECIPES, FIXTURE_PRICES, FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      memberTargets: [
+        { memberId: 1, dinnerCalorieTarget: 120 },
+        { memberId: 2, dinnerCalorieTarget: 800 },
+      ],
+    });
+    const assigned = new Map([[slotKey(0, "dinner"), RECIPE_ID.dinnerSalmon]]);
+
+    const violations = validateMemberDinnerCalories(ctx, assigned);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]!.detail).toContain("100 kcal");
+    expect(violations[0]!.severity).toBeCloseTo(8 / 120);
   });
 });
 
@@ -445,6 +481,18 @@ describe("hard constraint: weekly budget", () => {
     );
     expect(weeklyBudgetViolations).toHaveLength(1);
     expect(weeklyBudgetViolations[0]!.detail).toContain("over budget of 100");
+  });
+
+  it("sets severity to the overspend as a fraction of the budget", () => {
+    const ctx = buildPlannerContext(FIXTURE_RECIPES, FIXTURE_PRICES, FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      weeklyBudgetCzk: 250,
+    });
+    const assigned = new Map([[slotKey(0, "dinner"), RECIPE_ID.dinnerSalmon]]);
+
+    const [violation] = validateWeeklyBudget(ctx, assigned);
+
+    expect(violation!.severity).toBeCloseTo(0.3);
   });
 });
 

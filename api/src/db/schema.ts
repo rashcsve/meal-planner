@@ -159,7 +159,7 @@ export const householdSettings = pgTable(
       "household_settings_start_day_of_week_check",
       sql`${table.startDayOfWeek} BETWEEN 0 AND 6`,
     ),
-    check("household_settings_weekly_budget_czk_check", sql`${table.weeklyBudgetCzk} >= 0`),
+    check("household_settings_weekly_budget_czk_check", sql`${table.weeklyBudgetCzk} > 0`),
     check(
       "household_settings_standard_portion_target_kcal_check",
       sql`${table.standardPortionTargetKcal} IS NULL OR ${table.standardPortionTargetKcal} > 0`,

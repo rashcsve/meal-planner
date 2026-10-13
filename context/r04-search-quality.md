@@ -50,6 +50,10 @@ without unit mismatches:
 - Plan's total severity = sum of every individual violation's severity. A plan with zero
   violations always has severity 0 (tiers 2 and 3 only ever discriminate between plans that
   already tie on violation count).
+- `severity` is optional on `PlanViolation` (R04.9): only the two rules above set it, and
+  weeks persisted before R04.9 have none. When summing, a missing `severity` counts as 0 —
+  deliberately, since tier 1 (violation count) already penalises those violations.
+- `weeklyBudgetCzk` is always > 0 (Zod + DB check), so the budget formula never divides by 0.
 
 ### Stable tie-break, made explicit
 

@@ -13,8 +13,7 @@ import {
   useConfirmHouseholdShares,
 } from "./useHousehold";
 
-const DEFAULT_SETTINGS: UpdateHouseholdSettingsInput = {
-  weeklyBudgetCzk: 0,
+const DEFAULT_SETTINGS: Partial<UpdateHouseholdSettingsInput> = {
   startDayOfWeek: 1,
   timezone: "Europe/Prague",
 };

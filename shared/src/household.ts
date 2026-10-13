@@ -12,7 +12,7 @@ function isValidTimeZone(value: string): boolean {
 export const updateHouseholdSettingsSchema = z.object({
   weeklyBudgetCzk: z
     .number({ error: "Weekly budget must be a number" })
-    .nonnegative("Weekly budget must be zero or more"),
+    .positive("Weekly budget must be greater than zero"),
   startDayOfWeek: z
     .number({ error: "Start day of week must be a number" })
     .int("Start day of week must be a whole number")

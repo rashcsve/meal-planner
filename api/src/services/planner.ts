@@ -556,6 +556,10 @@ export function validateMemberDinnerCalories(
           slot: { day, mealSlot: "dinner" },
           constraint: "member_dinner_calories",
           detail: `day ${day} dinner gives member ${memberServing.memberId} ${actualCalories} kcal (${memberServing.servings} servings), outside ±10% of ${memberTarget.dinnerCalorieTarget}`,
+          severity:
+            (Math.abs(actualCalories - memberTarget.dinnerCalorieTarget) -
+              memberTarget.dinnerCalorieTarget * CALORIE_TOLERANCE) /
+            memberTarget.dinnerCalorieTarget,
         });
       }
     }
@@ -595,6 +599,7 @@ export function validateWeeklyBudget(
       slot: null,
       constraint: "weekly_budget",
       detail: `week totals ${total} Kč, over budget of ${ctx.targets.weeklyBudgetCzk} Kč`,
+      severity: (total - ctx.targets.weeklyBudgetCzk) / ctx.targets.weeklyBudgetCzk,
     },
   ];
 }

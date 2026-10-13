@@ -1,0 +1,2 @@
+ALTER TABLE "household_settings" DROP CONSTRAINT "household_settings_weekly_budget_czk_check";--> statement-breakpoint
+ALTER TABLE "household_settings" ADD CONSTRAINT "household_settings_weekly_budget_czk_check" CHECK ("household_settings"."weekly_budget_czk" > 0);

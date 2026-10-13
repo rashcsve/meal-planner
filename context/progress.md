@@ -24,7 +24,7 @@ step depends on it. Statuses below are copied from the archived headings as writ
 - R04.8 — Expiry violations depend on the generation date, but staleness checks
   neither pantry changes nor the date. A plan generated Monday still reads `current`
   on Thursday with outdated expiry violations. (R04.6b/R04.7 review)
-- R04 — Nine slices await review: R04.1, .2, .3, .6a, .6b, .7, .8a, .8b, .8c.
+- R04 — Ten slices await review: R04.1, .2, .3, .6a, .6b, .7, .8a, .8b, .8c, .9.
 
 ## Archived entries
 
@@ -414,3 +414,37 @@ hid the missing field. Doc comment says `current` = inputs unchanged (lock/swap 
 `npm run test -w api` → 154 pass; typecheck api+web and lint clean.
 
 **Next step:** R04.9 (`severity` on `PlanViolation`), after review.
+
+## R04.9 — `severity` on `PlanViolation` — `implemented—awaiting review` (2026-10-13)
+
+`PlanViolation` (`shared/src/planner.ts`) gains `severity?: number`: how far past the
+limit, as a fraction of the limit, per [r04-search-quality.md](r04-search-quality.md).
+Set in `api/src/services/planner.ts`:
+- `validateWeeklyBudget`: `(total - budget) / budget`.
+- `validateMemberDinnerCalories`: `(|actual - target| - target * CALORIE_TOLERANCE) / target`,
+  per violating member-day. Summing across violations is R04.10's job.
+
+Decisions:
+- Optional, not required — only budget and calories have a defined formula; a made-up 0
+  on expiry/`no_eligible_recipe`/`locked_slot_conflict` would read as "not severe", and
+  weeks persisted since R04.8b have no `severity` in their jsonb.
+- No migration for severity itself: `plan_weeks.violations` is jsonb. Counts and `detail`
+  text unchanged.
+- Weekly budget must be > 0 (review fix): a 0 budget made budget severity `Infinity`,
+  which jsonb stores as `null` and which ties every over-budget week. Zod `.positive()` in
+  `shared/src/household.ts`, DB check `> 0` via `api/drizzle/0023_weekly_budget_positive_check.sql`.
+  Rejected alternative: dividing by `max(budget, 1)` gives Kč-scale severity that drowns
+  calorie severity. `api/tests/household.test.ts` +2: PUT with budget 0 → 422; direct insert of 0 hits
+  the DB check constraint. Web form now starts the budget field empty instead of 0.
+  Constraint drop/re-add in 0023 approved by the user on 2026-10-13. Precondition checked
+  the same day on the only (dev) DB: no `weekly_budget_czk = 0` rows, 0023 already applied.
+
+`api/tests/planner.test.ts` (+3 unit, calling the validators directly): 325 Kč vs 250 Kč
+budget → 0.3; 300 kcal vs 250 target → 0.1; a dinner under the band → positive severity.
+
+Verified 2026-10-13: `npm run test -w api` → 12 files/167 tests pass (was 162 before
+this slice); `npm run test -w web` → 25 files/71 tests pass; `npm run typecheck` (api+web)
+clean; `npm run lint` clean (2 pre-existing web warnings). Self-check questions
+skipped at the user's request.
+
+**Next step:** R04.10 (three-tier comparator in `isBetter`), after review.

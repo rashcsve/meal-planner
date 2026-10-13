@@ -80,6 +80,25 @@ describe("PUT /api/household/settings", () => {
     });
     expect(res.status).toBe(422);
   });
+
+  it("rejects a zero weekly budget with 422", async () => {
+    const res = await app.request("/api/household/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weeklyBudgetCzk: 0, startDayOfWeek: 1, timezone: "Europe/Prague" }),
+    });
+    expect(res.status).toBe(422);
+  });
+
+  it("rejects a zero weekly budget at the database check constraint", async () => {
+    await expect(
+      db
+        .insert(householdSettings)
+        .values({ weeklyBudgetCzk: 0, startDayOfWeek: 1, timezone: "Europe/Prague" }),
+    ).rejects.toMatchObject({
+      cause: { constraint: "household_settings_weekly_budget_czk_check" },
+    });
+  });
 });
 
 describe("GET /api/household/members", () => {

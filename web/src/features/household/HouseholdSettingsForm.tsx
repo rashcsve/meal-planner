@@ -18,7 +18,7 @@ const DAY_OPTIONS = [
 ];
 
 interface HouseholdSettingsFormProps {
-  defaultValues: UpdateHouseholdSettingsInput;
+  defaultValues: Partial<UpdateHouseholdSettingsInput>;
   onSubmit: (data: UpdateHouseholdSettingsInput) => void;
   isSaving: boolean;
   error?: string;

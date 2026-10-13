@@ -67,6 +67,7 @@ export interface PlanViolation {
   slot: { day: number; mealSlot: MealSlot } | null;
   constraint: string;
   detail: string;
+  severity?: number;
 }
 
 export interface PlanResult {
