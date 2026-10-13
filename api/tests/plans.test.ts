@@ -519,6 +519,26 @@ describe("persisted evaluation (R04.8b)", () => {
   });
 });
 
+describe("evaluation staleness on read (R04.8c)", () => {
+  it("reports current right after generation, then stale recipes after an ingredient line edit", async () => {
+    const { dinnerRecipe } = await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+
+    const freshRes = await app.request("/api/plans/2026-01-05");
+    const fresh = (await freshRes.json()) as { evaluation: unknown };
+    expect(fresh.evaluation).toEqual({ status: "current", staleInputs: [] });
+
+    await db
+      .update(recipeIngredients)
+      .set({ displayAmount: 999, updatedAt: new Date(Date.now() + 1000) })
+      .where(eq(recipeIngredients.recipeId, dinnerRecipe.id));
+
+    const staleRes = await app.request("/api/plans/2026-01-05");
+    const stale = (await staleRes.json()) as { evaluation: unknown };
+    expect(stale.evaluation).toEqual({ status: "stale", staleInputs: ["recipes"] });
+  });
+});
+
 describe("household configuration", () => {
   it("rejects generation with 422 when a household member has no dinner calorie target", async () => {
     await seedPlannableHousehold(null);

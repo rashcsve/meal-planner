@@ -6,8 +6,6 @@ step depends on it. Statuses below are copied from the archived headings as writ
 
 ## Open follow-ups
 
-- R04 — Staleness on read: compute and expose it on `GET /api/plans/:weekStartDate` by
-  comparing stored watermarks with `getCurrentInputVersions()`. (R04.8b: next slice)
 - R04 — Decide whether budget enforcement can be optional before checkout pricing
   exists; R04.5 settled only zero vs unknown cost. (decision table: "Budget before offers")
 - R05 — Persisted `violations` go stale after a lock or swap, because `setSlotLocked` and
@@ -15,7 +13,10 @@ step depends on it. Statuses below are copied from the archived headings as writ
   Stopgap if the UI shows violations first: null them in those two calls. (R04.8b)
 - R07 — `recipesVersionAt` ignores `ingredients.updated_at`, so editing an ingredient's
   nutrition doesn't mark plans stale. Deliberate for now. (R04.8b)
-- R04 — Eight slices await review: R04.1, .2, .3, .6a, .6b, .7, .8a, .8b.
+- R07 — Deleting some (not all) rows of an input category doesn't advance
+  `MAX(updated_at)`, so the plan still reads `current`. Fix with a per-category version
+  counter bumped on every write/delete, or soft deletes. (R04.8c)
+- R04 — Nine slices await review: R04.1, .2, .3, .6a, .6b, .7, .8a, .8b, .8c.
 
 ## Archived entries
 
@@ -364,3 +365,27 @@ somewhere a swap could contradict it (stopgap: null them in those two
 leaves the watermark older than the data used — a false "stale", never a false "fresh".
 
 **Next step:** the staleness-on-read slice, after review.
+
+## R04.8c — Staleness on read — `implemented—awaiting review` (2026-10-13)
+
+`GET /api/plans/:weekStartDate` now returns `evaluation: { status: "current" | "stale" |
+"not_evaluated", staleInputs: ("recipes"|"targets"|"exclusions")[] }`, comparing the stored
+watermarks with a fresh `getCurrentInputVersions()` call. Read side only; no schema change.
+
+New pure `api/src/services/plan-staleness.ts` (`evaluateStaleness`); `getWeek` in
+`services/plans.ts` reads slots and live versions in parallel and attaches the result.
+
+Decisions:
+- Per-category `staleInputs`, not one boolean — the UI can say what changed.
+- `not_evaluated` = stored `violations` is null (legacy week never regenerated).
+- Stale if live > stored; stored null + live non-null (first row added); stored non-null +
+  live null (all rows deleted — found during self-check). Both null = current.
+- Known gap: a partial delete doesn't advance `MAX`, so it's missed (Open follow-ups, R07).
+
+`api/tests/plan-staleness.test.ts` (+5 unit); `api/tests/plans.test.ts` (+1 integration:
+generate → `current`; edit an ingredient line with `updatedAt` +1s → `stale`, `["recipes"]`).
+
+Verified 2026-10-13: `npm run test -w api` → 12 files/152 tests pass (was 146);
+typecheck api+web clean. No web change, so `npm run test -w web` not run; no UI yet.
+
+**Next step:** R04.9 (`severity` on `PlanViolation`), after review.

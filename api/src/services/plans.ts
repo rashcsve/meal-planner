@@ -19,6 +19,7 @@ import {
   casIncrementRevision,
 } from "../repositories/planWeeks.js";
 import { getCurrentInputVersions } from "../repositories/planInputVersions.js";
+import { evaluateStaleness } from "./plan-staleness.js";
 import {
   findSlotsByWeekId,
   findLockedSlotsByWeekId,
@@ -110,8 +111,12 @@ async function findWeekOrThrow(weekStartDate: string) {
 
 export async function getWeek(weekStartDate: string) {
   const week = await findWeekOrThrow(weekStartDate);
-  const slots = await findSlotsByWeekId(week.id);
-  return { ...week, slots };
+  const [slots, current] = await Promise.all([
+    findSlotsByWeekId(week.id),
+    getCurrentInputVersions(),
+  ]);
+  const evaluation = evaluateStaleness(week.violations !== null, week, current);
+  return { ...week, slots, evaluation };
 }
 
 export async function setSlotLocked(
