@@ -159,7 +159,6 @@ function buildPlannerTargets(
   return {
     memberTargets,
     weeklyBudgetCzk: settings.weeklyBudgetCzk,
-    startDayOfWeek: settings.startDayOfWeek,
     weekStartDate,
     todayIndex,
   };

@@ -43,7 +43,6 @@ export interface MemberDinnerTarget {
 export interface PlannerTargets {
   memberTargets: MemberDinnerTarget[];
   weeklyBudgetCzk: number;
-  startDayOfWeek: number;
   weekStartDate: string;
   todayIndex: number;
 }

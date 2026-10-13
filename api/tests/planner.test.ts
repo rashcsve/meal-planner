@@ -522,11 +522,10 @@ describe("empty price catalog and preferences are valid states, not errors", () 
 });
 
 describe("isWeekday", () => {
-  it("derives weekday from weekStartDate, not the startDayOfWeek setting", () => {
-    const targets = { ...FIXTURE_TARGETS, startDayOfWeek: 0 };
-    expect(isWeekday(0, targets)).toBe(true);
-    expect(isWeekday(5, targets)).toBe(false);
-    expect(isWeekday(6, targets)).toBe(false);
+  it("derives weekday from weekStartDate", () => {
+    expect(isWeekday(0, FIXTURE_TARGETS)).toBe(true);
+    expect(isWeekday(5, FIXTURE_TARGETS)).toBe(false);
+    expect(isWeekday(6, FIXTURE_TARGETS)).toBe(false);
   });
 });
 
