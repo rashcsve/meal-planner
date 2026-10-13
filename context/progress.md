@@ -18,6 +18,9 @@ step depends on it. Statuses below are copied from the archived headings as writ
 - R07 — Deleting some (not all) rows of an input category doesn't advance
   `MAX(updated_at)`, so the plan still reads `current`. Fix with a per-category version
   counter bumped on every write/delete, or soft deletes. (R04.8c)
+- R04.8 — Expiry violations depend on the generation date, but staleness checks
+  neither pantry changes nor the date. A plan generated Monday still reads `current`
+  on Thursday with outdated expiry violations. (R04.6b/R04.7 review)
 - R04 — Nine slices await review: R04.1, .2, .3, .6a, .6b, .7, .8a, .8b, .8c.
 
 ## Archived entries
@@ -155,6 +158,10 @@ today — R04.6b, not yet implemented.
 New `isWeekday` test (`planner.test.ts`): overrides `startDayOfWeek` to a
 wrong value while `weekStartDate` stays real, proves the fix is load-bearing.
 
+Later (859ccf5): `startDayOfWeek` was dropped from `PlannerTargets`, which also
+removed that override test. The review added a Wednesday-start week case so
+a hard-coded `day < 5` would fail.
+
 Verified: typecheck/lint/prettier clean; api 11/137 pass (was 136, +1).
 
 **Next step:** R04.6b, after review.
@@ -206,6 +213,13 @@ support this without touching the 14 existing call sites.
 
 Verified: typecheck/lint/prettier clean (same 2 pre-existing web warnings);
 api 11/139 pass (was 138, +1).
+
+Later (961b098): `daysUntilExpiry` is measured from today (household
+timezone), not from `weekStartDate`. `PlannerTargets.todayIndex` gives today's
+offset in the week and is `null` for other weeks, where
+`resolveExpiryConstraints` returns nothing. `buildReasons` ignores items that
+have already expired. Review added a frozen-clock test (Sunday 22:30 UTC = Monday
+in Prague) proving the household timezone picks the week.
 
 **Next step:** R04.7 (needs a decision first) or another R04 slice, after review.
 

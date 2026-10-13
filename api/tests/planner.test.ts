@@ -7,6 +7,7 @@ import {
   resolveExpiryConstraints,
   parseSlotKey,
   isWeekday,
+  buildReasons,
 } from "../src/services/planner.js";
 import {
   FIXTURE_PANTRY,
@@ -164,6 +165,17 @@ describe("hard constraint: pantry items expiring soon are used", () => {
       expect(days[0]).toBeGreaterThanOrEqual(3);
       expect(days[0]).toBeLessThanOrEqual(5);
     }
+  });
+
+  it("skips expiry entirely for a week that does not contain today", () => {
+    const pantry = [
+      { ingredientId: INGREDIENT_ID.salmon, daysUntilExpiry: 2 },
+      { ingredientId: INGREDIENT_ID.shrimp, daysUntilExpiry: -2 },
+    ];
+    expect(resolveExpiryConstraints(pantry, FIXTURE_RECIPES, null)).toEqual({
+      constraints: [],
+      violations: [],
+    });
   });
 
   it("does not force-place a never-ingredient recipe to use up an expiring exclusion", () => {
@@ -527,9 +539,29 @@ describe("isWeekday", () => {
     expect(isWeekday(5, FIXTURE_TARGETS)).toBe(false);
     expect(isWeekday(6, FIXTURE_TARGETS)).toBe(false);
   });
+
+  it("follows a week that starts on Wednesday", () => {
+    const targets = { ...FIXTURE_TARGETS, weekStartDate: "2026-09-23" };
+    expect([0, 1, 2, 3, 4, 5, 6].map((day) => isWeekday(day, targets))).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+    ]);
+  });
 });
 
 describe("reasons", () => {
+  it("does not describe an already-expired pantry item as expiring", () => {
+    const reasons = buildReasons(RECIPE_ID.dinnerSalmon, FIXTURE_RECIPES, FIXTURE_PRICES, [
+      { ingredientId: INGREDIENT_ID.salmon, daysUntilExpiry: -2 },
+    ]);
+    expect(reasons.some((reason) => reason.includes("expiring"))).toBe(false);
+  });
+
   it("gives every filled slot at least one reason", () => {
     const result = runPlan(9);
     for (const slot of result.slots) {

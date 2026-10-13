@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { db } from "../src/db/index.js";
 import {
   recipes,
@@ -732,6 +732,43 @@ describe("pantry expiry across weeks", () => {
     expect(excludedRes.status).toBe(200);
     const excludedBody = (await excludedRes.json()) as { violations: { constraint: string }[] };
     expect(excludedBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(false);
+  });
+});
+
+describe("pantry expiry in the household timezone", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("uses the household's date, not the server's UTC date, to pick this week", async () => {
+    // Sunday 22:30 UTC is already Monday 00:30 in Prague.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-11T22:30:00Z") });
+    await seedPlannableHousehold(400, "Europe/Prague");
+    const [strayIngredient] = await db
+      .insert(ingredients)
+      .values({ name: "Stray herb 3", baseUnit: "g", kcalPer100g: 10 })
+      .returning();
+    await db.insert(pantryItems).values({
+      ingredientId: strayIngredient!.id,
+      amountBase: 50,
+      expiresOn: "2026-10-13",
+    });
+
+    const pragueWeekRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-10-12",
+      seed: 1,
+    });
+    const pragueWeekBody = (await pragueWeekRes.json()) as {
+      violations: { constraint: string }[];
+    };
+    expect(pragueWeekBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(true);
+
+    const utcWeekRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-10-05",
+      seed: 1,
+    });
+    const utcWeekBody = (await utcWeekRes.json()) as { violations: { constraint: string }[] };
+    expect(utcWeekBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(false);
   });
 });
 

@@ -95,9 +95,13 @@ into the browser build.
   27.1" entry.
 - `household_settings.timezone` (added in step 30, migration
   `0018_add_household_settings_timezone.sql`) is `text not null default
-  'Europe/Prague'`. It is editable on `/household` but not yet read by any
-  planning or date logic — added because the setting is real and the plan
-  calls for it, not because something consumes it yet. Calorie tolerance
+  'Europe/Prague'`. It is editable on `/household` and read by planning:
+  `getPlanInputs` (`services/plan-inputs.ts`) uses it to decide today's date,
+  which sets pantry `daysUntilExpiry` and `PlannerTargets.todayIndex` (null
+  for weeks not containing today). Validation accepts any zone
+  `Intl.DateTimeFormat` accepts, including `UTC`. Weekdays come from
+  `weekStartDate`; `startDayOfWeek` is not part of `PlannerTargets` and only
+  drives the web week picker. Calorie tolerance
   (fixed ±10%, `planner.ts`) and currency (fixed CZK, column/type names)
   stayed hardcoded by deliberate scope decision — see `context/progress-archive.md`'s
   "Step 30" entry.

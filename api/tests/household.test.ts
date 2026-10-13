@@ -54,6 +54,24 @@ describe("PUT /api/household/settings", () => {
     expect(getBody.startDayOfWeek).toBe(1);
   });
 
+  it("accepts UTC, which Intl.supportedValuesOf does not list", async () => {
+    const res = await app.request("/api/household/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weeklyBudgetCzk: 2500, startDayOfWeek: 1, timezone: "UTC" }),
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects an unknown timezone with 422", async () => {
+    const res = await app.request("/api/household/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weeklyBudgetCzk: 2500, startDayOfWeek: 1, timezone: "Mars/Olympus" }),
+    });
+    expect(res.status).toBe(422);
+  });
+
   it("rejects a negative weekly budget with 422", async () => {
     const res = await app.request("/api/household/settings", {
       method: "PUT",

@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+function isValidTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const updateHouseholdSettingsSchema = z.object({
   weeklyBudgetCzk: z
     .number({ error: "Weekly budget must be a number" })
@@ -12,10 +21,7 @@ export const updateHouseholdSettingsSchema = z.object({
   timezone: z
     .string({ error: "Timezone is required" })
     .min(1, "Timezone is required")
-    .refine(
-      (value) => Intl.supportedValuesOf("timeZone").includes(value),
-      "Timezone must be a valid IANA time zone name",
-    ),
+    .refine(isValidTimeZone, "Timezone must be a valid IANA time zone name"),
 });
 
 export type UpdateHouseholdSettingsInput = z.infer<typeof updateHouseholdSettingsSchema>;

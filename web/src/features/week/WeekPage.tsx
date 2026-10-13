@@ -4,7 +4,12 @@ import { Button } from "../../shared/ui/Button";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
 import { EmptyState } from "../../shared/ui/EmptyState";
-import { formatWeekRange, resolveWeekStartDate, addDays } from "../../shared/lib/week";
+import {
+  formatWeekRange,
+  resolveWeekStartDate,
+  addDays,
+  formatDayLabel,
+} from "../../shared/lib/week";
 import { useRecipeCatalog } from "../../shared/api/recipeCatalog";
 import {
   useHouseholdMembersCatalog,
@@ -136,7 +141,13 @@ export function WeekPage() {
             <div className="mb-2">
               <ErrorState
                 title="Some slots couldn't be filled"
-                message={generatePlan.data.violations.map((v) => v.detail).join(" ")}
+                message={generatePlan.data.violations
+                  .map((v) =>
+                    v.slot
+                      ? `${formatDayLabel(addDays(weekStartDate, v.slot.day))} ${v.slot.mealSlot}: ${v.detail}`
+                      : v.detail,
+                  )
+                  .join(" ")}
               />
             </div>
           )}

@@ -268,10 +268,11 @@ export interface MustUseConstraint {
 export function resolveExpiryConstraints(
   pantry: PlannerPantryItem[],
   recipes: PlannerRecipe[],
-  todayIndex: number,
+  todayIndex: number | null,
 ): { constraints: MustUseConstraint[]; violations: PlanViolation[] } {
   const constraints: MustUseConstraint[] = [];
   const violations: PlanViolation[] = [];
+  if (todayIndex === null) return { constraints, violations };
 
   for (const item of pantry) {
     if (item.daysUntilExpiry === null || item.daysUntilExpiry > EXPIRY_MUST_USE_WINDOW_DAYS)
@@ -637,6 +638,7 @@ export function buildReasons(
       (item) =>
         item.ingredientId === ingredientId &&
         item.daysUntilExpiry !== null &&
+        item.daysUntilExpiry >= 0 &&
         item.daysUntilExpiry <= EXPIRY_MUST_USE_WINDOW_DAYS,
     );
     if (expiring) reasons.push(`uses ${name} expiring in ${expiring.daysUntilExpiry} day(s)`);

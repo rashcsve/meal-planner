@@ -147,7 +147,7 @@ function buildPlannerTargets(
   members: HouseholdMember[],
   weekStartDate: string,
   settings: HouseholdSettings,
-  todayIndex: number,
+  todayIndex: number | null,
 ): PlannerTargets {
   const memberTargets = members.map((member) => {
     if (member.dinnerCalorieTarget === null) {
@@ -180,7 +180,7 @@ export async function getPlanInputs(weekStartDate: string): Promise<PlanInputs> 
     buildPlannerPantry(today, todayIndex !== null),
     buildPlannerPreferences(members),
   ]);
-  const targets = buildPlannerTargets(members, weekStartDate, settings, todayIndex ?? 0);
+  const targets = buildPlannerTargets(members, weekStartDate, settings, todayIndex);
 
   return { recipes, prices, pantry, preferences, targets };
 }
