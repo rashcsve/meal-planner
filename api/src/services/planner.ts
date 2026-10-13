@@ -267,12 +267,14 @@ export interface MustUseConstraint {
 
 export function resolveExpiryConstraints(
   pantry: PlannerPantryItem[],
-  recipes: PlannerRecipe[],
-  todayIndex: number | null,
+  ctx: PlannerContext,
 ): { constraints: MustUseConstraint[]; violations: PlanViolation[] } {
   const constraints: MustUseConstraint[] = [];
   const violations: PlanViolation[] = [];
+  const { todayIndex } = ctx.targets;
   if (todayIndex === null) return { constraints, violations };
+
+  const recipes = PLANNED_MEAL_SLOTS.flatMap((mealSlot) => eligibleRecipes(mealSlot, ctx));
 
   for (const item of pantry) {
     if (item.daysUntilExpiry === null || item.daysUntilExpiry > EXPIRY_MUST_USE_WINDOW_DAYS)
@@ -989,11 +991,7 @@ export function plan(
   const violations: PlanViolation[] = [];
 
   // Pantry items expiring soon must land on a specific day-or-earlier.
-  const expiry = resolveExpiryConstraints(
-    pantry,
-    PLANNED_MEAL_SLOTS.flatMap((mealSlot) => ctx.eligibleRecipesBySlot.get(mealSlot) ?? []),
-    targets.todayIndex,
-  );
+  const expiry = resolveExpiryConstraints(pantry, ctx);
   violations.push(...expiry.violations);
 
   // Locked slots and expiry-forced placements claim their slots first.

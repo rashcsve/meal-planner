@@ -24,7 +24,6 @@ step depends on it. Statuses below are copied from the archived headings as writ
 - R04.8 — Expiry violations depend on the generation date, but staleness checks
   neither pantry changes nor the date. A plan generated Monday still reads `current`
   on Thursday with outdated expiry violations. (R04.6b/R04.7 review)
-- R04 — Ten slices await review: R04.1, .2, .3, .6a, .6b, .7, .8a, .8b, .8c, .9.
 
 ## Archived entries
 
@@ -48,7 +47,7 @@ step depends on it. Statuses below are copied from the archived headings as writ
 | R03.4 recovery — unordered member list — 2026-09-22 | — |
 | R03 `/review` fixes — 2026-09-22 | — |
 
-## R04.1 — Empty price catalog / empty exclusions are valid states, not errors — `implemented—awaiting review` (2026-09-22)
+## R04.1 — Empty price catalog / empty exclusions are valid states, not errors — `complete` (2026-09-22)
 
 `plan()` threw `EmptyPriceCatalogError`/`EmptyPreferencesError` whenever `prices` or
 `preferences.neverIngredientIds` was empty, conflating two legitimate states ("no
@@ -70,7 +69,7 @@ Verified: api 11 files/132 pass (unchanged count); typecheck/lint/prettier clean
 
 **Not yet done:** R04.2–R04.15.
 
-## R04.2 — Fix pantry-exclusion bypass — `implemented—awaiting review` (2026-09-22)
+## R04.2 — Fix pantry-exclusion bypass — `complete` (2026-09-22)
 
 Implemented [r01-fixtures.md §4](r01-fixtures.md)'s fix exactly: `plan()` (`planner.ts`)
 called `resolveExpiryConstraints(pantry, recipes)` against the raw recipe list, so an
@@ -86,9 +85,16 @@ shrimp (never-ingredient) expiring today, 5 seeds, asserts never scheduled + exa
 
 Verified 2026-09-22: api tests 11 files/133 pass (was 132); typecheck/lint/prettier clean.
 
+**Review fixes (`/step-review`, 2026-10-13):** (1) `resolveExpiryConstraints(pantry, ctx)`
+now reads eligible recipes and `todayIndex` from `PlannerContext` itself, so no caller can
+pass the unfiltered list again; unit tests build a context instead. (2) New `plan()` test:
+tofu (only in `dinnerTooBig`) expiring today → never placed, one "no eligible recipe"
+violation. Mutation-checked: both exclusion tests fail when the resolver sees all recipes.
+`npx vitest run tests/planner.test.ts` 31/31; typecheck clean; lint 2 known web warnings.
+
 **Not yet done:** R04.3–R04.15.
 
-## R04.3 — Fix locked-slot-already-covers-expiry false violation — `implemented—awaiting review` (2026-09-22)
+## R04.3 — Fix locked-slot-already-covers-expiry false violation — `complete` (2026-09-22)
 
 r01-fixtures.md §5 fix: `placeMustUseConstraints` now computes `lockedIngredientIds`
 from `locked` only, skips a constraint already covered by a locked recipe before
@@ -98,6 +104,10 @@ New `describe("locks", ...)` in `planner.test.ts`: lock day 0 dinner to `dinnerS
 salmon expiring day 0 → no `pantry_expiry` violation, lock stays.
 
 Verified: typecheck/lint/prettier clean; api 11 files/134 pass (was 133). Web not re-run.
+
+**Review (`/step-review`, 2026-10-13):** no changes. Superseded by R04.4 and the deadline
+follow-up (d033a1e); current `coveredByLock` respects `earliestDay`/`deadlineDay`, and the
+original repro test still guards the bug.
 
 **Not yet done:** R04.4–R04.15.
 
@@ -140,7 +150,7 @@ Verified: typecheck/lint/prettier clean; api 11/136 pass (was 135, +1).
 
 **Next step:** R04.6 (needs a decision first) or another R04 slice, after review.
 
-## R04.6a — Derive weekday from weekStartDate, not startDayOfWeek setting — `implemented—awaiting review` (2026-09-22)
+## R04.6a — Derive weekday from weekStartDate, not startDayOfWeek setting — `complete` (2026-09-22)
 
 Split R04.6 into weekday derivation (this slice) and timezone-based "today"
 for expiry (R04.6b, blocked on the decision below).
@@ -186,7 +196,7 @@ Verified: typecheck/lint clean (same 2 pre-existing web warnings); api 11/138 pa
 
 **Next step:** R04.6b, after review.
 
-## R04.6b — Skip expiry constraints for weeks not containing today — `implemented—awaiting review` (2026-09-23)
+## R04.6b — Skip expiry constraints for weeks not containing today — `complete` (2026-09-23)
 
 `buildPlannerPantry` (`plan-inputs.ts`) now nulls out `daysUntilExpiry` for every
 pantry item when the requested `weekStartDate` isn't the week containing today,
@@ -226,7 +236,7 @@ in Prague) proving the household timezone picks the week.
 
 **Next step:** R04.7 (needs a decision first) or another R04 slice, after review.
 
-## R04.7 — Report conflicting locks instead of silently keeping them uncontested — `implemented—awaiting review` (2026-09-23)
+## R04.7 — Report conflicting locks instead of silently keeping them uncontested — `complete` (2026-09-23)
 
 Decision (user, before implementing): a stale lock reports through the
 existing `PlanViolation` shape with a new `locked_slot_conflict` constraint,
@@ -288,7 +298,7 @@ rest of the suite.
 
 **Next step:** another R04 slice (R04.8 or R04.9), after review.
 
-## R04.8a — Schema for persisted violations and input-version watermarks — `implemented—awaiting review` (2026-09-23)
+## R04.8a — Schema for persisted violations and input-version watermarks — `complete` (2026-09-23)
 
 R04.8 itself already flagged "likely splits further into a migration slice and a
 service-logic slice, given its size" — split accordingly, same reasoning as R03.2's
@@ -315,12 +325,16 @@ Verified 2026-09-23: typecheck/lint/prettier clean (api+web, same 2 pre-existing
 new tests this slice). Confirmed via `\d plan_weeks` and a direct `SELECT` that all 4 existing
 rows still load with the new columns `NULL`, not dropped.
 
+**Review (`/step-review`, 2026-10-13):** no changes. 0022 is additive (nullable, no
+defaults, no rewrite); null `violations` = "not evaluated" is tested. Reviewed as the
+schema stands today only: R04.8a shares commit 700626a with R04.8b.
+
 **Not yet done:** R04.8b (persist `violations` and the three watermarks at generation time;
 compute and expose staleness on `GET`).
 
 **Next step:** R04.8b, after review.
 
-## R04.8b — Persist violations and input-version watermarks at generation time — `implemented—awaiting review` (2026-09-23)
+## R04.8b — Persist violations and input-version watermarks at generation time — `complete` (2026-09-23)
 
 Write side only, per R04.8a's own "not yet done" line — staleness-on-`GET` (comparing
 stored watermarks against live data) is left for a further slice, same split R03.2→R03.3
@@ -385,7 +399,7 @@ leaves the watermark older than the data used — a false "stale", never a false
 
 **Next step:** the staleness-on-read slice, after review.
 
-## R04.8c — Staleness on read — `implemented—awaiting review` (2026-10-13)
+## R04.8c — Staleness on read — `complete` (2026-10-13)
 
 `GET /api/plans/:weekStartDate` now returns `evaluation: { status: "current" | "stale" |
 "not_evaluated", staleInputs: ("recipes"|"targets"|"exclusions")[] }`, comparing the stored
@@ -415,7 +429,7 @@ hid the missing field. Doc comment says `current` = inputs unchanged (lock/swap 
 
 **Next step:** R04.9 (`severity` on `PlanViolation`), after review.
 
-## R04.9 — `severity` on `PlanViolation` — `implemented—awaiting review` (2026-10-13)
+## R04.9 — `severity` on `PlanViolation` — `complete` (2026-10-13)
 
 `PlanViolation` (`shared/src/planner.ts`) gains `severity?: number`: how far past the
 limit, as a fraction of the limit, per [r04-search-quality.md](r04-search-quality.md).

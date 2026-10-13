@@ -170,18 +170,16 @@ describe("hard constraint: pantry items expiring soon are used", () => {
   });
 
   it("measures expiry deadlines from today and never forces a placement before today", () => {
-    const ctx = buildPlannerContext(
-      FIXTURE_RECIPES,
-      FIXTURE_PRICES,
-      FIXTURE_PREFERENCES,
-      FIXTURE_TARGETS,
-    );
+    const ctx = buildPlannerContext(FIXTURE_RECIPES, FIXTURE_PRICES, FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      todayIndex: 3,
+    });
     const pantry = [
       { ingredientId: INGREDIENT_ID.salmon, daysUntilExpiry: 2 },
       { ingredientId: INGREDIENT_ID.shrimp, daysUntilExpiry: -2 },
     ];
 
-    const { constraints, violations } = resolveExpiryConstraints(pantry, FIXTURE_RECIPES, 3);
+    const { constraints, violations } = resolveExpiryConstraints(pantry, ctx);
 
     expect(constraints).toEqual([
       expect.objectContaining({
@@ -208,7 +206,11 @@ describe("hard constraint: pantry items expiring soon are used", () => {
       { ingredientId: INGREDIENT_ID.salmon, daysUntilExpiry: 2 },
       { ingredientId: INGREDIENT_ID.shrimp, daysUntilExpiry: -2 },
     ];
-    expect(resolveExpiryConstraints(pantry, FIXTURE_RECIPES, null)).toEqual({
+    const ctx = buildPlannerContext(FIXTURE_RECIPES, FIXTURE_PRICES, FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      todayIndex: null,
+    });
+    expect(resolveExpiryConstraints(pantry, ctx)).toEqual({
       constraints: [],
       violations: [],
     });
@@ -244,6 +246,37 @@ describe("hard constraint: pantry items expiring soon are used", () => {
       expect(shrimpViolations[0]!.detail).toBe(
         `no eligible recipe uses ingredient ${INGREDIENT_ID.shrimp}, expiring in 0 day(s)`,
       );
+    }
+  });
+  it("does not force-place an implausible-portion recipe to use up an expiring ingredient", () => {
+    const pantryWithExpiringTofu = [
+      ...FIXTURE_PANTRY,
+      { ingredientId: INGREDIENT_ID.tofu, daysUntilExpiry: 0 },
+    ];
+
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const result = plan(
+        FIXTURE_RECIPES,
+        FIXTURE_PRICES,
+        pantryWithExpiringTofu,
+        FIXTURE_PREFERENCES,
+        [],
+        FIXTURE_TARGETS,
+        seed,
+      );
+
+      for (const slot of result.slots) {
+        expect(slot.recipeId).not.toBe(RECIPE_ID.dinnerTooBig);
+      }
+
+      const tofuViolations = result.violations.filter(
+        (violation) =>
+          violation.constraint === "pantry_expiry" &&
+          violation.detail.includes(`ingredient ${INGREDIENT_ID.tofu}`),
+      );
+      expect(tofuViolations.map((violation) => violation.detail)).toEqual([
+        `no eligible recipe uses ingredient ${INGREDIENT_ID.tofu}, expiring in 0 day(s)`,
+      ]);
     }
   });
 });
