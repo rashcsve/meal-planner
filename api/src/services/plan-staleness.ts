@@ -14,11 +14,9 @@ const WATERMARKS: [StaleInput, keyof CurrentInputVersions][] = [
 ];
 
 /**
- * Compares the watermarks stored at generation with the live ones. A null stored
- * watermark means that input category was empty at generation, so any live value
- * means it changed since. `evaluated` is false for a week never evaluated (legacy row).
- * Limitation: deleting some (not all) rows of a category doesn't advance MAX(updated_at),
- * so it goes undetected.
+ * Has any input changed since the plan was generated? null = the category was empty.
+ * "current" means inputs unchanged, not that violations still match the slots after a lock or swap.
+ * Misses partial deletes: they don't advance MAX(updated_at).
  */
 export function evaluateStaleness(
   evaluated: boolean,

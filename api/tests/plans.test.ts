@@ -537,6 +537,23 @@ describe("evaluation staleness on read (R04.8c)", () => {
     const stale = (await staleRes.json()) as { evaluation: unknown };
     expect(stale.evaluation).toEqual({ status: "stale", staleInputs: ["recipes"] });
   });
+
+  it("returns evaluation on generate, matching the GET shape", async () => {
+    await seedPlannableHousehold();
+    const res = await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const body = (await res.json()) as { evaluation: unknown };
+    expect(body.evaluation).toEqual({ status: "current", staleInputs: [] });
+  });
+
+  it("reports not_evaluated for a legacy week with no stored violations", async () => {
+    await db
+      .insert(planWeeks)
+      .values({ weekStartDate: "2026-01-05", seed: 1, plannerVersion: "v1" });
+
+    const res = await app.request("/api/plans/2026-01-05");
+    const body = (await res.json()) as { evaluation: unknown };
+    expect(body.evaluation).toEqual({ status: "not_evaluated", staleInputs: [] });
+  });
 });
 
 describe("household configuration", () => {

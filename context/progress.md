@@ -11,6 +11,8 @@ step depends on it. Statuses below are copied from the archived headings as writ
 - R05 — Persisted `violations` go stale after a lock or swap, because `setSlotLocked` and
   `replaceSlot` don't re-evaluate. Fix by extracting an evaluate-existing-slots function.
   Stopgap if the UI shows violations first: null them in those two calls. (R04.8b)
+  Since R04.8c, GET also labels such a week `current` — that means inputs unchanged,
+  not "violations match the slots". (R04.8c review)
 - R07 — `recipesVersionAt` ignores `ingredients.updated_at`, so editing an ingredient's
   nutrition doesn't mark plans stale. Deliberate for now. (R04.8b)
 - R07 — Deleting some (not all) rows of an input category doesn't advance
@@ -387,5 +389,11 @@ generate → `current`; edit an ingredient line with `updatedAt` +1s → `stale`
 
 Verified 2026-10-13: `npm run test -w api` → 12 files/152 tests pass (was 146);
 typecheck api+web clean. No web change, so `npm run test -w web` not run; no UI yet.
+
+**Review fixes:** `generatePlan` now also returns `evaluation` (`current`), because
+`useWeek.ts` seeds the GET cache with the POST response and an untyped `setQueryData`
+hid the missing field. Doc comment says `current` = inputs unchanged (lock/swap gap, R05).
++2 integration tests: generate returns `evaluation`; legacy row → `not_evaluated`.
+`npm run test -w api` → 154 pass; typecheck api+web and lint clean.
 
 **Next step:** R04.9 (`severity` on `PlanViolation`), after review.

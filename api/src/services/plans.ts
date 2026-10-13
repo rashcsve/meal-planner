@@ -19,7 +19,7 @@ import {
   casIncrementRevision,
 } from "../repositories/planWeeks.js";
 import { getCurrentInputVersions } from "../repositories/planInputVersions.js";
-import { evaluateStaleness } from "./plan-staleness.js";
+import { evaluateStaleness, type PlanEvaluationStatus } from "./plan-staleness.js";
 import {
   findSlotsByWeekId,
   findLockedSlotsByWeekId,
@@ -99,7 +99,8 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
     }
 
     const slots = await upsertPlanSlots(week.id, result.slots, tx);
-    return { ...week, slots, violations: result.violations };
+    const evaluation: PlanEvaluationStatus = { status: "current", staleInputs: [] };
+    return { ...week, slots, violations: result.violations, evaluation };
   });
 }
 
