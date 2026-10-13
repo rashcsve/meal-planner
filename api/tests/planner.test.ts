@@ -4,6 +4,8 @@ import {
   buildPlannerContext,
   eligibleRecipes,
   placeMustUseConstraints,
+  resolveExpiryConstraints,
+  parseSlotKey,
   isWeekday,
 } from "../src/services/planner.js";
 import {
@@ -130,6 +132,40 @@ describe("hard constraint: pantry items expiring soon are used", () => {
     expect(withinDeadline.reasons).toContain("uses salmon expiring in 2 day(s)");
   });
 
+  it("measures expiry deadlines from today and never forces a placement before today", () => {
+    const ctx = buildPlannerContext(
+      FIXTURE_RECIPES,
+      FIXTURE_PRICES,
+      FIXTURE_PREFERENCES,
+      FIXTURE_TARGETS,
+    );
+    const pantry = [
+      { ingredientId: INGREDIENT_ID.salmon, daysUntilExpiry: 2 },
+      { ingredientId: INGREDIENT_ID.shrimp, daysUntilExpiry: -2 },
+    ];
+
+    const { constraints, violations } = resolveExpiryConstraints(pantry, FIXTURE_RECIPES, 3);
+
+    expect(constraints).toEqual([
+      expect.objectContaining({
+        ingredientId: INGREDIENT_ID.salmon,
+        earliestDay: 3,
+        deadlineDay: 5,
+      }),
+    ]);
+    expect(violations.map((violation) => violation.detail)).toEqual([
+      `ingredient ${INGREDIENT_ID.shrimp} already expired, unused`,
+    ]);
+
+    for (const rng of [() => 0, () => 0.999]) {
+      const placement = placeMustUseConstraints(constraints, ctx.recipesById, [], rng);
+      const days = [...placement.assigned.keys()].map((key) => parseSlotKey(key).day);
+      expect(days).toHaveLength(1);
+      expect(days[0]).toBeGreaterThanOrEqual(3);
+      expect(days[0]).toBeLessThanOrEqual(5);
+    }
+  });
+
   it("does not force-place a never-ingredient recipe to use up an expiring exclusion", () => {
     const pantryWithExpiringShrimp = [
       ...FIXTURE_PANTRY,
@@ -203,11 +239,13 @@ describe("locks", () => {
     const constraints = [
       {
         ingredientId: INGREDIENT_ID.salmon,
+        earliestDay: 0,
         deadlineDay: 0,
         candidateRecipeIds: [RECIPE_ID.dinnerSalmon],
       },
       {
         ingredientId: INGREDIENT_ID.salmon,
+        earliestDay: 0,
         deadlineDay: 1,
         candidateRecipeIds: [RECIPE_ID.dinnerSalmon],
       },
@@ -235,7 +273,12 @@ describe("locks", () => {
     // Salmon expires today (deadlineDay 0) with no other candidate recipe, but the
     // only lock using salmon is on day 6 - too late to save this batch.
     const constraints = [
-      { ingredientId: INGREDIENT_ID.salmon, deadlineDay: 0, candidateRecipeIds: [] },
+      {
+        ingredientId: INGREDIENT_ID.salmon,
+        earliestDay: 0,
+        deadlineDay: 0,
+        candidateRecipeIds: [],
+      },
     ];
     const locked = [{ day: 6, mealSlot: "dinner" as const, recipeId: RECIPE_ID.dinnerSalmon }];
 

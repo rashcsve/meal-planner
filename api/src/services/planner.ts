@@ -260,6 +260,7 @@ export function eligibleRecipes(mealSlot: MealSlot, ctx: PlannerContext): Planne
 
 export interface MustUseConstraint {
   ingredientId: number;
+  earliestDay: number;
   deadlineDay: number;
   candidateRecipeIds: number[];
 }
@@ -267,6 +268,7 @@ export interface MustUseConstraint {
 export function resolveExpiryConstraints(
   pantry: PlannerPantryItem[],
   recipes: PlannerRecipe[],
+  todayIndex: number,
 ): { constraints: MustUseConstraint[]; violations: PlanViolation[] } {
   const constraints: MustUseConstraint[] = [];
   const violations: PlanViolation[] = [];
@@ -294,7 +296,8 @@ export function resolveExpiryConstraints(
     } else {
       constraints.push({
         ingredientId: item.ingredientId,
-        deadlineDay: Math.min(item.daysUntilExpiry, DAYS_PER_WEEK - 1),
+        earliestDay: todayIndex,
+        deadlineDay: Math.min(todayIndex + item.daysUntilExpiry, DAYS_PER_WEEK - 1),
         candidateRecipeIds,
       });
     }
@@ -332,7 +335,7 @@ function findPlacementOptions(
 ): { key: SlotKey; recipeId: number }[] {
   const options: { key: SlotKey; recipeId: number }[] = [];
 
-  for (let day = 0; day <= constraint.deadlineDay; day++) {
+  for (let day = constraint.earliestDay; day <= constraint.deadlineDay; day++) {
     for (const mealSlot of PLANNED_MEAL_SLOTS) {
       const key = slotKey(day, mealSlot);
       if (assigned.has(key)) continue;
@@ -391,6 +394,7 @@ export function placeMustUseConstraints(
   for (const constraint of sortedByDeadline) {
     const coveredByLock = locked.some(
       (lockedSlot) =>
+        lockedSlot.day >= constraint.earliestDay &&
         lockedSlot.day <= constraint.deadlineDay &&
         recipesById.get(lockedSlot.recipeId)?.ingredientIds.includes(constraint.ingredientId),
     );
@@ -981,6 +985,7 @@ export function plan(
   const expiry = resolveExpiryConstraints(
     pantry,
     PLANNED_MEAL_SLOTS.flatMap((mealSlot) => ctx.eligibleRecipesBySlot.get(mealSlot) ?? []),
+    targets.todayIndex,
   );
   violations.push(...expiry.violations);
 

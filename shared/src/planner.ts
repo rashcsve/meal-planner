@@ -45,6 +45,7 @@ export interface PlannerTargets {
   weeklyBudgetCzk: number;
   startDayOfWeek: number;
   weekStartDate: string;
+  todayIndex: number;
 }
 
 export const PLANNER_VERSION = "1.0.0";

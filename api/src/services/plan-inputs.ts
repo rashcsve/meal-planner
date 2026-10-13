@@ -49,9 +49,9 @@ function todayInTimezone(timezone: string): string {
   return `${lookup.year}-${lookup.month}-${lookup.day}`;
 }
 
-function weekContainsToday(weekStartDate: string, timezone: string): boolean {
-  const offset = daysBetween(weekStartDate, todayInTimezone(timezone));
-  return offset >= 0 && offset < DAYS_PER_WEEK;
+function todayIndexInWeek(weekStartDate: string, today: string): number | null {
+  const offset = daysBetween(weekStartDate, today);
+  return offset >= 0 && offset < DAYS_PER_WEEK ? offset : null;
 }
 
 async function buildPlannerRecipes(): Promise<PlannerRecipe[]> {
@@ -115,16 +115,14 @@ async function buildPlannerPrices(weekStartDate: string): Promise<PlannerIngredi
 }
 
 async function buildPlannerPantry(
-  weekStartDate: string,
-  timezone: string,
+  today: string,
+  trackExpiry: boolean,
 ): Promise<PlannerPantryItem[]> {
   const items = await findAllPantryItems();
-  const trackExpiry = weekContainsToday(weekStartDate, timezone);
 
   return items.map((item) => ({
     ingredientId: item.ingredientId,
-    daysUntilExpiry:
-      trackExpiry && item.expiresOn ? daysBetween(weekStartDate, item.expiresOn) : null,
+    daysUntilExpiry: trackExpiry && item.expiresOn ? daysBetween(today, item.expiresOn) : null,
   }));
 }
 
@@ -149,6 +147,7 @@ function buildPlannerTargets(
   members: HouseholdMember[],
   weekStartDate: string,
   settings: HouseholdSettings,
+  todayIndex: number,
 ): PlannerTargets {
   const memberTargets = members.map((member) => {
     if (member.dinnerCalorieTarget === null) {
@@ -162,6 +161,7 @@ function buildPlannerTargets(
     weeklyBudgetCzk: settings.weeklyBudgetCzk,
     startDayOfWeek: settings.startDayOfWeek,
     weekStartDate,
+    todayIndex,
   };
 }
 
@@ -172,13 +172,16 @@ export async function getPlanInputs(weekStartDate: string): Promise<PlanInputs> 
   const settings = await getHouseholdSettings();
   if (!settings) throw new HouseholdSettingsNotConfiguredError();
 
+  const today = todayInTimezone(settings.timezone);
+  const todayIndex = todayIndexInWeek(weekStartDate, today);
+
   const [recipes, prices, pantry, preferences] = await Promise.all([
     buildPlannerRecipes(),
     buildPlannerPrices(weekStartDate),
-    buildPlannerPantry(weekStartDate, settings.timezone),
+    buildPlannerPantry(today, todayIndex !== null),
     buildPlannerPreferences(members),
   ]);
-  const targets = buildPlannerTargets(members, weekStartDate, settings);
+  const targets = buildPlannerTargets(members, weekStartDate, settings, todayIndex ?? 0);
 
   return { recipes, prices, pantry, preferences, targets };
 }

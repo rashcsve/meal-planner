@@ -155,4 +155,5 @@ export const FIXTURE_TARGETS: PlannerTargets = {
   weeklyBudgetCzk: 3000,
   startDayOfWeek: 1, // Monday
   weekStartDate: "2026-09-21", // also a Monday
+  todayIndex: 0,
 };
