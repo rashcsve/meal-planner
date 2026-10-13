@@ -451,14 +451,18 @@ way R01 resolved its own four, not by guessing during implementation.
 **Rule slices**
 
 1. **R04.1 — Empty price catalog / empty exclusions are valid states, not errors.**
-   `EmptyPriceCatalogError`/`EmptyPreferencesError` currently throw whenever either list is
-   empty (`planner.ts`'s `plan()` guard clauses), conflating "genuinely no promos this week"
-   / "household has no exclusions" with "settings were never configured." Distinguish the
-   two; only the latter should still block generation.
-2. **R04.2 — Fix pantry-exclusion bypass.** Implements [r01-fixtures.md §4](r01-fixtures.md)'s
+   **Resolved 2026-09-22** — `EmptyPriceCatalogError`/`EmptyPreferencesError` used to throw
+   whenever either list was empty, conflating "genuinely no promos this week" / "household
+   has no exclusions" with "settings were never configured." Decision: these two lists have
+   no "not configured" state — an empty list is always valid, so both errors were removed.
+   The real not-configured cases (`NoHouseholdMembersError`,
+   `HouseholdMemberMissingDinnerTargetError`, `HouseholdSettingsNotConfiguredError`) live in
+   `plan-inputs.ts` and still block generation.
+2. **R04.2 — Fix pantry-exclusion bypass.** **Resolved 2026-09-22.** Implements [r01-fixtures.md §4](r01-fixtures.md)'s
    proposed fix exactly: filter `resolveExpiryConstraints`'s candidate recipes through
    `ctx.eligibleRecipesBySlot` instead of the raw recipe list.
-3. **R04.3 — Fix locked-slot-already-covers-expiry false violation.** Implements
+3. **R04.3 — Fix locked-slot-already-covers-expiry false violation.** **Resolved
+   2026-09-22** (deadline-day check added in d033a1e). Implements
    [r01-fixtures.md §5](r01-fixtures.md)'s proposed fix: precompute `lockedIngredientIds`
    from `locked` only, skip already-covered constraints before searching for a placement.
 4. **R04.4 — Generalize "existing coverage" beyond locked slots.** **Resolved

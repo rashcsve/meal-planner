@@ -82,6 +82,8 @@ is still shown, labelled; an unknown one has no number to show at all).
 
 ## 4. Pantry exclusions
 
+**Fixed in R04.2 (2026-09-22); covered in `planner.test.ts`.** Original finding below.
+
 **Confirmed reproducible bug, not yet covered by any test.** Read directly in
 `planner.ts`: `resolveExpiryConstraints(pantry, recipes)` (`planner.ts:930`) receives the
 *unfiltered* `recipes` array passed into `plan()`, not `ctx.eligibleRecipesBySlot` (the
@@ -111,6 +113,8 @@ can now correctly fire for a pantry item whose only recipe exists but is exclude
 test currently pins that exact string, so the wording is free to correct.
 
 ## 5. Locks
+
+**Fixed in R04.3 (2026-09-22); covered in `planner.test.ts`'s `locks` block.** Original finding below.
 
 **Confirmed reproducible bug, exact fixture below.** `placeMustUseConstraints`
 (`planner.ts:369-378`) seeds its `assigned` map directly from `locked` slots with zero
@@ -184,7 +188,7 @@ wave through.
 | Portions | Covered, correct | None — invariant, keep passing |
 | Original yield / scaling | Not covered (duplication itself untested) | New coverage once R02 centralizes the calculation |
 | Missing nutrition | One test encodes the bug as expected behavior | Deliberately rewrite `nutrition.test.ts:29-36`'s expectation; add `status` assertions to its three siblings |
-| Pantry exclusions | Not covered; bug confirmed live | New `describe("locks and exclusions interact with expiry", ...)`-style coverage in R04 |
-| Locks | Not covered at planner level; bug confirmed live | New coverage in R04 (planner-level, distinct from `plans.test.ts`'s concurrency tests) |
+| Pantry exclusions | Fixed in R04.2; covered in `planner.test.ts` | None — regression gate, keep passing |
+| Locks | Fixed in R04.3; covered in `planner.test.ts`'s `locks` block | None — regression gate, keep passing |
 | Legacy plans | N/A — deliberately deferred | None now; revisit when real data exists |
 | Stale revisions | Covered, correct (10 tests) | None — regression gate, keep passing |

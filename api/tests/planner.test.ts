@@ -432,23 +432,49 @@ describe("infeasible input", () => {
 
 describe("empty price catalog and preferences are valid states, not errors", () => {
   it("plans successfully with no tracked prices (no promos this week)", () => {
-    expect(() =>
-      plan(FIXTURE_RECIPES, [], FIXTURE_PANTRY, FIXTURE_PREFERENCES, [], FIXTURE_TARGETS, 1),
-    ).not.toThrow();
+    const result = plan(
+      FIXTURE_RECIPES,
+      [],
+      FIXTURE_PANTRY,
+      FIXTURE_PREFERENCES,
+      [],
+      FIXTURE_TARGETS,
+      1,
+    );
+
+    expect(result.slots).toHaveLength(7);
+    expect(result.slots.every((slot) => slot.recipeId !== null)).toBe(true);
+    expect(result.violations.some((v) => v.constraint === "no_eligible_recipe")).toBe(false);
   });
 
   it("plans successfully with no household exclusions", () => {
-    expect(() =>
-      plan(
-        FIXTURE_RECIPES,
-        FIXTURE_PRICES,
-        FIXTURE_PANTRY,
-        { neverIngredientIds: [] },
-        [],
-        FIXTURE_TARGETS,
-        1,
-      ),
-    ).not.toThrow();
+    const shrimpOnly = FIXTURE_RECIPES.filter((recipe) => recipe.id === RECIPE_ID.dinnerShrimp);
+
+    // With the household's exclusion, the only recipe is ineligible...
+    const excluded = plan(
+      shrimpOnly,
+      FIXTURE_PRICES,
+      [],
+      FIXTURE_PREFERENCES,
+      [],
+      FIXTURE_TARGETS,
+      1,
+    );
+    expect(excluded.slots.every((slot) => slot.recipeId === null)).toBe(true);
+
+    // ...with no exclusions, the same recipe fills the week.
+    const result = plan(
+      shrimpOnly,
+      FIXTURE_PRICES,
+      [],
+      { neverIngredientIds: [] },
+      [],
+      FIXTURE_TARGETS,
+      1,
+    );
+    expect(result.slots).toHaveLength(7);
+    expect(result.slots.every((slot) => slot.recipeId === RECIPE_ID.dinnerShrimp)).toBe(true);
+    expect(result.violations.some((v) => v.constraint === "no_eligible_recipe")).toBe(false);
   });
 });
 
