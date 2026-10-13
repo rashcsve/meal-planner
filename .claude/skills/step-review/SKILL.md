@@ -73,27 +73,24 @@ evidence.
 
 ## Output
 
-Lead with findings, ordered by severity:
+Review thoroughly; report briefly. Plain words, exactly this shape:
 
-- **Critical:** data loss, security issue, broken core behaviour, or unsafe deployment.
-- **Important:** correctness or architecture issue that should be fixed before the step closes.
-- **Minor:** worthwhile improvement that does not block completion.
+```
+Verdict: ready | ready with minor issues | not ready
 
-For every finding include:
+1. [Critical|Important|Minor] file:line — what goes wrong, for whom. Fix: <one line>.
+2. ...
 
-- file and precise location;
-- observable consequence;
-- evidence or reproduction path;
-- smallest reasonable correction.
+Checked: <commands run and results, one line>
+Not checked: <one line, only if something important was not covered>
+```
 
-Then include:
-
-- assumptions or open questions;
-- checks inspected or run;
-- a short verdict: `ready`, `ready with minor issues`, or `not ready`.
-
-Do not invent findings to fill categories. If no blocking issue is found, say so and name
-the residual risks or untested areas. Do not provide a large replacement implementation.
+Severity: **Critical** = data loss, security, broken core behaviour; **Important** = must
+be fixed before the step closes; **Minor** = worth doing, not blocking. Order most severe
+first. At most two lines per finding; add one line of evidence only when the problem is
+not obvious from the location. Do not invent findings to fill categories; if there are
+none, the list is empty. No replacement implementations — the user can ask for details
+on any finding.
 
 Your report goes back to the main conversation, which shows it to the user. The user
 decides what gets fixed.
