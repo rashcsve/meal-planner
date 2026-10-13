@@ -14,6 +14,7 @@ import {
   planSlots,
 } from "../src/db/schema.js";
 import { plansRoute } from "../src/routes/plans.js";
+import { archiveRecipe } from "../src/services/recipes.js";
 import { errorHandler } from "../src/lib/errorHandler.js";
 
 const app = new Hono().onError(errorHandler).route("/api/plans", plansRoute);
@@ -459,6 +460,49 @@ describe("existing behaviour preserved", () => {
   });
 });
 
+describe("locked slots (R04.7)", () => {
+  it("keeps a lock on an archived recipe and reports it as a conflict on regenerate", async () => {
+    await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as {
+      revision: number;
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
+    const lockedRecipeId = generated.slots.find(
+      (s) => s.day === 0 && s.mealSlot === "dinner",
+    )!.recipeId!;
+
+    const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const locked = (await lockRes.json()) as { revision: number };
+    await archiveRecipe(lockedRecipeId);
+
+    const regenRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 3,
+      expectedRevision: locked.revision,
+    });
+    expect(regenRes.status).toBe(200);
+    const regenBody = (await regenRes.json()) as {
+      slots: { day: number; mealSlot: string; locked: boolean; recipeId: number | null }[];
+      violations: { slot: { day: number; mealSlot: string } | null; constraint: string }[];
+    };
+
+    const slot = regenBody.slots.find((s) => s.day === 0 && s.mealSlot === "dinner");
+    expect(slot).toMatchObject({ locked: true, recipeId: lockedRecipeId });
+    expect(regenBody.violations).toContainEqual(
+      expect.objectContaining({
+        slot: { day: 0, mealSlot: "dinner" },
+        constraint: "locked_slot_conflict",
+      }),
+    );
+  });
+});
+
 describe("persisted evaluation (R04.8b)", () => {
   it("persists violations and input-version watermarks, surviving a reload", async () => {
     await seedPlannableHousehold();
@@ -673,8 +717,13 @@ describe("pantry expiry across weeks", () => {
       seed: 1,
     });
     expect(includedRes.status).toBe(200);
-    const includedBody = (await includedRes.json()) as { violations: { constraint: string }[] };
-    expect(includedBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(true);
+    const includedBody = (await includedRes.json()) as {
+      violations: { constraint: string; detail: string }[];
+    };
+    const expiryDetails = includedBody.violations
+      .filter((v) => v.constraint === "pantry_expiry")
+      .map((v) => v.detail);
+    expect(expiryDetails).toEqual([`ingredient ${strayIngredient!.id} already expired, unused`]);
 
     const excludedRes = await postJson("/api/plans/generate", {
       weekStartDate: weekStartDateExcluded,
