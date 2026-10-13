@@ -514,7 +514,9 @@ way R01 resolved its own four, not by guessing during implementation.
 9. **R04.9 — Add `severity` to `PlanViolation`.** Populate it in
    `validateMemberDinnerCalories`/`validateWeeklyBudget` using
    [r04-search-quality.md](r04-search-quality.md)'s formulas. Purely additive — violation
-   _counts_ and existing test expectations for counts/messages are unaffected.
+   _counts_ and existing test expectations for counts/messages are unaffected. Exception
+   (approved during the slice): migration 0023 tightens the budget check to `> 0`, so a
+   budget of 0 now gets a 422 instead of being saved.
 10. **R04.10 — Replace `isBetter`'s two-tier comparison with the three-tier comparator**
     (violation count → severity sum → score), keeping the existing input-order tie-break
     unchanged. Depends on R04.9. New tests from the "incremental budget repair" fixture in

@@ -16,6 +16,10 @@ type Story = StoryObj<typeof HouseholdSettingsForm>;
 
 export const Default: Story = {};
 
+export const NeverSaved: Story = {
+  args: { defaultValues: { startDayOfWeek: 1, timezone: "Europe/Prague" } },
+};
+
 export const Saving: Story = { args: { isSaving: true } };
 
 export const SaveError: Story = {
