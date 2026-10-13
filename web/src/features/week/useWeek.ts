@@ -49,7 +49,7 @@ export function useGeneratePlan() {
   return useMutation({
     mutationFn: postGeneratePlan,
     onSuccess: (data, variables) => {
-      queryClient.setQueryData(weekKeys.detail(variables.weekStartDate), data);
+      queryClient.setQueryData<PlanWeek | null>(weekKeys.detail(variables.weekStartDate), data);
     },
   });
 }

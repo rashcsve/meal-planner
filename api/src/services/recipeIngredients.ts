@@ -1,9 +1,11 @@
 import type { RecipeIngredientLineInput } from "shared";
+import { db } from "../db/index.js";
 import {
   deleteRecipeIngredientLine,
   insertRecipeIngredientLine,
   updateRecipeIngredientLine,
 } from "../repositories/recipeIngredients.js";
+import { touchRecipe } from "../repositories/recipes.js";
 import { RecipeIngredientLineNotFoundError } from "../lib/errors.js";
 
 export async function addIngredientLine(recipeId: number, data: RecipeIngredientLineInput) {
@@ -22,8 +24,11 @@ export async function editIngredientLine(
 }
 
 export async function removeIngredientLine(recipeId: number, lineId: number) {
-  const line = await deleteRecipeIngredientLine(recipeId, lineId);
-  if (!line) throw new RecipeIngredientLineNotFoundError(recipeId, lineId);
+  return db.transaction(async (tx) => {
+    const line = await deleteRecipeIngredientLine(recipeId, lineId, tx);
+    if (!line) throw new RecipeIngredientLineNotFoundError(recipeId, lineId);
 
-  return line;
+    await touchRecipe(recipeId, tx);
+    return line;
+  });
 }

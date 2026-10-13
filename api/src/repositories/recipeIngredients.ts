@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { RecipeIngredientLineInput } from "shared";
-import { db } from "../db/index.js";
+import { db, type DbClient } from "../db/index.js";
 import { ingredients, recipeIngredients } from "../db/schema.js";
 import { IngredientNotFoundError, RecipeNotFoundError } from "../lib/errors.js";
 import { PG_FOREIGN_KEY_VIOLATION, pgErrorCode, pgErrorConstraint } from "../lib/db.js";
@@ -89,7 +89,7 @@ export async function updateRecipeIngredientLine(
         displayAmount: data.displayAmount ?? null,
         displayUnit: data.displayUnit ?? null,
         isOptional: data.isOptional ?? false,
-        updatedAt: new Date(),
+        updatedAt: sql`now()`,
       })
       .where(and(eq(recipeIngredients.id, lineId), eq(recipeIngredients.recipeId, recipeId)))
       .returning();
@@ -102,8 +102,12 @@ export async function updateRecipeIngredientLine(
   }
 }
 
-export async function deleteRecipeIngredientLine(recipeId: number, lineId: number) {
-  const [line] = await db
+export async function deleteRecipeIngredientLine(
+  recipeId: number,
+  lineId: number,
+  client: DbClient = db,
+) {
+  const [line] = await client
     .delete(recipeIngredients)
     .where(and(eq(recipeIngredients.id, lineId), eq(recipeIngredients.recipeId, recipeId)))
     .returning();

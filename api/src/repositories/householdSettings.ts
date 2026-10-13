@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, type DbClient } from "../db/index.js";
 import { householdSettings } from "../db/schema.js";
 
@@ -26,7 +26,7 @@ export async function upsertHouseholdSettings(data: HouseholdSettingsInput) {
     .values({ id: SETTINGS_ROW_ID, ...data })
     .onConflictDoUpdate({
       target: householdSettings.id,
-      set: { ...data, updatedAt: new Date() },
+      set: { ...data, updatedAt: sql`now()` },
     })
     .returning();
   return settings!;
@@ -38,7 +38,7 @@ export async function confirmStandardPortionTarget(targetKcal: number, client: D
     .set({
       standardPortionTargetKcal: targetKcal,
       standardPortionConfirmedAt: new Date(),
-      updatedAt: new Date(),
+      updatedAt: sql`now()`,
     })
     .where(eq(householdSettings.id, SETTINGS_ROW_ID))
     .returning();

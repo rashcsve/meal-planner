@@ -548,7 +548,7 @@ describe("persisted evaluation (R04.8b)", () => {
 
     await db
       .update(recipeIngredients)
-      .set({ displayAmount: 999, updatedAt: new Date() })
+      .set({ displayAmount: 999, updatedAt: new Date(Date.now() + 1000) })
       .where(eq(recipeIngredients.recipeId, dinnerRecipe.id));
 
     const secondRes = await postJson("/api/plans/generate", {

@@ -1,6 +1,6 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type { CreateRecipeInput } from "shared";
-import { db } from "../db/index.js";
+import { db, type DbClient } from "../db/index.js";
 import { recipes } from "../db/schema.js";
 import { DuplicateTitleError } from "../lib/errors.js";
 import { PG_UNIQUE_VIOLATION, pgErrorCode } from "../lib/db.js";
@@ -29,18 +29,25 @@ export async function insertRecipe(data: CreateRecipeInput) {
 export async function updateRecipeServings(id: number, servings: number) {
   const [recipe] = await db
     .update(recipes)
-    .set({ servings, updatedAt: new Date() })
+    .set({ servings, updatedAt: sql`now()` })
     .where(eq(recipes.id, id))
     .returning();
   return recipe;
 }
 
 export async function archiveRecipe(id: number) {
-  const now = new Date();
+  const now = sql`now()`;
   const [recipe] = await db
     .update(recipes)
     .set({ archivedAt: now, updatedAt: now })
     .where(and(eq(recipes.id, id), isNull(recipes.archivedAt)))
     .returning();
   return recipe;
+}
+
+export async function touchRecipe(id: number, client: DbClient = db) {
+  await client
+    .update(recipes)
+    .set({ updatedAt: sql`now()` })
+    .where(eq(recipes.id, id));
 }

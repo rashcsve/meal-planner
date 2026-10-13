@@ -18,6 +18,9 @@ step depends on it. Statuses below are copied from the archived headings as writ
 - R07 — Deleting some (not all) rows of an input category doesn't advance
   `MAX(updated_at)`, so the plan still reads `current`. Fix with a per-category version
   counter bumped on every write/delete, or soft deletes. (R04.8c)
+- R07 — `now()` is transaction start, not commit time: a write whose transaction started
+  before a plan's generation but commits after it stamps an older `updated_at`, so the
+  plan reads `current`. Same version-counter fix closes it. (R04.8 review)
 - R04.8 — Expiry violations depend on the generation date, but staleness checks
   neither pantry changes nor the date. A plan generated Monday still reads `current`
   on Thursday with outdated expiry violations. (R04.6b/R04.7 review)
