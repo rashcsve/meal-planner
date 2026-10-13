@@ -32,22 +32,27 @@ Raise mismatches; never overwrite working code to match the plan.
 
 ## 2. Explain and plan — STOP
 
-Present, briefly:
+Present the plan in exactly this short format, plain words, one line per item:
 
-1. Two or three sentences: what this slice does and why, in backend terms.
-2. Which **Learning** questions from the milestone this slice touches.
-3. Acceptance criteria, explicit non-goals, files and layers affected.
-4. The work split into sub-steps of at most ~40 lines of new code each.
-5. For every new library or tool: what problem it solves and what would break without it.
-6. Schema changes, and the verification commands you will run.
+```
+What: <one sentence>
+Why: <one sentence>
+You'll learn: <1–2 of the milestone's Learning questions>
+Steps:
+  1. <one line — at most ~40 lines of new code each>
+  2. ...
+New library: <name — problem it solves; what breaks without it>   (only if any)
+Schema change: <what changes; destructive or not>                  (only if any)
+Decide: <a choice that changes behaviour, data or architecture>    (only if any)
+```
 
-Ask about any decision that changes product behaviour, data, or architecture. Then STOP
-for approval. In plan mode, present this as the plan.
+Keep acceptance criteria, files, non-goals and verification commands to yourself unless
+the user asks for "details". Then STOP for approval. In plan mode, present this as the plan.
 
 ## 3. Build one sub-step at a time — STOP after each
 
-Implement one sub-step, then say what changed and how to verify it (a command, URL or
-query), and STOP. Follow CLAUDE.md and the path-scoped rules; no code the step didn't ask
+Implement one sub-step, then report in two lines — `Changed: <one line>` and
+`Check: <one command, URL or query>` — and STOP. Follow CLAUDE.md and the path-scoped rules; no code the step didn't ask
 for, no opportunistic refactors, no next step. Hook messages explain a project rule —
 follow them, don't work around them.
 

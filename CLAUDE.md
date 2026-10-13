@@ -32,6 +32,9 @@ household preferences. Personal project, built to production standards.
 10. **If I can't explain a piece of the stack out loud, we stop and go back to it
     before continuing.**
 
+11. **Keep messages short.** Answer first, plain words, about 10 lines before you
+    stop. More detail only when I ask for it.
+
 ## Stack
 
 | Concern    | Choice                              |
