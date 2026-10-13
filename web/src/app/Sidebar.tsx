@@ -54,6 +54,7 @@ function useWeekRangeLabel(): string | null {
   const weekStartDate = resolveWeekStartDate(
     params.get("start"),
     settingsQuery.data?.startDayOfWeek ?? 1,
+    settingsQuery.data?.timezone,
   );
   return formatWeekRange(weekStartDate);
 }

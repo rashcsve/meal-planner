@@ -8,12 +8,15 @@ function formatIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function localTodayIso(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function todayIso(timezone: string | undefined): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day}`;
 }
 
 export function addDays(dateIso: string, days: number): string {
@@ -28,8 +31,12 @@ export function startOfWeekContaining(todayIso: string, startDayOfWeek: number):
   return addDays(todayIso, -offset);
 }
 
-export function resolveWeekStartDate(paramValue: string | null, startDayOfWeek: number): string {
-  return paramValue ?? startOfWeekContaining(localTodayIso(), startDayOfWeek);
+export function resolveWeekStartDate(
+  paramValue: string | null,
+  startDayOfWeek: number,
+  timezone?: string,
+): string {
+  return paramValue ?? startOfWeekContaining(todayIso(timezone), startDayOfWeek);
 }
 
 export function dayDate(weekStartDate: string, day: number): string {

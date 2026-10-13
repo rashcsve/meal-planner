@@ -19,9 +19,12 @@ import { MealDetailRail } from "./MealDetailRail";
 const START_PARAM = "start";
 const DEFAULT_START_DAY_OF_WEEK = 1;
 
-function useCurrentWeekStart(startDayOfWeek: number): [string, (next: string) => void] {
+function useCurrentWeekStart(
+  startDayOfWeek: number,
+  timezone: string | undefined,
+): [string, (next: string) => void] {
   const [params, setParams] = useSearchParams();
-  const weekStartDate = resolveWeekStartDate(params.get(START_PARAM), startDayOfWeek);
+  const weekStartDate = resolveWeekStartDate(params.get(START_PARAM), startDayOfWeek, timezone);
 
   function setWeekStartDate(next: string) {
     const updated = new URLSearchParams(params);
@@ -38,6 +41,7 @@ export function WeekPage() {
   const recipesQuery = useRecipeCatalog();
   const [weekStartDate, setWeekStartDate] = useCurrentWeekStart(
     settingsQuery.data?.startDayOfWeek ?? DEFAULT_START_DAY_OF_WEEK,
+    settingsQuery.data?.timezone,
   );
   const weekQuery = useWeek(weekStartDate);
   const generatePlan = useGeneratePlan();
