@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R04.12 — let the systematic pass reconsider empty slots, after review.
+**Next step:** R04.13 — comparison harness (initial vs. legacy random vs. systematic), after review.
 
 ## R04 — planner correctness and search quality
 
@@ -23,6 +23,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R04.9 | `severity` on `PlanViolation` | complete 10-13 |
 | R04.10 | `isBetter`: violation count → severity sum → score | complete 10-14 |
 | R04.11 | Systematic per-dinner pass replaces 500 random attempts | complete 10-14 |
+| R04.12 | Empty slots: not a search case; contract test only, no search change | complete 10-14 |
 
 ## Earlier milestones
 
@@ -40,6 +41,8 @@ Short status only. Full entries (decisions, tests, verification) live in
 - R04 — Expiry slots are still protected from search; unprotect once expiry coverage is in the comparator.
 - R04.13 — Add a fixture where best- and first-improvement end differently; current tests can't tell them apart.
 - R04.13 — `isBetter` compares `severitySum` exactly; consider an epsilon for float noise.
+- R05 — If the search runs over a saved week with gaps, decide whether it may fill empty
+  slots (and whether an over-budget fill beats leaving it empty). See R04.12.
 - R05 — `setSlotLocked`/`replaceSlot` don't re-evaluate, so stored violations go stale
   (GET still says `current`). Fix: extract an evaluate-existing-slots function.
 - R07 — Ingredient edits (`ingredients.updated_at`) don't mark plans stale. Deliberate for now.

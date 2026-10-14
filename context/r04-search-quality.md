@@ -89,15 +89,13 @@ must demonstrate, for R04 to turn into `plannerFixtures.ts` additions and
    given the locked slot's fixed contribution to both violation count and severity (e.g., a
    locked recipe that itself contributes to a `weekly_budget` overage the free slots then
    have to compensate for).
-3. **Empty slots.** A slot with `no_eligible_recipe` (`planner.ts:432-436`) becomes
-   fillable once, e.g., a household exclusion is loosened between generation attempts.
-   Must demonstrate the systematic search (R04's per-dinner "examine every eligible
-   replacement" pass, replacing the 500-random-attempt loop) considers filling an empty
-   slot as a candidate move on equal footing with changing an already-filled one — the
-   current `localSearch` only ever swaps an already-assigned slot's recipe
-   (`planner.ts:846-855` reads `assigned.get(key)`, so an empty slot is never a
-   `freeKeys` candidate for a *change*, only `fillRemainingSlots` fills it once,
-   beforehand, with no chance to reconsider that choice against later tie-break data).
+3. **Empty slots.** **Resolved by R04.12 (2026-10-14): not a search case.** Eligibility
+   depends only on meal type and household rules (`eligibleRecipes`), not on the rest of
+   the week, so a slot `fillRemainingSlots` leaves empty (`no_eligible_recipe`) has no
+   candidates the search could try either. A loosened exclusion means a new `plan()` call,
+   which rebuilds the context and fills the slot from scratch. Contract kept: `localSearch`
+   only swaps assigned slots; filling is `fillRemainingSlots`' job (test: "leaves an empty
+   slot empty"). Revisit if R05 runs the search over a saved week with gaps.
 4. **A case requiring coordinated (multi-slot) change.** Weekly cost is linear and
    additive per slot (`validateWeeklyBudget`'s `sum + recipe.costCzk * (totalServings /
    recipe.baseServings)`, `planner.ts:525`), so budget repair is always reachable by a

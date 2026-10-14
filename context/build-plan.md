@@ -525,9 +525,10 @@ way R01 resolved its own four, not by guessing during implementation.
     (examine every eligible replacement for every changeable dinner each pass; apply the
     single best strict improvement; repeat until a pass finds none, or the measured work
     budget from R04.14 is hit). Depends on R04.10.
-12. **R04.12 — Let the systematic pass reconsider empty slots**, not only the one-time
-    `fillRemainingSlots` fill before search starts, per the "empty slots" fixture in
-    r04-search-quality.md. Depends on R04.11.
+12. **R04.12 — Let the systematic pass reconsider empty slots.** **Resolved 2026-10-14
+    — no search change.** Within one `plan()` call a slot left empty has no eligible
+    recipe, so the search has nothing to try; see r04-search-quality.md §3. Added a test
+    pinning the contract (`localSearch` swaps assigned slots only).
 
 **Measurement slices**
 

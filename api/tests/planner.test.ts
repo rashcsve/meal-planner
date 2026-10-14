@@ -749,6 +749,16 @@ describe("search: systematic per-dinner pass", () => {
 
     expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(1);
   });
+
+  it("leaves an empty slot empty; filling is fillRemainingSlots' job", () => {
+    const ctx = contextFor([dinner(1, "chicken", 400), dinner(2, "beef", 100)], 1000);
+    const assigned = new Map([[slotKey(SATURDAY, "dinner"), 1]]);
+
+    localSearch(assigned, ctx, new Set());
+
+    expect(assigned.has(slotKey(SUNDAY, "dinner"))).toBe(false);
+    expect(eligibleRecipes("dinner", ctx)).toHaveLength(2);
+  });
 });
 
 describe("isBetter: violation count, then severity, then score", () => {

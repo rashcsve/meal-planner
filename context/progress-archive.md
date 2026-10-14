@@ -2168,3 +2168,25 @@ Verified 2026-10-14: `npm run test -w api` → 12 files/178 tests pass (planner 
 final test typing fix); `bash scripts/verify.sh` clean. Self-check questions not answered.
 
 **Next step:** R04.12 (let the pass reconsider empty slots), after review.
+
+
+## R04.12 — Let the systematic pass reconsider empty slots — `complete` (2026-10-14)
+
+No search change. Eligibility (`eligibleRecipes`) depends only on meal type and household
+rules, not on the rest of the week, so a slot `fillRemainingSlots` leaves empty has no
+candidates `localSearch` could try either. The r04-search-quality.md §3 premise ("exclusion
+loosened between attempts") is a new `plan()` call, which refills from scratch.
+
+Decision (user, option B): keep `localSearch` swapping assigned slots only; filling stays
+`fillRemainingSlots`' job. Rejected A (search fills empty slots — unreachable in `plan()`,
+raises over-budget-fill policy) and C (search does all filling — real output change,
+`PLANNER_VERSION` bump, too big). Same precedent as R04.5 (test-only slice).
+
+Files: `api/tests/planner.test.ts` (+1 "leaves an empty slot empty" in "search: systematic
+per-dinner pass"); `context/r04-search-quality.md` §3 and `context/build-plan.md` slice 12
+rewritten. Follow-up added under R05 for searching saved weeks with gaps.
+
+Verified 2026-10-14: `npm run test -w api` → 12 files/179 tests pass (planner file 42).
+Self-check questions not answered.
+
+**Next step:** R04.13 (comparison harness), after review.
