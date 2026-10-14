@@ -156,3 +156,28 @@ export const FIXTURE_TARGETS: PlannerTargets = {
   weekStartDate: "2026-09-21", // Monday
   todayIndex: 0,
 };
+
+export const BUDGET_REPAIR_RECIPE_ID = { fastExpensive: 10, slowCheap: 11 } as const;
+
+export const BUDGET_REPAIR_RECIPES: PlannerRecipe[] = [
+  {
+    id: BUDGET_REPAIR_RECIPE_ID.fastExpensive,
+    mealType: "dinner",
+    proteinSource: "chicken",
+    timeMinutes: 20,
+    costCzk: 400,
+    calories: 400,
+    baseServings: 4,
+    ingredientIds: [INGREDIENT_ID.chicken],
+  },
+  {
+    id: BUDGET_REPAIR_RECIPE_ID.slowCheap,
+    mealType: "dinner",
+    proteinSource: "chicken",
+    timeMinutes: 90,
+    costCzk: 40,
+    calories: 400,
+    baseServings: 4,
+    ingredientIds: [INGREDIENT_ID.rice],
+  },
+];

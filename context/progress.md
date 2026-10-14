@@ -25,6 +25,10 @@ step depends on it. Statuses below are copied from the archived headings as writ
   neither pantry changes nor the date. A plan generated Monday still reads `current`
   on Thursday with outdated expiry violations. (R04.6b/R04.7 review)
 
+- R04.13 — `isBetter` compares `severitySum` exactly; float rounding can make equal-severity
+  weeks differ by ~1e-16, so severity decides instead of score. Consider an epsilon when
+  measuring. (R04.10)
+
 ## Archived entries
 
 | Entry | Status |
@@ -462,3 +466,30 @@ clean; `npm run lint` clean (2 pre-existing web warnings). Self-check questions
 skipped at the user's request.
 
 **Next step:** R04.10 (three-tier comparator in `isBetter`), after review.
+
+## R04.10 — Three-tier comparator in `isBetter` — `complete` (2026-10-14)
+
+`isBetter` (`api/src/services/planner.ts`) now compares violation count → total severity →
+score, per [r04-search-quality.md](r04-search-quality.md). `PlanQuality` gains
+`severitySum`; `evaluatePlan` sums calorie + budget violation severities (missing = 0).
+Exact tie on all three still keeps the current assignment. `PlanQuality`, `evaluatePlan`
+and `isBetter` are now exported for direct tests.
+
+Decisions:
+- Test the comparator directly (exported), not only via seeded `localSearch` — isolates
+  each tier without randomness.
+- Budget-repair fixture kept separate (`BUDGET_REPAIR_RECIPES` in `plannerFixtures.ts`) so
+  existing tests' recipe lists don't change.
+
+Tests (`api/tests/planner.test.ts`): budget-repair `localSearch` test written first and
+failed (all 7 slots stayed on the fast recipe), passes after the change; +5 comparator
+unit tests. Review fixes: severity-sum test now has two violations; `localSearch` doc
+comment updated. Exact `!==` on `severitySum` kept — re-check at R04.11.
+
+Verified 2026-10-14: `npm run test -w api` → 12 files/174 tests pass; `npm run typecheck`
+clean; `npm run lint` clean (2 pre-existing web warnings). No web change. Self-check
+questions not answered. Planner tests must be run from `api/` (global setup resolves
+`./drizzle` relative to cwd).
+
+**Next step:** R04.11 (systematic per-dinner pass), after review.
+

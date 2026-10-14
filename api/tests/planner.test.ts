@@ -11,8 +11,14 @@ import {
   slotKey,
   validateMemberDinnerCalories,
   validateWeeklyBudget,
+  localSearch,
+  isBetter,
+  evaluatePlan,
 } from "../src/services/planner.js";
+import { createRng } from "../src/lib/rng.js";
 import {
+  BUDGET_REPAIR_RECIPE_ID,
+  BUDGET_REPAIR_RECIPES,
   FIXTURE_PANTRY,
   FIXTURE_PREFERENCES,
   FIXTURE_PRICES,
@@ -649,5 +655,75 @@ describe("reasons", () => {
       expect(slot.recipeId).not.toBeNull();
       expect(slot.reasons.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("search: incremental budget repair", () => {
+  it("accepts swaps that cut the overspend while the violation count stays at 1", () => {
+    const ctx = buildPlannerContext(BUDGET_REPAIR_RECIPES, FIXTURE_PRICES, FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      weeklyBudgetCzk: 250,
+    });
+    const assigned = new Map(
+      [0, 1, 2, 3, 4, 5, 6].map((day) => [
+        slotKey(day, "dinner"),
+        BUDGET_REPAIR_RECIPE_ID.fastExpensive as number,
+      ]),
+    );
+
+    localSearch(assigned, ctx, new Set(), createRng(1), 500);
+
+    expect([...assigned.values()]).toEqual(Array(7).fill(BUDGET_REPAIR_RECIPE_ID.slowCheap));
+    expect(validateWeeklyBudget(ctx, assigned)).toEqual([]);
+  });
+});
+
+describe("isBetter: violation count, then severity, then score", () => {
+  it("fewer violations wins even with higher severity and lower score", () => {
+    expect(
+      isBetter(
+        { violationCount: 1, severitySum: 0.9, score: 0 },
+        { violationCount: 2, severitySum: 0.1, score: 10 },
+      ),
+    ).toBe(true);
+  });
+
+  it("with equal counts, lower severity wins even with a lower score", () => {
+    expect(
+      isBetter(
+        { violationCount: 1, severitySum: 0.1, score: 0 },
+        { violationCount: 1, severitySum: 0.3, score: 10 },
+      ),
+    ).toBe(true);
+  });
+
+  it("with equal count and severity, higher score wins", () => {
+    expect(
+      isBetter(
+        { violationCount: 1, severitySum: 0.2, score: 5 },
+        { violationCount: 1, severitySum: 0.2, score: 4 },
+      ),
+    ).toBe(true);
+  });
+
+  it("an exact tie is not better, so the current assignment is kept", () => {
+    const quality = { violationCount: 1, severitySum: 0.2, score: 5 };
+    expect(isBetter({ ...quality }, quality)).toBe(false);
+  });
+
+  it("evaluatePlan sums the severity of every violation", () => {
+    const ctx = buildPlannerContext(FIXTURE_RECIPES, FIXTURE_PRICES, FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      memberTargets: [
+        { memberId: 1, dinnerCalorieTarget: 340 },
+        { memberId: 2, dinnerCalorieTarget: 800 },
+      ],
+      weeklyBudgetCzk: 250,
+    });
+    const assigned = new Map([[slotKey(0, "dinner"), RECIPE_ID.dinnerSalmon as number]]);
+
+    const quality = evaluatePlan(assigned, ctx);
+    expect(quality.violationCount).toBe(2);
+    expect(quality.severitySum).toBeCloseTo(0.1 + 6 / 340);
   });
 });

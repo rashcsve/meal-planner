@@ -862,33 +862,45 @@ export function scorePlan(assigned: Map<SlotKey, number>, ctx: PlannerContext): 
 // ---------------------------------------------------------------------------
 
 /**
- * The two numbers isBetter compares.
+ * The three numbers isBetter compares.
  *
  * @example
- * { violationCount: 0, score: 4.5 } beats { violationCount: 1, score: 20 }.
+ * { violationCount: 0, severitySum: 0, score: 4.5 } beats
+ * { violationCount: 1, severitySum: 0.1, score: 20 }.
  */
-interface PlanQuality {
+export interface PlanQuality {
   violationCount: number;
+  severitySum: number;
   score: number;
 }
 
-function evaluatePlan(assigned: Map<SlotKey, number>, ctx: PlannerContext): PlanQuality {
-  const violationCount =
-    validateMemberDinnerCalories(ctx, assigned).length + validateWeeklyBudget(ctx, assigned).length;
-  return { violationCount, score: scorePlan(assigned, ctx) };
+export function evaluatePlan(assigned: Map<SlotKey, number>, ctx: PlannerContext): PlanQuality {
+  const violations = [
+    ...validateMemberDinnerCalories(ctx, assigned),
+    ...validateWeeklyBudget(ctx, assigned),
+  ];
+  return {
+    violationCount: violations.length,
+    severitySum: violations.reduce((sum, violation) => sum + (violation.severity ?? 0), 0),
+    score: scorePlan(assigned, ctx),
+  };
 }
 
 /**
- * Compare violationCount first, score second. Fewer broken rules always
- * wins, even with a lower score - score only decides when both plans
- * break the same number of rules.
+ * Compare violationCount first, severitySum second, score third. Fewer
+ * broken rules always wins; with the same count, breaking them by less
+ * wins; score only decides when both are tied.
  *
  * @example
- * isBetter({violationCount:0,score:5}, {violationCount:1,score:20}) -> true
+ * isBetter({violationCount:1,severitySum:0.1,score:0},
+ *          {violationCount:1,severitySum:0.3,score:5}) -> true
  */
-function isBetter(candidate: PlanQuality, current: PlanQuality): boolean {
+export function isBetter(candidate: PlanQuality, current: PlanQuality): boolean {
   if (candidate.violationCount !== current.violationCount) {
     return candidate.violationCount < current.violationCount;
+  }
+  if (candidate.severitySum !== current.severitySum) {
+    return candidate.severitySum < current.severitySum;
   }
   return candidate.score > current.score;
 }
@@ -899,7 +911,8 @@ function isBetter(candidate: PlanQuality, current: PlanQuality): boolean {
  *
  * @example
  * Tries swapping day 3 lunch from recipe 4 to recipe 7; keeps the
- * swap only if it doesn't add violations and the score isn't worse.
+ * swap only if isBetter says so: fewer violations, else lower
+ * severitySum, else higher score. An exact tie keeps recipe 4.
  */
 export function localSearch(
   assigned: Map<SlotKey, number>,
