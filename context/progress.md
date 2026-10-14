@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R04.11 — systematic per-dinner pass, after review.
+**Next step:** R04.12 — let the systematic pass reconsider empty slots, after review.
 
 ## R04 — planner correctness and search quality
 
@@ -22,6 +22,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R04.8c | Staleness computed on read | complete 10-13 |
 | R04.9 | `severity` on `PlanViolation` | complete 10-13 |
 | R04.10 | `isBetter`: violation count → severity sum → score | complete 10-14 |
+| R04.11 | Systematic per-dinner pass replaces 500 random attempts | complete 10-14 |
 
 ## Earlier milestones
 
@@ -36,6 +37,8 @@ Short status only. Full entries (decisions, tests, verification) live in
 
 - R04 — Decide if budget enforcement can be optional before checkout pricing exists.
 - R04.8 — Staleness ignores pantry changes and the date, so expiry violations go stale unnoticed.
+- R04 — Expiry slots are still protected from search; unprotect once expiry coverage is in the comparator.
+- R04.13 — Add a fixture where best- and first-improvement end differently; current tests can't tell them apart.
 - R04.13 — `isBetter` compares `severitySum` exactly; consider an epsilon for float noise.
 - R05 — `setSlotLocked`/`replaceSlot` don't re-evaluate, so stored violations go stale
   (GET still says `current`). Fix: extract an evaluate-existing-slots function.

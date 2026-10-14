@@ -47,7 +47,7 @@ export interface PlannerTargets {
   todayIndex: number | null;
 }
 
-export const PLANNER_VERSION = "1.0.0";
+export const PLANNER_VERSION = "2.0.0";
 
 export interface MemberServing {
   memberId: number;

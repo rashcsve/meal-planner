@@ -855,10 +855,8 @@ export function scorePlan(assigned: Map<SlotKey, number>, ctx: PlannerContext): 
 }
 
 // ---------------------------------------------------------------------------
-// 7. What: randomly swap one slot's recipe, keep the swap only if it
-//    helps, undo it otherwise. Why: earlier steps only pick by calories -
-//    this is the only place promos, protein variety, speed, and store
-//    count ever get considered.
+// 7. Improve the week one dinner at a time - the only place promos,
+//    variety, speed and store count are considered.
 // ---------------------------------------------------------------------------
 
 /**
@@ -906,47 +904,41 @@ export function isBetter(candidate: PlanQuality, current: PlanQuality): boolean 
 }
 
 /**
- * protectedKeys = locked + expiring-ingredient slots. Off-limits:
- * swapping one could break a rule an earlier step already solved.
- *
- * @example
- * Tries swapping day 3 lunch from recipe 4 to recipe 7; keeps the
- * swap only if isBetter says so: fewer violations, else lower
- * severitySum, else higher score. An exact tie keeps recipe 4.
+ * Each pass applies the single best swap among free slots; ties keep the
+ * earlier candidate. Stops when a pass finds none. protectedKeys = locked
+ * + expiry slots.
  */
 export function localSearch(
   assigned: Map<SlotKey, number>,
   ctx: PlannerContext,
   protectedKeys: Set<SlotKey>,
-  rng: () => number,
-  iterations: number,
 ): Map<SlotKey, number> {
   const freeKeys = [...assigned.keys()].filter((key) => !protectedKeys.has(key));
   let quality = evaluatePlan(assigned, ctx);
+  let improved = true;
 
-  for (let i = 0; i < iterations; i++) {
-    if (freeKeys.length === 0) break;
+  while (improved) {
+    let best: { key: SlotKey; recipeId: number; quality: PlanQuality } | null = null;
 
-    // Pick a random slot and a random different recipe for it.
-    const key = pickRandom(freeKeys, rng);
-    if (!key) continue;
-    const { mealSlot } = parseSlotKey(key);
-    const candidates = eligibleRecipes(mealSlot, ctx);
-    const candidate = pickRandom(candidates, rng);
-    if (!candidate) continue;
+    for (const key of freeKeys) {
+      const currentRecipeId = assigned.get(key);
+      if (currentRecipeId === undefined) continue;
 
-    // Nothing to try if it picked the same recipe already there.
-    const previousRecipeId = assigned.get(key);
-    if (previousRecipeId === undefined || previousRecipeId === candidate.id) continue;
+      for (const candidate of eligibleRecipes(parseSlotKey(key).mealSlot, ctx)) {
+        if (candidate.id === currentRecipeId) continue;
+        assigned.set(key, candidate.id);
+        const candidateQuality = evaluatePlan(assigned, ctx);
+        assigned.set(key, currentRecipeId);
+        if (isBetter(candidateQuality, best?.quality ?? quality)) {
+          best = { key, recipeId: candidate.id, quality: candidateQuality };
+        }
+      }
+    }
 
-    // Make the swap, check the plan, keep it or put the old one back.
-    assigned.set(key, candidate.id);
-    const newQuality = evaluatePlan(assigned, ctx);
-
-    if (isBetter(newQuality, quality)) {
-      quality = newQuality;
-    } else {
-      assigned.set(key, previousRecipeId);
+    improved = best !== null;
+    if (best) {
+      assigned.set(best.key, best.recipeId);
+      quality = best.quality;
     }
   }
 
@@ -973,8 +965,6 @@ export function collectReasons(
   ];
 }
 
-const DEFAULT_LOCAL_SEARCH_ITERATIONS = 500;
-
 /**
  * @param recipes - the household's full recipe library.
  * @param prices - ingredient prices across every tracked store.
@@ -982,7 +972,7 @@ const DEFAULT_LOCAL_SEARCH_ITERATIONS = 500;
  * @param preferences - never-ingredients for the household.
  * @param locked - slots the user has pinned and the algorithm won't touch.
  * @param targets - daily calorie and weekly budget targets.
- * @param seed - makes the randomized parts (placement ties, local search)
+ * @param seed - makes the randomized part (placement ties) reproducible.
  *
  * @returns the 28 slots, any violations, and the seed/version used.
  *
@@ -1018,7 +1008,7 @@ export function plan(
 
   // Try to improve the plan without breaking a rule or touching a
   // protected slot.
-  localSearch(assigned, ctx, protectedKeys, rng, DEFAULT_LOCAL_SEARCH_ITERATIONS);
+  localSearch(assigned, ctx, protectedKeys);
 
   // Final check against the finished plan.
   violations.push(...validateLockedSlots(locked, ctx));

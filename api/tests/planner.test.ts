@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PlannerRecipe } from "shared";
 import {
   plan,
   buildPlannerContext,
@@ -15,7 +16,6 @@ import {
   isBetter,
   evaluatePlan,
 } from "../src/services/planner.js";
-import { createRng } from "../src/lib/rng.js";
 import {
   BUDGET_REPAIR_RECIPE_ID,
   BUDGET_REPAIR_RECIPES,
@@ -671,10 +671,83 @@ describe("search: incremental budget repair", () => {
       ]),
     );
 
-    localSearch(assigned, ctx, new Set(), createRng(1), 500);
+    localSearch(assigned, ctx, new Set());
 
     expect([...assigned.values()]).toEqual(Array(7).fill(BUDGET_REPAIR_RECIPE_ID.slowCheap));
     expect(validateWeeklyBudget(ctx, assigned)).toEqual([]);
+  });
+});
+
+describe("search: systematic per-dinner pass", () => {
+  const SATURDAY = 5;
+  const SUNDAY = 6;
+
+  function dinner(id: number, proteinSource: string, costCzk: number): PlannerRecipe {
+    return {
+      id,
+      mealType: "dinner",
+      proteinSource,
+      timeMinutes: 30,
+      costCzk,
+      calories: 400,
+      baseServings: 4,
+      ingredientIds: [],
+    };
+  }
+
+  function contextFor(recipes: PlannerRecipe[], weeklyBudgetCzk: number) {
+    return buildPlannerContext(recipes, [], FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      weeklyBudgetCzk,
+    });
+  }
+
+  it("applies the best replacement, not just any improving one", () => {
+    const ctx = contextFor(
+      [dinner(1, "chicken", 400), dinner(2, "beef", 200), dinner(3, "pork", 100)],
+      100,
+    );
+    const assigned = new Map([[slotKey(SATURDAY, "dinner"), 1]]);
+
+    localSearch(assigned, ctx, new Set());
+
+    expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(3);
+  });
+
+  it("breaks an exact tie by input recipe order", () => {
+    const expensive = dinner(1, "chicken", 400);
+    const beef = dinner(2, "beef", 100);
+    const pork = dinner(3, "pork", 100);
+    const forward = new Map([[slotKey(SATURDAY, "dinner"), 1]]);
+    const reversed = new Map([[slotKey(SATURDAY, "dinner"), 1]]);
+
+    localSearch(forward, contextFor([expensive, beef, pork], 100), new Set());
+    localSearch(reversed, contextFor([expensive, pork, beef], 100), new Set());
+
+    expect(forward.get(slotKey(SATURDAY, "dinner"))).toBe(2);
+    expect(reversed.get(slotKey(SATURDAY, "dinner"))).toBe(3);
+  });
+
+  it("never changes a protected slot but still improves the others", () => {
+    const ctx = contextFor([dinner(1, "chicken", 400), dinner(2, "beef", 100)], 100);
+    const assigned = new Map([
+      [slotKey(SATURDAY, "dinner"), 1],
+      [slotKey(SUNDAY, "dinner"), 1],
+    ]);
+
+    localSearch(assigned, ctx, new Set([slotKey(SATURDAY, "dinner")]));
+
+    expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(1);
+    expect(assigned.get(slotKey(SUNDAY, "dinner"))).toBe(2);
+  });
+
+  it("stops and keeps the current recipe when no alternative is strictly better", () => {
+    const ctx = contextFor([dinner(1, "chicken", 100), dinner(2, "beef", 100)], 1000);
+    const assigned = new Map([[slotKey(SATURDAY, "dinner"), 1]]);
+
+    localSearch(assigned, ctx, new Set());
+
+    expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(1);
   });
 });
 

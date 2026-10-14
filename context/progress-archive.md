@@ -2143,3 +2143,28 @@ questions not answered. Planner tests must be run from `api/` (global setup reso
 
 **Next step:** R04.11 (systematic per-dinner pass), after review.
 
+
+## R04.11 — Systematic per-dinner pass replaces 500 random attempts — `complete` (2026-10-14)
+
+`localSearch` (`api/src/services/planner.ts`) now runs passes: each pass evaluates every
+eligible recipe for every free slot, applies the single best strict improvement under
+`isBetter`, and repeats until a pass finds none. `rng`/`iterations` parameters and
+`DEFAULT_LOCAL_SEARCH_ITERATIONS` removed; `rng` now only drives expiry placement.
+`PLANNER_VERSION` 1.0.0 → 2.0.0 (`shared/src/planner.ts`): same seed now gives a different week.
+
+Decisions:
+- Expiry-placed slots stay protected — expiry isn't in `evaluatePlan`, so unprotecting
+  them now would let the search drop expiry coverage.
+- No work limit yet — terminates because each move is a strict improvement over finitely
+  many weeks; the measured limit is R04.14. Exact `!==` on `severitySum` re-checked: quality
+  is deterministic per week, so termination holds.
+- Tie-break: earlier free slot, then earlier recipe in input order.
+
+Tests (`api/tests/planner.test.ts`): +4 in "search: systematic per-dinner pass" (best
+replacement, input-order tie, protected slot unchanged, stops when nothing is strictly
+better). Limitation: end-state tests don't distinguish best- from first-improvement.
+
+Verified 2026-10-14: `npm run test -w api` → 12 files/178 tests pass (planner file 41 after
+final test typing fix); `bash scripts/verify.sh` clean. Self-check questions not answered.
+
+**Next step:** R04.12 (let the pass reconsider empty slots), after review.
