@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R04.14 — choose the work limit from R04.13's numbers.
+**Next step:** R04.15 — final validation and honest stop-reason reporting.
 
 ## R04 — planner correctness and search quality
 
@@ -25,6 +25,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R04.11 | Systematic per-dinner pass replaces 500 random attempts | complete 10-14 |
 | R04.12 | Empty slots: not a search case; contract test only, no search change | complete 10-14 |
 | R04.13 | Comparison harness; systematic ties legacy on rules, trails best seed on score | complete 10-14 |
+| R04.14 | Work limit: 10,000 evaluations per search, no wall-clock cutoff | complete 10-14 |
 
 ## Earlier milestones
 

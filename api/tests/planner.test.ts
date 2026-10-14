@@ -763,6 +763,26 @@ describe("search: systematic per-dinner pass", () => {
     expect(stats).toEqual({ passes: 2, evaluations: 4 });
   });
 
+  it("stops at the work limit mid-pass, keeping that pass's best swap so far", () => {
+    const ctx = contextFor(
+      [dinner(1, "chicken", 400), dinner(2, "beef", 200), dinner(3, "pork", 100)],
+      100,
+    );
+    const assigned = new Map([
+      [slotKey(SATURDAY, "dinner"), 1],
+      [slotKey(SUNDAY, "dinner"), 1],
+    ]);
+    const before = evaluatePlan(assigned, ctx);
+    const stats = { passes: 0, evaluations: 0 };
+
+    localSearch(assigned, ctx, new Set(), stats, 3);
+
+    expect(stats).toEqual({ passes: 1, evaluations: 3 });
+    expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(3);
+    expect(assigned.get(slotKey(SUNDAY, "dinner"))).toBe(1);
+    expect(isBetter(evaluatePlan(assigned, ctx), before)).toBe(true);
+  });
+
   it("leaves an empty slot empty; filling is fillRemainingSlots' job", () => {
     const ctx = contextFor([dinner(1, "chicken", 400), dinner(2, "beef", 100)], 1000);
     const assigned = new Map([[slotKey(SATURDAY, "dinner"), 1]]);

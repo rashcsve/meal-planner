@@ -139,10 +139,18 @@ arbitrary "large" synthetic case) rather than assumed:
 
 The evaluation-budget cutoff is then set from the *measured* maximum passes-to-convergence
 across the fixtures actually run, with a stated safety margin (e.g., observed maximum + a
-fixed number of extra passes, or observed evaluations × a fixed multiplier) — the specific
-margin and its resulting number belong in `progress.md` once R04 actually runs this
-measurement, not in this document, since no measurement has been run yet. A separate,
-explicit wall-clock safety cutoff is reported as its own distinct outcome (not conflated
-with "converged" or "hit evaluation budget"), per the plan's own text. Recording the
-measured numbers (not just the methodology) becomes part of R04's own acceptance
-criteria — "comparison results justify the chosen work limit," per `build-plan.md`.
+fixed number of extra passes, or observed evaluations × a fixed multiplier). The measured
+numbers are in `progress-archive.md` (R04.13); the chosen number and margin are recorded
+below. Stop reasons are "converged" vs. "hit evaluation budget" only — no wall-clock cutoff
+(see "Chosen"). Recording the measured numbers (not just the methodology) is part of R04's
+own acceptance criteria — "comparison results justify the chosen work limit," per
+`build-plan.md`.
+
+**Chosen (R04.14, 2026-10-14):** `MAX_SEARCH_EVALUATIONS = 10_000` candidate evaluations
+per `localSearch` call (`planner.ts`). Largest measured run: 1,372 evaluations / 4 passes
+(50 dinners); max passes anywhere: 8. So 10,000 is ~7× headroom, ~55 ms worst case at the
+measured ~5.5 µs per evaluation. A count, not a pass cap, because evaluations per pass grow
+with the library (7 × (N − 1)). On hitting it mid-pass, that pass's best swap so far is
+applied, then search stops. No wall-clock cutoff: the count already bounds time, and a timer
+would make results depend on machine speed and break deterministic replay. Reporting the
+stop reason is R04.15.

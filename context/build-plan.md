@@ -538,9 +538,11 @@ way R01 resolved its own four, not by guessing during implementation.
     Record evaluations-per-pass, passes-to-convergence and wall-clock-per-evaluation in
     `progress.md`. Depends on R04.10-R04.12 existing to compare against.
 14. **R04.14 — Choose and document the actual work-limit number from R04.13's measured
-    data**, wiring it in as the systematic search's stopping condition, kept distinct from a
-    separate wall-clock safety cutoff. Cannot start before R04.13 produces real numbers —
+    data**, wiring it in as the systematic search's stopping condition. Cannot start before R04.13 produces real numbers —
     this is the one place a concrete constant enters the code, and only after measurement.
+    **Resolved 2026-10-14** — `MAX_SEARCH_EVALUATIONS = 10_000` (~7× the largest measured
+    run); no wall-clock cutoff, to keep replay deterministic. Rationale in
+    r04-search-quality.md "Work-limit methodology".
 15. **R04.15 — Independent final validation and honest convergence reporting.** Run a full
     validation pass after search stops; report "no improvement found" distinctly from "hit
     the work budget," and neither as proof of a global optimum. Includes the store-count

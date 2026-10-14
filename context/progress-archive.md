@@ -2231,3 +2231,26 @@ Files: `api/src/services/planner.ts`, `api/tests/planner.test.ts` (+1 stats test
 `api/scripts/compare-search.ts`. Verified 2026-10-14: `npm run test -w api` → 12 files/180 tests pass.
 
 **Next step:** R04.14 (work limit from these numbers), after review.
+
+## R04.14 — Work limit from R04.13's measurements — `complete` (2026-10-14)
+
+`MAX_SEARCH_EVALUATIONS = 10_000` (`api/src/services/planner.ts`), passed by `plan()` as
+`localSearch`'s default limit. Counts candidate evaluations, not passes, because evaluations
+per pass grow with the library (7 × (N − 1); only dinners are searched). On hitting the limit
+mid-pass, that pass's best swap so far is applied, then search stops.
+
+Decisions:
+- 10,000 ≈ 7× the largest measured run (1,372 evaluations / 4 passes at 50 dinners; max 8
+  passes anywhere) — ~55 ms worst case at ~5.5 µs per evaluation.
+- No wall-clock cutoff (changes the plan's earlier "separate wall-clock safety cutoff"): the
+  count already bounds time, and a timer makes results machine-dependent and breaks
+  deterministic replay. `build-plan.md` slice 14 and r04-search-quality.md updated to match.
+- Reporting the stop reason is R04.15.
+
+Tests (`api/tests/planner.test.ts`): +1 "stops at the work limit mid-pass, keeping that
+pass's best swap so far".
+
+Verified 2026-10-14: `npm run test -w api` → 12 files/181 tests pass (planner file 44);
+typecheck and lint clean. Comparison harness not re-run.
+
+**Next step:** R04.15 (final validation, honest stop-reason reporting), after review.

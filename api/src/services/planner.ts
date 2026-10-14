@@ -903,6 +903,8 @@ export function isBetter(candidate: PlanQuality, current: PlanQuality): boolean 
   return candidate.score > current.score;
 }
 
+export const MAX_SEARCH_EVALUATIONS = 10_000;
+
 export interface SearchStats {
   passes: number;
   evaluations: number;
@@ -910,31 +912,36 @@ export interface SearchStats {
 
 /**
  * Each pass applies the single best swap among free slots; ties keep the
- * earlier candidate. Stops when a pass finds none. protectedKeys = locked
- * + expiry slots.
+ * earlier candidate. Stops when a pass finds none, or after maxEvaluations
+ * candidate evaluations (applying that pass's best swap so far).
+ * protectedKeys = locked + expiry slots.
  */
 export function localSearch(
   assigned: Map<SlotKey, number>,
   ctx: PlannerContext,
   protectedKeys: Set<SlotKey>,
   stats?: SearchStats,
+  maxEvaluations: number = MAX_SEARCH_EVALUATIONS,
 ): Map<SlotKey, number> {
   const freeKeys = [...assigned.keys()].filter((key) => !protectedKeys.has(key));
   let quality = evaluatePlan(assigned, ctx);
+  let evaluations = 0;
   let improved = true;
 
-  while (improved) {
+  while (improved && evaluations < maxEvaluations) {
     if (stats) stats.passes++;
     let best: { key: SlotKey; recipeId: number; quality: PlanQuality } | null = null;
 
-    for (const key of freeKeys) {
+    pass: for (const key of freeKeys) {
       const currentRecipeId = assigned.get(key);
       if (currentRecipeId === undefined) continue;
 
       for (const candidate of eligibleRecipes(parseSlotKey(key).mealSlot, ctx)) {
         if (candidate.id === currentRecipeId) continue;
+        if (evaluations >= maxEvaluations) break pass;
         assigned.set(key, candidate.id);
         const candidateQuality = evaluatePlan(assigned, ctx);
+        evaluations++;
         if (stats) stats.evaluations++;
         assigned.set(key, currentRecipeId);
         if (isBetter(candidateQuality, best?.quality ?? quality)) {
