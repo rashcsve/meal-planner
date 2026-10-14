@@ -2191,7 +2191,7 @@ Self-check questions not answered.
 
 **Next step:** R04.13 (comparison harness), after review.
 
-## R04.13 — Comparison harness: initial vs. legacy random vs. systematic — `awaiting review` (2026-10-14)
+## R04.13 — Comparison harness: initial vs. legacy random vs. systematic — `complete` (2026-10-14)
 
 `localSearch` takes an optional `SearchStats` (`passes` incl. the final no-improvement pass,
 `evaluations` = candidate `evaluatePlan` calls). Harness `api/scripts/compare-search.ts`
@@ -2221,7 +2221,10 @@ Max passes-to-convergence observed: 8. Expiry coverage identical across strategi
 Findings: hard rules — systematic matches legacy everywhere. Store-coordination stays at
 2 stores for both (single-dinner moves can't reach 1). Score — one systematic run beats most
 legacy seeds at 20 and 50 recipes (7/10, 8/10) and lands mid-pack at 5 (3 better, 2 tied).
-Only best-of-10 legacy edges it, so the gap is about restarts, not a weaker search.
+Only best-of-10 legacy edges it. Work differs, though: at 50 recipes systematic made 1372
+evaluations vs ≤500 per legacy seed, so these numbers can't say whether the gap is restarts or
+work. For R04.14: record score after each pass before picking a cap — a cap near 500 stops
+systematic after ~1.5 passes at 50 recipes.
 Systematic is deterministic and reports convergence.
 
 Files: `api/src/services/planner.ts`, `api/tests/planner.test.ts` (+1 stats test),

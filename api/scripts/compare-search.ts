@@ -1,4 +1,4 @@
-import type { PlannerIngredientPrice, PlannerRecipe } from "shared";
+import { scaleToServings, type PlannerIngredientPrice, type PlannerRecipe } from "shared";
 import { createRng } from "../src/lib/rng.js";
 import {
   buildPlannerContext,
@@ -87,7 +87,7 @@ function describeWeek(assigned: Map<SlotKey, number>, ctx: PlannerContext) {
   const recipes = [...assigned.values()].map((id) => ctx.recipesById.get(id)!);
   const cost = recipes.reduce((sum, recipe) => {
     const servings = computeMemberServings(recipe, ctx.targets.memberTargets).reduce((s, m) => s + m.servings, 0);
-    return sum + (recipe.costCzk * servings) / recipe.baseServings;
+    return sum + scaleToServings(recipe.costCzk, recipe.baseServings, servings);
   }, 0);
   const { violationCount, severitySum, score } = evaluatePlan(assigned, ctx);
   return {
