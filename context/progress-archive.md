@@ -2190,3 +2190,41 @@ Verified 2026-10-14: `npm run test -w api` → 12 files/179 tests pass (planner 
 Self-check questions not answered.
 
 **Next step:** R04.13 (comparison harness), after review.
+
+## R04.13 — Comparison harness: initial vs. legacy random vs. systematic — `awaiting review` (2026-10-14)
+
+`localSearch` takes an optional `SearchStats` (`passes` incl. the final no-improvement pass,
+`evaluations` = candidate `evaluatePlan` calls). Harness `api/scripts/compare-search.ts`
+(pure, no DB): same context and initial week for all strategies; legacy 500-attempt loop is a
+frozen copy inside the script only, run on the current `evaluatePlan`/`isBetter`, seeds 1–10.
+Inputs: budget-repair, locked-meal (day 0 protected), store-coordination (§4), synthetic
+dinner libraries of 5/20/50 recipes (fixed seed; real seed data has 24 recipes, few dinners).
+
+Measured (`npx tsx scripts/compare-search.ts` in `api/`):
+
+| Case | Systematic: viol / score / passes / evals / evals per pass / ms | Legacy (10 seeds): valid, score range, evals | Systematic vs seeds (better/tied/worse) |
+| --- | --- | --- | --- |
+| budget-repair | 0 / -7.5 / 8 / 56 / 7 / 0.5 | 10/10, -7.5, ~245 | 0/10/0 |
+| locked-meal | 1 (sev 1.08) / -6.33 / 7 / 42 / 6 / 0.3 | 0/10, same result, ~244 | 0/10/0 |
+| store-coordination | 0 / -2, 2 stores / 1 / 6 / 6 / 0.02 | 10/10, same, 2 stores | 0/10/0 |
+| synthetic-5 | 0 / -2.12 / 4 / 112 / 28 / 0.6 | 10/10, -2.78…-1.63, ~390 | 3/2/5 |
+| synthetic-20 | 0 / 9.58 / 6 / 798 / 133 / 4.5 | 10/10, 7.77…10.68, ~475 | 7/0/3 |
+| synthetic-50 | 0 / 15.5 / 4 / 1372 / 343 / 7.7 | 10/10, 13.45…16.03, ~490 | 8/1/1 |
+
+Evals per pass = free slots × (candidates − 1), e.g. 343 = 7 × 49. Timing: `ms` is the median of
+20 runs after 3 warm-up runs, whole `localSearch` call. Wall-clock per evaluation 5.4–5.6 µs on
+synthetic cases, stable across reruns; 7–12 µs on the 2-recipe cases, where fixed per-call and
+per-pass work is spread over few evaluations (legacy there: ~4 µs).
+Max passes-to-convergence observed: 8. Expiry coverage identical across strategies
+(expiry slots are protected), so not measured.
+
+Findings: hard rules — systematic matches legacy everywhere. Store-coordination stays at
+2 stores for both (single-dinner moves can't reach 1). Score — one systematic run beats most
+legacy seeds at 20 and 50 recipes (7/10, 8/10) and lands mid-pack at 5 (3 better, 2 tied).
+Only best-of-10 legacy edges it, so the gap is about restarts, not a weaker search.
+Systematic is deterministic and reports convergence.
+
+Files: `api/src/services/planner.ts`, `api/tests/planner.test.ts` (+1 stats test),
+`api/scripts/compare-search.ts`. Verified 2026-10-14: `npm run test -w api` → 12 files/180 tests pass.
+
+**Next step:** R04.14 (work limit from these numbers), after review.

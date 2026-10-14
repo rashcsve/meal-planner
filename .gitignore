@@ -3,4 +3,5 @@ meal.db
 dist/
 .env
 *.tsbuildinfo
-api/scripts/
+api/scripts/*
+!api/scripts/compare-search.ts

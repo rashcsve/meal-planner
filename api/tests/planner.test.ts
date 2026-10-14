@@ -750,6 +750,19 @@ describe("search: systematic per-dinner pass", () => {
     expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(1);
   });
 
+  it("counts every pass, including the final one, and every candidate evaluation", () => {
+    const ctx = contextFor(
+      [dinner(1, "chicken", 400), dinner(2, "beef", 200), dinner(3, "pork", 100)],
+      100,
+    );
+    const assigned = new Map([[slotKey(SATURDAY, "dinner"), 1]]);
+    const stats = { passes: 0, evaluations: 0 };
+
+    localSearch(assigned, ctx, new Set(), stats);
+
+    expect(stats).toEqual({ passes: 2, evaluations: 4 });
+  });
+
   it("leaves an empty slot empty; filling is fillRemainingSlots' job", () => {
     const ctx = contextFor([dinner(1, "chicken", 400), dinner(2, "beef", 100)], 1000);
     const assigned = new Map([[slotKey(SATURDAY, "dinner"), 1]]);
