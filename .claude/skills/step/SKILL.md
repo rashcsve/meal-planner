@@ -1,6 +1,6 @@
 ---
 name: step
-description: Run one plan step from context/build-plan.md as a learning session — explain and plan, build in small slices, verify, explain, self-check, propose a commit. Use only when the user invokes /step with an R-id.
+description: Run one plan step from context/build-plan.md as a learning session — explain and plan, build in small slices, verify, explain, end with a commit message. Use only when the user invokes /step with an R-id.
 argument-hint: "[R-id or slice, e.g. R05 or R04.9]"
 disable-model-invocation: true
 ---
@@ -74,17 +74,17 @@ Report each command with its result (pass/fail counts, failing output). A check 
 cannot run is a stated blocker, never a pass. If something fails, show it, propose a fix
 and wait. Never weaken, skip or delete a test to get green.
 
-## 5. Explain and self-check — STOP
+## 5. Explain
 
 1. Answer the Learning questions this slice touched, as concepts (what the database,
    HTTP layer or query cache actually does), not as a code tour.
 2. How the user can verify it themselves end to end.
-3. Three questions: one on data/control flow, one on the main trade-off, one debugging
-   scenario. Do not give answers until the user has tried; then give feedback.
+
+Do not quiz the user or end with questions.
 
 ## 6. Progress and commit
 
-After the user confirms, update `context/progress.md`. It is an evidence log, not a
+Update `context/progress.md`. It is an evidence log, not a
 transcript: about 15 lines per entry — id and status, outcome and files, commands and
 results, decisions one line each with the reason, exact next step. Durable facts about
 modules go in `architecture.md`; product decisions in `build-plan.md`. Anything left open
@@ -93,5 +93,6 @@ lines when resolved. When a milestone is complete and reviewed, move its entries
 to `context/progress-archive.md` with one index row each. Never mark a step complete
 based only on code generation.
 
-Then propose one commit message in the CLAUDE.md format, and remind the user to run
-`/step-review <id>` before committing. Do not commit, push, or start another step.
+End the message with one commit message in the CLAUDE.md format, as the last line, and
+remind the user to run `/step-review <id>` before committing. Do not commit, push, or
+start another step.

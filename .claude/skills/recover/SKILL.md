@@ -88,4 +88,5 @@ known limitation, or step status, using the entry format and Open follow-ups lis
 in `/step`'s "Progress and commit" section. Do not mark the build step complete; completion remains
 the responsibility of `/step` followed by `/step-review`.
 
-Do not commit, push, deploy, or continue with unrelated work unless explicitly asked.
+End the report with one commit message in the CLAUDE.md format. Do not commit, push,
+deploy, or continue with unrelated work unless explicitly asked.

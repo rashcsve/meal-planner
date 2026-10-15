@@ -86,8 +86,8 @@ fix(db): use bound parameters in ingredient lookup
 chore(deps): add pino for structured logging
 ```
 
-Suggest commit messages when I ask. Never run `git commit` yourself unless I
-explicitly ask.
+After any change to files, end the reply with one suggested commit message instead of
+follow-up questions. Never run `git commit` yourself unless I explicitly ask.
 
 ## AI-assisted development
 
