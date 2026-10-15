@@ -1,4 +1,4 @@
-import type { LockedSlot, MealSlot } from "shared";
+import type { LockedSlot, MealSlot, MemberServing } from "shared";
 import {
   plan,
   buildPlannerContext,
@@ -6,11 +6,13 @@ import {
   checkSlotEligibility,
   computeMemberServings,
   collectReasons,
+  evaluateExistingWeek,
   scoreSlot,
   slotKey,
   type SlotKey,
+  type PlannerContext,
 } from "./planner.js";
-import { getPlanInputs } from "./plan-inputs.js";
+import { getPlanInputs, type PlanInputs } from "./plan-inputs.js";
 import { db } from "../db/index.js";
 import { findRecipeById } from "../repositories/recipes.js";
 import {
@@ -35,7 +37,72 @@ import {
   RecipeNotEligibleError,
   StaleRevisionError,
   ExpectedRevisionRequiredError,
+  HouseholdSettingsNotConfiguredError,
+  NoHouseholdMembersError,
+  HouseholdMemberMissingDinnerTargetError,
 } from "../lib/errors.js";
+
+const INCOMPLETE_HOUSEHOLD_ERRORS = [
+  HouseholdSettingsNotConfiguredError,
+  NoHouseholdMembersError,
+  HouseholdMemberMissingDinnerTargetError,
+];
+
+async function reevaluateSlots(
+  weekStartDate: string,
+  slots: {
+    day: number;
+    mealSlot: string;
+    recipeId: number | null;
+    locked: boolean;
+    memberServings: MemberServing[];
+  }[],
+) {
+  const inputVersions = await getCurrentInputVersions();
+  let inputs;
+  try {
+    inputs = await getPlanInputs(weekStartDate);
+  } catch (error) {
+    if (INCOMPLETE_HOUSEHOLD_ERRORS.some((errorType) => error instanceof errorType)) {
+      return { violations: null };
+    }
+    throw error;
+  }
+
+  const ctx = buildPlannerContext(
+    inputs.recipes,
+    inputs.prices,
+    inputs.preferences,
+    inputs.targets,
+  );
+  const violations = evaluateSlots(slots, inputs.pantry, ctx);
+  return { violations, ...inputVersions };
+}
+
+function evaluateSlots(
+  slots: {
+    day: number;
+    mealSlot: string;
+    recipeId: number | null;
+    locked: boolean;
+    memberServings: MemberServing[];
+  }[],
+  pantry: PlanInputs["pantry"],
+  ctx: PlannerContext,
+) {
+  const assigned = new Map<SlotKey, number>();
+  const locked: LockedSlot[] = [];
+  const savedServings = new Map<SlotKey, MemberServing[]>();
+  for (const slot of slots) {
+    if (slot.recipeId === null) continue;
+    const mealSlot = slot.mealSlot as MealSlot;
+    assigned.set(slotKey(slot.day, mealSlot), slot.recipeId);
+    savedServings.set(slotKey(slot.day, mealSlot), slot.memberServings);
+    if (slot.locked) locked.push({ day: slot.day, mealSlot, recipeId: slot.recipeId });
+  }
+
+  return evaluateExistingWeek(assigned, locked, pantry, ctx, savedServings);
+}
 
 async function getLockedSlots(planWeekId: number): Promise<LockedSlot[]> {
   const rows = await findLockedSlotsByWeekId(planWeekId);
@@ -128,8 +195,16 @@ export async function setSlotLocked(
   expectedRevision: number,
 ) {
   const week = await findWeekOrThrow(weekStartDate);
+  const slots = await findSlotsByWeekId(week.id);
+  const evaluation = await reevaluateSlots(
+    weekStartDate,
+    slots.map((slot) =>
+      slot.day === day && slot.mealSlot === mealSlot ? { ...slot, locked } : slot,
+    ),
+  );
+
   return db.transaction(async (tx) => {
-    const updatedWeek = await casIncrementRevision(week.id, expectedRevision, {}, tx);
+    const updatedWeek = await casIncrementRevision(week.id, expectedRevision, evaluation, tx);
     if (!updatedWeek) throw new StaleRevisionError(weekStartDate, expectedRevision);
 
     const slot = await updateSlotLocked(week.id, day, mealSlot, locked, tx);
@@ -204,6 +279,7 @@ export async function replaceSlot(
   if (!targetSlot) throw new PlanSlotNotFoundError(day, mealSlot);
   if (targetSlot.locked) throw new SlotLockedError(day, mealSlot);
 
+  const inputVersions = await getCurrentInputVersions();
   const inputs = await getPlanInputs(weekStartDate);
   const ctx = buildPlannerContext(
     inputs.recipes,
@@ -243,9 +319,23 @@ export async function replaceSlot(
     assigned,
   );
   const memberServings = computeMemberServings(plannerRecipe, inputs.targets.memberTargets);
+  const violations = evaluateSlots(
+    slots.map((slot) =>
+      slot.day === day && slot.mealSlot === mealSlot
+        ? { ...slot, recipeId, memberServings }
+        : slot,
+    ),
+    inputs.pantry,
+    ctx,
+  );
 
   return db.transaction(async (tx) => {
-    const updatedWeek = await casIncrementRevision(week.id, expectedRevision, {}, tx);
+    const updatedWeek = await casIncrementRevision(
+      week.id,
+      expectedRevision,
+      { violations, ...inputVersions },
+      tx,
+    );
     if (!updatedWeek) throw new StaleRevisionError(weekStartDate, expectedRevision);
 
     const slot = await updateSlotRecipe(

@@ -18,6 +18,7 @@ import {
   isBetter,
   evaluatePlan,
   countDistinctStores,
+  evaluateExistingWeek,
   type SlotKey,
 } from "../src/services/planner.js";
 import {
@@ -1007,5 +1008,64 @@ describe("isBetter: violation count, then severity, then score", () => {
     const quality = evaluatePlan(assigned, ctx);
     expect(quality.violationCount).toBe(2);
     expect(quality.severitySum).toBeCloseTo(0.1 + 6 / 340);
+  });
+});
+
+describe("evaluateExistingWeek", () => {
+  function contextFor(overrides: Partial<Parameters<typeof plan>[5]> = {}) {
+    return buildPlannerContext(FIXTURE_RECIPES, FIXTURE_PRICES, FIXTURE_PREFERENCES, {
+      ...FIXTURE_TARGETS,
+      ...overrides,
+    });
+  }
+
+  it("matches generation's violations for an unchanged generated week", () => {
+    const result = runPlan(5, { weeklyBudgetCzk: 100 });
+    const assigned = new Map<SlotKey, number>();
+    for (const slot of result.slots) {
+      if (slot.recipeId !== null) assigned.set(slotKey(slot.day, slot.mealSlot), slot.recipeId);
+    }
+
+    const violations = evaluateExistingWeek(
+      assigned,
+      [],
+      FIXTURE_PANTRY,
+      contextFor({ weeklyBudgetCzk: 100 }),
+    );
+
+    expect(violations).toEqual(result.violations);
+    expect(violations.map((violation) => violation.constraint)).toContain("weekly_budget");
+  });
+
+  it("reports an expiring ingredient no longer used by its deadline", () => {
+    const assigned = new Map([[slotKey(0, "dinner"), RECIPE_ID.dinnerChicken as number]]);
+
+    const violations = evaluateExistingWeek(assigned, [], FIXTURE_PANTRY, contextFor());
+
+    expect(violations).toContainEqual({
+      slot: null,
+      constraint: "pantry_expiry",
+      detail: `ingredient ${INGREDIENT_ID.salmon} not used by day 2`,
+    });
+  });
+
+  it("counts a slot on the deadline day as covering the ingredient", () => {
+    const assigned = new Map([[slotKey(2, "dinner"), RECIPE_ID.dinnerSalmon as number]]);
+
+    const violations = evaluateExistingWeek(assigned, [], FIXTURE_PANTRY, contextFor());
+
+    expect(violations.filter((violation) => violation.constraint === "pantry_expiry")).toEqual([]);
+  });
+
+  it("reports an empty slot that an eligible recipe could now fill", () => {
+    const assigned = new Map([[slotKey(2, "dinner"), RECIPE_ID.dinnerSalmon as number]]);
+
+    const violations = evaluateExistingWeek(assigned, [], FIXTURE_PANTRY, contextFor());
+
+    expect(violations).toContainEqual({
+      slot: { day: 0, mealSlot: "dinner" },
+      constraint: "empty_slot",
+      detail: "dinner on day 0 is empty; a recipe is now available",
+    });
   });
 });

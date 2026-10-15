@@ -484,8 +484,9 @@ export function fillRemainingSlots(
  * Re-checks every filled slot of the finished week, however it was picked.
  * - Locked slot: can go stale (new exclusion, changed target, recipe
  *   archived) -> locked_slot_conflict; the recipe stays (R04.7).
- * - Unlocked slot: picked from eligible recipes, so ineligible_slot
- *   should never fire; if it does, an earlier stage has a bug.
+ * - Unlocked slot: eligible when picked, but lock/replace re-check the
+ *   saved week, so it goes stale the same ways -> ineligible_slot
+ *   (e.g. a locked slot with an archived recipe is unlocked).
  *
  * @example
  * A locked dinner recipe uses an ingredient added to neverIngredientIds
@@ -526,6 +527,15 @@ export function validateAssignedSlots(
   return violations;
 }
 
+function slotServings(
+  key: SlotKey,
+  recipe: PlannerRecipe,
+  ctx: PlannerContext,
+  savedServings?: Map<SlotKey, MemberServing[]>,
+): MemberServing[] {
+  return savedServings?.get(key) ?? computeMemberServings(recipe, ctx.targets.memberTargets);
+}
+
 const CALORIE_TOLERANCE = 0.1;
 
 /**
@@ -541,19 +551,24 @@ const CALORIE_TOLERANCE = 0.1;
 export function validateMemberDinnerCalories(
   ctx: PlannerContext,
   assigned: Map<SlotKey, number>,
+  savedServings?: Map<SlotKey, MemberServing[]>,
 ): PlanViolation[] {
   const violations: PlanViolation[] = [];
 
   for (let day = 0; day < DAYS_PER_WEEK; day++) {
-    const recipeId = assigned.get(slotKey(day, "dinner"));
+    const key = slotKey(day, "dinner");
+    const recipeId = assigned.get(key);
     if (recipeId === undefined) continue;
     const recipe = ctx.recipesById.get(recipeId);
     if (!recipe) continue;
+    const servings = slotServings(key, recipe, ctx, savedServings);
 
-    for (const memberServing of computeMemberServings(recipe, ctx.targets.memberTargets)) {
-      const memberTarget = ctx.targets.memberTargets.find(
-        (target) => target.memberId === memberServing.memberId,
-      )!;
+    for (const memberTarget of ctx.targets.memberTargets) {
+      const memberServing = {
+        memberId: memberTarget.memberId,
+        servings:
+          servings.find((serving) => serving.memberId === memberTarget.memberId)?.servings ?? 0,
+      };
       const actualCalories = memberServing.servings * recipe.calories;
       const lowerBound = memberTarget.dinnerCalorieTarget * (1 - CALORIE_TOLERANCE);
       const upperBound = memberTarget.dinnerCalorieTarget * (1 + CALORIE_TOLERANCE);
@@ -588,11 +603,12 @@ export function validateMemberDinnerCalories(
 export function validateWeeklyBudget(
   ctx: PlannerContext,
   assigned: Map<SlotKey, number>,
+  savedServings?: Map<SlotKey, MemberServing[]>,
 ): PlanViolation[] {
-  const total = [...assigned.values()].reduce((sum, recipeId) => {
+  const total = [...assigned].reduce((sum, [key, recipeId]) => {
     const recipe = ctx.recipesById.get(recipeId);
     if (!recipe) return sum;
-    const totalServings = computeMemberServings(recipe, ctx.targets.memberTargets).reduce(
+    const totalServings = slotServings(key, recipe, ctx, savedServings).reduce(
       (servingsSum, member) => servingsSum + member.servings,
       0,
     );
@@ -609,6 +625,54 @@ export function validateWeeklyBudget(
       severity: (total - ctx.targets.weeklyBudgetCzk) / ctx.targets.weeklyBudgetCzk,
     },
   ];
+}
+
+export function evaluateExistingWeek(
+  assigned: Map<SlotKey, number>,
+  locked: LockedSlot[],
+  pantry: PlannerPantryItem[],
+  ctx: PlannerContext,
+  savedServings?: Map<SlotKey, MemberServing[]>,
+): PlanViolation[] {
+  const expiry = resolveExpiryConstraints(pantry, ctx);
+  const violations: PlanViolation[] = [...expiry.violations];
+
+  for (const constraint of expiry.constraints) {
+    const covered = [...assigned].some(([key, recipeId]) => {
+      const { day } = parseSlotKey(key);
+      return (
+        day >= constraint.earliestDay &&
+        day <= constraint.deadlineDay &&
+        ctx.recipesById.get(recipeId)?.ingredientIds.includes(constraint.ingredientId)
+      );
+    });
+    if (!covered) {
+      violations.push({
+        slot: null,
+        constraint: "pantry_expiry",
+        detail: `ingredient ${constraint.ingredientId} not used by day ${constraint.deadlineDay}`,
+      });
+    }
+  }
+
+  for (let day = 0; day < DAYS_PER_WEEK; day++) {
+    for (const mealSlot of PLANNED_MEAL_SLOTS) {
+      if (assigned.has(slotKey(day, mealSlot))) continue;
+      const fillable = eligibleRecipes(mealSlot, ctx).length > 0;
+      violations.push({
+        slot: { day, mealSlot },
+        constraint: fillable ? "empty_slot" : "no_eligible_recipe",
+        detail: fillable
+          ? `${mealSlot} on day ${day} is empty; a recipe is now available`
+          : `no recipe available for ${mealSlot} on day ${day}`,
+      });
+    }
+  }
+
+  violations.push(...validateAssignedSlots(assigned, locked, ctx));
+  violations.push(...validateMemberDinnerCalories(ctx, assigned, savedServings));
+  violations.push(...validateWeeklyBudget(ctx, assigned, savedServings));
+  return violations;
 }
 
 // ---------------------------------------------------------------------------

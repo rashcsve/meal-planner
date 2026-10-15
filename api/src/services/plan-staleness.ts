@@ -15,7 +15,7 @@ const WATERMARKS: [StaleInput, keyof CurrentInputVersions][] = [
 
 /**
  * Has any input changed since the plan was generated? null = the category was empty.
- * "current" means inputs unchanged, not that violations still match the slots after a lock or swap.
+ * Lock and replace re-evaluate and advance the watermarks, so "current" covers them too.
  * Misses partial deletes: they don't advance MAX(updated_at).
  */
 export function evaluateStaleness(

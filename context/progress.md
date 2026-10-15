@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05 — preview, accept, swaps and concurrent edits (slices not yet split).
+**Next step:** R05.2 — generation preview (returns a full plan, writes nothing).
 
 ## R04 — planner correctness and search quality
 
@@ -28,6 +28,12 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R04.14 | Work limit: 10,000 evaluations per search, no wall-clock cutoff | complete 10-14 |
 | R04.15 | Final validation of every filled slot; stop reason reported (converged vs work limit) | complete 10-15 |
 
+## R05 — preview, accept, swaps and concurrent edits
+
+| Step | What | Status |
+| --- | --- | --- |
+| R05.1 | Lock/unlock and replace re-evaluate stored violations (saved portions, `empty_slot`) + advance watermarks; incomplete household → `not_evaluated` | complete 10-15 |
+
 ## Earlier milestones
 
 - Steps 1–27, 27.1, 29, 29.1, 30 — complete
@@ -48,8 +54,8 @@ Short status only. Full entries (decisions, tests, verification) live in
   UI needs the stop reason after reload.
 - R05 — If the search runs over a saved week with gaps, decide whether it may fill empty
   slots (and whether an over-budget fill beats leaving it empty). See R04.12.
-- R05 — `setSlotLocked`/`replaceSlot` don't re-evaluate, so stored violations go stale
-  (GET still says `current`). Fix: extract an evaluate-existing-slots function.
+- R05.8 — Web shows only the generate response's violations; stored ones (after lock/swap,
+  incl. `empty_slot`) appear only once the week page reads them.
 - R07 — Ingredient edits (`ingredients.updated_at`) don't mark plans stale. Deliberate for now.
 - R07 — Partial deletes and `now()`-is-transaction-start both miss staleness.
   Fix: per-category version counter.

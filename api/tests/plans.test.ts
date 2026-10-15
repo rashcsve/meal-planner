@@ -15,6 +15,7 @@ import {
 } from "../src/db/schema.js";
 import { plansRoute } from "../src/routes/plans.js";
 import { archiveRecipe } from "../src/services/recipes.js";
+import { getCurrentInputVersions } from "../src/repositories/planInputVersions.js";
 import { errorHandler } from "../src/lib/errorHandler.js";
 
 const app = new Hono().onError(errorHandler).route("/api/plans", plansRoute);
@@ -500,6 +501,167 @@ describe("locked slots (R04.7)", () => {
         constraint: "locked_slot_conflict",
       }),
     );
+  });
+});
+
+describe("re-evaluation after lock (R05.1)", () => {
+  it("stores a locked_slot_conflict when locking a recipe archived since generation", async () => {
+    await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as {
+      revision: number;
+      violations: unknown[];
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
+    expect(generated.violations).toEqual([]);
+    const dinnerRecipeId = generated.slots.find(
+      (s) => s.day === 0 && s.mealSlot === "dinner",
+    )!.recipeId!;
+    await archiveRecipe(dinnerRecipeId);
+
+    const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    expect(lockRes.status).toBe(200);
+
+    const getRes = await app.request("/api/plans/2026-01-05");
+    const body = (await getRes.json()) as { violations: unknown[]; evaluation: unknown };
+    expect(body.violations).toContainEqual(
+      expect.objectContaining({
+        slot: { day: 0, mealSlot: "dinner" },
+        constraint: "locked_slot_conflict",
+      }),
+    );
+    expect(body.evaluation).toEqual({ status: "current", staleInputs: [] });
+  });
+
+  it("marks the week not_evaluated when the household is incomplete, without failing the lock", async () => {
+    const week = await seedPlanWeek({ revision: 1 });
+    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch" });
+    await db
+      .update(planWeeks)
+      .set({
+        violations: [{ slot: null, constraint: "weekly_budget", detail: "seeded" }],
+        ...(await getCurrentInputVersions()),
+      })
+      .where(eq(planWeeks.id, week.id));
+    const beforeRes = await app.request(`/api/plans/${week.weekStartDate}`);
+    const before = (await beforeRes.json()) as { evaluation: unknown };
+    expect(before.evaluation).toEqual({ status: "current", staleInputs: [] });
+
+    const lockRes = await putJson(`/api/plans/${week.weekStartDate}/slots/0/lunch/lock`, {
+      expectedRevision: 1,
+    });
+    expect(lockRes.status).toBe(200);
+
+    const getRes = await app.request(`/api/plans/${week.weekStartDate}`);
+    const body = (await getRes.json()) as { evaluation: unknown };
+    expect(body.evaluation).toEqual({ status: "not_evaluated", staleInputs: [] });
+  });
+});
+
+describe("re-evaluation after unlock (R05.1)", () => {
+  it("stores an ineligible_slot when unlocking a slot whose recipe was archived", async () => {
+    await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as {
+      revision: number;
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
+    const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const locked = (await lockRes.json()) as { revision: number };
+    await archiveRecipe(
+      generated.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!.recipeId!,
+    );
+
+    const unlockRes = await deleteJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: locked.revision,
+    });
+    expect(unlockRes.status).toBe(200);
+
+    const getRes = await app.request("/api/plans/2026-01-05");
+    const body = (await getRes.json()) as { violations: { constraint: string }[] };
+    expect(body.violations).toContainEqual(
+      expect.objectContaining({
+        slot: { day: 0, mealSlot: "dinner" },
+        constraint: "ineligible_slot",
+      }),
+    );
+    expect(body.violations.map((v) => v.constraint)).not.toContain("locked_slot_conflict");
+  });
+});
+
+describe("re-evaluation against saved portions (R05.1)", () => {
+  it("flags dinner calories from saved servings after the member's target doubles", async () => {
+    const { member } = await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as { revision: number; violations: unknown[] };
+    expect(generated.violations).toEqual([]);
+
+    await db
+      .update(householdMembers)
+      .set({ dinnerCalorieTarget: 800 })
+      .where(eq(householdMembers.id, member.id));
+    const lockRes = await putJson("/api/plans/2026-01-05/slots/1/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    expect(lockRes.status).toBe(200);
+
+    const getRes = await app.request("/api/plans/2026-01-05");
+    const body = (await getRes.json()) as { violations: unknown[] };
+    expect(body.violations).toContainEqual(
+      expect.objectContaining({
+        slot: { day: 0, mealSlot: "dinner" },
+        constraint: "member_dinner_calories",
+      }),
+    );
+  });
+});
+
+describe("re-evaluation after replace (R05.1)", () => {
+  it("stores a weekly_budget violation once a replace runs against a lowered budget", async () => {
+    const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as {
+      revision: number;
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
+    const current = generated.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    const otherDinner = current.recipeId === dinnerRecipe.id ? dinnerRecipe2 : dinnerRecipe;
+
+    await db
+      .update(householdSettings)
+      .set({ weeklyBudgetCzk: 1, updatedAt: new Date(Date.now() + 1000) });
+    const staleRes = await app.request("/api/plans/2026-01-05");
+    const stale = (await staleRes.json()) as { evaluation: unknown };
+    expect(stale.evaluation).toEqual({ status: "stale", staleInputs: ["targets"] });
+
+    const replaceRes = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: otherDinner.id,
+      expectedRevision: generated.revision,
+    });
+    expect(replaceRes.status).toBe(200);
+
+    const getRes = await app.request("/api/plans/2026-01-05");
+    const body = (await getRes.json()) as { violations: unknown[]; evaluation: unknown };
+    expect(body.violations).toContainEqual(
+      expect.objectContaining({ slot: null, constraint: "weekly_budget" }),
+    );
+    expect(body.evaluation).toEqual({ status: "current", staleInputs: [] });
   });
 });
 

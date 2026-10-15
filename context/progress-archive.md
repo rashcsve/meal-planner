@@ -2278,3 +2278,41 @@ Verified 2026-10-15: `npm run test -w api` → 12 files/190 tests pass (planner 
 typecheck and lint clean (2 old web warnings).
 
 **Next step:** R05, after review.
+
+## R05.1 — Re-evaluate after lock and replace — `complete` (2026-10-15)
+
+`planner.ts`: new pure `evaluateExistingWeek(assigned, locked, pantry, ctx)` re-checks
+saved slots without filling: expiry input violations + coverage of each must-use
+constraint by an existing slot in its window, every empty slot, then
+the same final checks as `plan()` (`validateAssignedSlots`, member calories, budget).
+`plans.ts`: `setSlotLocked` and `replaceSlot` compute violations for the post-change
+slots and write them with current input watermarks inside the same revision CAS.
+`planWeeks.ts`: `PlanWeekInput.violations` widened to `| null`.
+`plan-staleness.ts`: doc caveat about lock/swap removed.
+
+Tests: `npx vitest run` in api → 12 files, 196 passed. `tsc --noEmit` clean,
+`npm run lint -w api` clean. New: 3 unit (`evaluateExistingWeek`: matches generation for an
+unchanged week; expiry uncovered; deadline-day covers), 3 integration (lock of archived
+recipe → `locked_slot_conflict`, `current`; lock with incomplete household → 200 +
+`not_evaluated`; replace after budget lowered → `weekly_budget`, stale → `current`).
+
+Decisions: watermarks advance on re-evaluation, read *before* inputs so a mid-request
+edit still shows stale. Lock with incomplete household writes `violations: null`
+(`not_evaluated`) instead of failing — locking must not depend on planner config.
+Replace already required full inputs, unchanged.
+Not done: other slots' reasons/summaries are not refreshed (R05.6).
+
+Review fixes (`/step-review r05.1`):
+- Calories and budget use each slot's saved `memberServings`, not portions recomputed from
+  current targets (`savedServings` map, optional; `plan()` still computes). A member added
+  since save has 0 servings → `member_dinner_calories`. Decision: check saved, don't rewrite.
+- Every empty slot is reported: `no_eligible_recipe` if nothing fits, new `empty_slot` if a
+  recipe could now fill it. `constraint` is a plain string, so no schema change.
+- `validateAssignedSlots` doc: `ineligible_slot` can fire on re-check (e.g. unlock of an
+  archived recipe), not only on a bug.
+- Tests: incomplete-household lock now starts from a `current` week; new unlock →
+  `ineligible_slot`; target doubled + lock → `member_dinner_calories`; unit `empty_slot`.
+  `npm run test -w api` → 12 files, 199 passed; typecheck clean; lint 2 old web warnings.
+- Not checked: web shows only the generate response's violations, not the stored ones (R05.8).
+
+**Next step:** R05.2 — generation preview.

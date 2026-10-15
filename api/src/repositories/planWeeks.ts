@@ -9,7 +9,7 @@ export interface PlanWeekInput {
   weekStartDate: string;
   seed: number;
   plannerVersion: string;
-  violations?: PlanViolation[];
+  violations?: PlanViolation[] | null;
   recipesVersionAt?: Date | null;
   targetsVersionAt?: Date | null;
   exclusionsVersionAt?: Date | null;

@@ -602,6 +602,10 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
 
 1. **R05.1 — Re-evaluate after lock and replace.** `setSlotLocked`/`replaceSlot` recompute
    stored violations, so GET no longer reports `current` for stale results.
+   **Resolved 2026-10-15** — calories and budget are checked against each slot's saved
+   `memberServings` (not rewritten); empty slots report `no_eligible_recipe` or, if a recipe
+   now fits, `empty_slot`; incomplete household → `not_evaluated`. Other slots'
+   reasons/summaries still refresh only in R05.6.
 2. **R05.2 — Generation preview.** Endpoint returns a full plan and writes nothing.
 3. **R05.3 — Accept.** One transaction that checks plan revision and input versions; a
    stale preview is rejected and needs review.
