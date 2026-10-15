@@ -592,6 +592,41 @@ existing editing functionality without the agreed compatibility path.
 
 **Boards:** NowPlan (the swap panel at the top of the rail), NowSwapBrowse.
 
+#### R05 implementation slices
+
+Written 2026-10-15. Generate, get week, lock, candidates and replace endpoints already
+exist with revision checks. The historical-snapshot work deferred from R02.5 is done here
+(R05.4), so R02/R03 review status does not block R05.
+
+**API slices**
+
+1. **R05.1 — Re-evaluate after lock and replace.** `setSlotLocked`/`replaceSlot` recompute
+   stored violations, so GET no longer reports `current` for stale results.
+2. **R05.2 — Generation preview.** Endpoint returns a full plan and writes nothing.
+3. **R05.3 — Accept.** One transaction that checks plan revision and input versions; a
+   stale preview is rejected and needs review.
+4. **R05.4 — Recipe snapshots on accepted slots.** Later recipe edits do not change history.
+   **Needs a decision first:** snapshot shape. May split further.
+5. **R05.5 — Swap candidates.** Fit, violated rules and consequences per candidate; stable
+   tie-breaking (fit, then calorie closeness); paging; top three for the rail. May split
+   further.
+6. **R05.6 — Swap confirmation.** Handles empty slots; revalidates the whole week and
+   updates neighboring reasons/summaries.
+7. **R05.7 — Selected days and copy-last-week.** Copy assignments into a new draft, then
+   evaluate against current rules and stock; preserve cooked records.
+
+**Web slices**
+
+8. **R05.8 — Preview → accept flow** on the week page.
+9. **R05.9 — Swap picker** at `/plan/:week/swap/:slotId`; back/cancel does not mutate the week.
+10. **R05.10 — Optimistic lock/unlock.** onMutate/onError/onSettled, cancelQueries, rollback,
+    conflict recovery; delayed responses do not overwrite newer revisions.
+
+**Verification slice**
+
+11. **R05.11 — Browser journeys:** preview → accept, cancel swap, stale preview, empty-slot
+    replacement.
+
 ### R06 — Use It Up design refresh
 
 **Goal:** build subsequent screens in the chosen design while retaining working flows.
