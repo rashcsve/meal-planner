@@ -85,6 +85,16 @@ into the browser build.
   the same transaction compares the preview's `inputVersions` with current
   ones, rejecting a mismatch with 409 `STALE_PREVIEW`. Full
   history in `context/progress-archive.md`'s "Step 29.1" entry.
+- `plan_slots.recipe_snapshot` (R05.4, migration `0024_bitter_the_anarchist.sql`) is a
+  nullable jsonb copy of the recipe as saved: title, time, cost, meal, cuisine,
+  proteinSource, diet, servings, kcalPerServing and ingredient lines (id, ingredientId,
+  name, displayAmount, displayUnit, amountBase, baseUnit, isOptional). Shape is `recipeSnapshotSchema` in `shared/src/plans.ts`;
+  built by `buildRecipeSnapshot` (`services/recipes.ts`). Accept, `/generate` and replace
+  write it, building each distinct recipe once per write; a locked slot keeps its saved
+  snapshot while it points at the same recipe, even after that recipe is edited.
+  It is display/history only — rule checks still read live recipes. NULL means a
+  pre-R05.4 or empty slot. Nothing reads it yet; from R05.4b the web reads it and
+  falls back to the live recipe when NULL.
 - `household_members.dinner_calorie_target` (added in step 27.1, migration
   `0016_add_household_member_dinner_calorie_target.sql`) is a nullable
   `numeric` with a `> 0` check constraint. Nullable is deliberate: an

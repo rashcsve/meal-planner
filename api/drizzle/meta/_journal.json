@@ -169,6 +169,13 @@
       "when": 1791913390396,
       "tag": "0023_weekly_budget_positive_check",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792072250093,
+      "tag": "0024_bitter_the_anarchist",
+      "breakpoints": true
     }
   ]
 }

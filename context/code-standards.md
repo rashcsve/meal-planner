@@ -28,7 +28,7 @@ explicit blocker, not silently skipped or assumed to pass.
 `routes/` → `services/` → `repositories/` → `db/`. A service must not import
 Hono types or know it was called by HTTP versus a test. Transaction boundaries
 belong in the route layer per `CLAUDE.md`. The `plans` service is a deliberate,
-scoped exception: `generatePlan`, `setSlotLocked` and `replaceSlot` each open
+scoped exception: `generatePlan`, `acceptPlan`, `setSlotLocked` and `replaceSlot` each open
 their own `db.transaction`, because a plan mutation must atomically
 check-and-increment `plan_weeks.revision` (optimistic concurrency, see
 `context/architecture.md`) and write the affected `plan_slots` rows in the

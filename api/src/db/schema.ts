@@ -21,7 +21,7 @@ import {
   INGREDIENT_PREFERENCE_RULES,
   MEAL_SLOTS,
 } from "shared";
-import type { MemberServing, PlanViolation } from "shared";
+import type { MemberServing, PlanViolation, RecipeSnapshot } from "shared";
 
 function sqlInList(values: readonly string[]) {
   return sql.raw(values.map((v) => `'${v.replace(/'/g, "''")}'`).join(", "));
@@ -252,6 +252,7 @@ export const planSlots = pgTable(
     locked: boolean("locked").notNull().default(false),
     reasons: jsonb("reasons").$type<string[]>().notNull().default([]),
     memberServings: jsonb("member_servings").$type<MemberServing[]>().notNull().default([]),
+    recipeSnapshot: jsonb("recipe_snapshot").$type<RecipeSnapshot>(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

@@ -1,0 +1,1 @@
+ALTER TABLE "plan_slots" ADD COLUMN "recipe_snapshot" jsonb;

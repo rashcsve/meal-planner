@@ -621,7 +621,9 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    by preview and accept. The stored `seed` is informational: accepted slots are client-submitted
    and re-validated, not re-derived, so seed + `plannerVersion` need not reproduce the week.
 4. **R05.4 — Recipe snapshots on accepted slots.** Later recipe edits do not change history.
-   **Needs a decision first:** snapshot shape. May split further.
+   **Resolved 2026-10-15** — nullable jsonb `plan_slots.recipe_snapshot` (display fields +
+   ingredient lines) written on accept, `/generate` and replace; a locked slot keeps its saved
+   snapshot; rule checks still use live recipes; no backfill. R05.4b: web reads the snapshot.
 5. **R05.5 — Swap candidates.** Fit, violated rules and consequences per candidate; stable
    tie-breaking (fit, then calorie closeness); paging; top three for the rail. May split
    further.
@@ -631,6 +633,9 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    evaluate against current rules and stock; preserve cooked records.
 
 **Web slices**
+
+- **R05.4b — Week page and rail read the snapshot.** Week rows and the meal-detail rail use
+  `recipeSnapshot` (display amounts, units, kcal) and fall back to the live recipe when NULL.
 
 8. **R05.8 — Preview → accept flow** on the week page.
 9. **R05.9 — Swap picker** at `/plan/:week/swap/:slotId`; back/cancel does not mutate the week.

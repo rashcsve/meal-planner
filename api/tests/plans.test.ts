@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { db } from "../src/db/index.js";
 import {
@@ -1524,5 +1524,151 @@ describe("accept (R05.3)", () => {
     expect(day0!.recipeId).not.toBeNull();
     expect(day0!.memberServings).not.toEqual([]);
     expect(day0!.locked).toBe(false);
+  });
+});
+
+describe("recipe snapshots (R05.4)", () => {
+  type WeekBody = {
+    revision: number;
+    slots: { day: number; mealSlot: string; recipeId: number | null; recipeSnapshot: unknown }[];
+  };
+
+  async function getDay0Dinner() {
+    const body = (await (await app.request("/api/plans/2026-01-05")).json()) as WeekBody;
+    return body.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+  }
+
+  async function renameRecipe(recipeId: number) {
+    await db
+      .update(recipes)
+      .set({ title: "Renamed", updatedAt: new Date() })
+      .where(eq(recipes.id, recipeId));
+    await db
+      .update(recipeIngredients)
+      .set({ amountBase: 300 })
+      .where(eq(recipeIngredients.recipeId, recipeId));
+  }
+
+  it("keeps an accepted week's recipe data after the recipe is edited", async () => {
+    await seedPlannableHousehold();
+    const previewed = (await (
+      await postJson("/api/plans/generate/preview", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as Record<string, unknown>;
+    const { weekStartDate, seed, baseRevision, inputVersions, slots } = previewed;
+    await postJson("/api/plans/accept", {
+      weekStartDate,
+      seed,
+      baseRevision,
+      inputVersions,
+      slots,
+    });
+    const before = await getDay0Dinner();
+
+    await renameRecipe(before.recipeId!);
+
+    const after = await getDay0Dinner();
+    expect(after.recipeSnapshot).toEqual(before.recipeSnapshot);
+    expect(after.recipeSnapshot).toMatchObject({
+      title: expect.stringMatching(/^Test dinner/),
+      ingredients: [
+        expect.objectContaining({
+          id: expect.any(Number),
+          displayAmount: null,
+          displayUnit: null,
+          amountBase: 100,
+          baseUnit: "g",
+          isOptional: false,
+        }),
+      ],
+    });
+  });
+
+  it("stores the new recipe's snapshot on replace", async () => {
+    const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as WeekBody;
+    const current = await getDay0Dinner();
+    const other = current.recipeId === dinnerRecipe.id ? dinnerRecipe2 : dinnerRecipe;
+
+    await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: other.id,
+      expectedRevision: generated.revision,
+    });
+
+    expect((await getDay0Dinner()).recipeSnapshot).toMatchObject({ title: other.title });
+  });
+
+  it("keeps a locked slot's saved snapshot when the week is regenerated", async () => {
+    await seedPlannableHousehold();
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as WeekBody;
+    const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const { revision } = (await lockRes.json()) as { revision: number };
+    const before = await getDay0Dinner();
+    await renameRecipe(before.recipeId!);
+
+    await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 2,
+      expectedRevision: revision,
+    });
+
+    expect((await getDay0Dinner()).recipeSnapshot).toEqual(before.recipeSnapshot);
+  });
+
+  it("keeps a locked slot's saved snapshot when a new preview is accepted", async () => {
+    await seedPlannableHousehold();
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as WeekBody;
+    await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const before = await getDay0Dinner();
+    await renameRecipe(before.recipeId!);
+
+    const previewed = (await (
+      await postJson("/api/plans/generate/preview", { weekStartDate: "2026-01-05", seed: 2 })
+    ).json()) as Record<string, unknown>;
+    const { weekStartDate, seed, baseRevision, inputVersions, slots } = previewed;
+    const res = await postJson("/api/plans/accept", {
+      weekStartDate,
+      seed,
+      baseRevision,
+      inputVersions,
+      slots,
+    });
+
+    expect(res.status).toBe(200);
+    expect((await getDay0Dinner()).recipeSnapshot).toEqual(before.recipeSnapshot);
+  });
+
+  it("stores a null snapshot for an empty slot", async () => {
+    await seedPlannableHousehold();
+    const previewed = (await (
+      await postJson("/api/plans/generate/preview", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as Record<string, unknown> & { slots: { day: number; mealSlot: string }[] };
+    const { weekStartDate, seed, baseRevision, inputVersions } = previewed;
+    const slots = previewed.slots.map((s) =>
+      s.day === 0 && s.mealSlot === "dinner" ? { ...s, recipeId: null } : s,
+    );
+    const res = await postJson("/api/plans/accept", {
+      weekStartDate,
+      seed,
+      baseRevision,
+      inputVersions,
+      slots,
+    });
+
+    expect(res.status).toBe(200);
+    const [row] = await db
+      .select({ recipeSnapshot: planSlots.recipeSnapshot })
+      .from(planSlots)
+      .where(and(eq(planSlots.day, 0), eq(planSlots.mealSlot, "dinner")));
+    expect(row!.recipeSnapshot).toBeNull();
   });
 });

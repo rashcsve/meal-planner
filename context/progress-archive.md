@@ -2365,3 +2365,26 @@ save a week the user never saw — pantry/prices aren't watermarked). Locked slo
 portions; reasons are recomputed. Version check runs inside the transaction, after inputs are read.
 
 **Next step:** R05.4 — recipe snapshots on accepted slots (snapshot shape decision first).
+
+## R05.4 — Recipe snapshots on accepted slots — `awaiting review` (2026-10-15)
+
+**Outcome:** `plan_slots.recipe_snapshot` (nullable jsonb, migration `0024_bitter_the_anarchist.sql`,
+additive, applied to dev) holds a copy of the recipe as saved. `buildRecipeSnapshot`
+(`services/recipes.ts`) reads recipe + ingredient lines once and computes kcal/serving with
+`summarizeKcal`. `withSnapshots` (`services/plans.ts`) attaches snapshots in accept and
+`/generate`; replace builds one for the new recipe (and its null result is now the 404 check).
+GET week returns it unchanged (`select()` already includes the column).
+
+**Decisions:**
+- JSONB copy per slot, not a `recipe_versions` table — no change to recipe write paths.
+- Snapshot every accepted slot; recipe edits surface via existing `recipesVersionAt` staleness.
+- Locked slot keeps its saved snapshot if same recipe and non-null (mirrors saved portions).
+- Snapshot enums typed as strings — DB CHECK constraints already enforce values.
+- Rule checks stay on live recipes; snapshot is display/history only.
+- No backfill: NULL = legacy/empty, readers fall back to live recipe.
+
+**Verified:** `npm run test -w api` → 12 files / 223 tests pass (+3 in `plans.test.ts`
+"recipe snapshots (R05.4)"); locked-snapshot test confirmed to fail with the keep-saved branch
+disabled. Typecheck clean; lint only the 2 pre-existing web warnings.
+
+**Next:** R05.4b — web reads `recipeSnapshot` with live fallback.

@@ -1,6 +1,32 @@
 import { z } from "zod";
 import { MEAL_SLOTS } from "./planner.js";
 
+export const recipeSnapshotSchema = z.object({
+  title: z.string(),
+  time: z.number().int(),
+  cost: z.number().nullable(),
+  meal: z.string().nullable(),
+  cuisine: z.string().nullable(),
+  proteinSource: z.string().nullable(),
+  diet: z.string().nullable(),
+  servings: z.number().int().nullable(),
+  kcalPerServing: z.number().nullable(),
+  ingredients: z.array(
+    z.object({
+      id: z.number().int(),
+      ingredientId: z.number().int(),
+      name: z.string(),
+      displayAmount: z.number().nullable(),
+      displayUnit: z.string().nullable(),
+      amountBase: z.number().nullable(),
+      baseUnit: z.string(),
+      isOptional: z.boolean(),
+    }),
+  ),
+});
+
+export type RecipeSnapshot = z.infer<typeof recipeSnapshotSchema>;
+
 // Revision starts at 1 and only ever increments; 0 is never a valid value.
 const expectedRevisionSchema = z
   .number({ error: "Expected revision must be a number" })

@@ -1,5 +1,5 @@
 import { PLANNER_VERSION } from "shared";
-import type { AcceptPlanInput, LockedSlot, MealSlot, MemberServing } from "shared";
+import type { AcceptPlanInput, LockedSlot, MealSlot, MemberServing, RecipeSnapshot } from "shared";
 import {
   plan,
   buildPlannerContext,
@@ -17,7 +17,7 @@ import {
 } from "./planner.js";
 import { getPlanInputs, type PlanInputs } from "./plan-inputs.js";
 import { db } from "../db/index.js";
-import { findRecipeById } from "../repositories/recipes.js";
+import { buildRecipeSnapshot } from "./recipes.js";
 import {
   findPlanWeekByDate,
   insertPlanWeek,
@@ -131,6 +131,33 @@ async function getLockedSlots(planWeekId: number): Promise<LockedSlot[]> {
     }));
 }
 
+async function withSnapshots(
+  slots: Omit<PlanSlotInput, "recipeSnapshot">[],
+  savedSlots: {
+    day: number;
+    mealSlot: string;
+    recipeId: number | null;
+    recipeSnapshot: RecipeSnapshot | null;
+  }[],
+): Promise<PlanSlotInput[]> {
+  const kept = slots.map((slot) => {
+    const saved = savedSlots.find((s) => s.day === slot.day && s.mealSlot === slot.mealSlot);
+    return slot.locked && saved?.recipeId === slot.recipeId ? saved.recipeSnapshot : null;
+  });
+  const toBuild = new Set(
+    slots
+      .filter((slot, i) => slot.recipeId !== null && kept[i] === null)
+      .map((slot) => slot.recipeId!),
+  );
+  const built = new Map(
+    await Promise.all([...toBuild].map(async (id) => [id, await buildRecipeSnapshot(id)] as const)),
+  );
+  return slots.map((slot, i) => ({
+    ...slot,
+    recipeSnapshot: slot.recipeId === null ? null : (kept[i] ?? built.get(slot.recipeId) ?? null),
+  }));
+}
+
 async function runPlanner(
   weekStartDate: string,
   seed: number,
@@ -185,7 +212,7 @@ function buildAcceptedSlots(
   savedSlots: Awaited<ReturnType<typeof findSlotsByWeekId>>,
   inputs: PlanInputs,
   ctx: PlannerContext,
-): PlanSlotInput[] {
+): Omit<PlanSlotInput, "recipeSnapshot">[] {
   const expectedKeys = new Set<SlotKey>();
   for (let day = 0; day < DAYS_PER_WEEK; day++) {
     for (const mealSlot of PLANNED_MEAL_SLOTS) expectedKeys.add(slotKey(day, mealSlot));
@@ -296,6 +323,7 @@ export async function acceptPlan(input: AcceptPlanInput) {
   );
   const slots = buildAcceptedSlots(input.slots, savedSlots, inputs, ctx);
   const violations = evaluateSlots(slots, inputs.pantry, ctx);
+  const slotsToSave = await withSnapshots(slots, savedSlots);
 
   return db.transaction(async (tx) => {
     const current = await getCurrentInputVersions(tx);
@@ -308,7 +336,7 @@ export async function acceptPlan(input: AcceptPlanInput) {
       : await insertPlanWeek({ weekStartDate, ...weekData }, tx);
     if (!week) throw new StaleRevisionError(weekStartDate, baseRevision!);
 
-    const savedRows = await upsertPlanSlots(week.id, slots, tx);
+    const savedRows = await upsertPlanSlots(week.id, slotsToSave, tx);
     const evaluation: PlanEvaluationStatus = { status: "current", staleInputs: [] };
     return { ...week, slots: savedRows, violations, evaluation };
   });
@@ -321,6 +349,8 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
   }
 
   const { inputVersions, result } = await runPlanner(weekStartDate, seed, existingWeek);
+  const lockedRows = existingWeek ? await findLockedSlotsByWeekId(existingWeek.id) : [];
+  const slotsToSave = await withSnapshots(result.slots, lockedRows);
 
   return db.transaction(async (tx) => {
     let week;
@@ -352,7 +382,7 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
       );
     }
 
-    const slots = await upsertPlanSlots(week.id, result.slots, tx);
+    const slots = await upsertPlanSlots(week.id, slotsToSave, tx);
     const evaluation: PlanEvaluationStatus = { status: "current", staleInputs: [] };
     return { ...week, slots, violations: result.violations, evaluation, search: result.search };
   });
@@ -460,8 +490,8 @@ export async function replaceSlot(
   // nonexistent recipeId still 404s the same way it always has - even for a
   // week whose household configuration (members/settings/prices) isn't
   // complete enough to run getPlanInputs below.
-  const recipe = await findRecipeById(recipeId);
-  if (!recipe) throw new RecipeNotFoundError(recipeId);
+  const recipeSnapshot = await buildRecipeSnapshot(recipeId);
+  if (!recipeSnapshot) throw new RecipeNotFoundError(recipeId);
 
   const slots = await findSlotsByWeekId(week.id);
   const targetSlot = slots.find((slot) => slot.day === day && slot.mealSlot === mealSlot);
@@ -532,6 +562,7 @@ export async function replaceSlot(
       recipeId,
       reasons,
       memberServings,
+      recipeSnapshot,
       tx,
     );
     if (!slot) throw new PlanSlotNotFoundError(day, mealSlot);

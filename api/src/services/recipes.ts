@@ -1,4 +1,4 @@
-import type { CreateRecipeInput } from "shared";
+import type { CreateRecipeInput, RecipeSnapshot } from "shared";
 import {
   archiveRecipe as archiveRecipeRow,
   findAllRecipes,
@@ -30,11 +30,22 @@ export async function listRecipes() {
   });
 }
 
-export async function getRecipe(id: number) {
+async function loadRecipeWithLines(id: number) {
   const recipe = await findRecipeById(id);
   if (!recipe) return null;
 
   const lines = await findIngredientLinesForRecipe(id);
+  const summary = summarizeKcal(lines);
+  const kcalPerServing =
+    summary.status === "unknown" ? null : computeKcalPerServing(summary.kcalTotal, recipe.servings);
+  return { recipe, lines, summary, kcalPerServing };
+}
+
+export async function getRecipe(id: number) {
+  const loaded = await loadRecipeWithLines(id);
+  if (!loaded) return null;
+
+  const { recipe, lines, summary, kcalPerServing } = loaded;
   const ingredients = lines.map((line) => ({
     id: line.id,
     ingredientId: line.ingredientId,
@@ -44,16 +55,34 @@ export async function getRecipe(id: number) {
     amountBase: line.amountBase,
     isOptional: line.isOptional,
   }));
-  const summary = summarizeKcal(lines);
+  return { ...recipe, ...summary, kcalPerServing, ingredients };
+}
 
+export async function buildRecipeSnapshot(id: number): Promise<RecipeSnapshot | null> {
+  const loaded = await loadRecipeWithLines(id);
+  if (!loaded) return null;
+
+  const { recipe, lines, kcalPerServing } = loaded;
   return {
-    ...recipe,
-    ...summary,
-    kcalPerServing:
-      summary.status === "unknown"
-        ? null
-        : computeKcalPerServing(summary.kcalTotal, recipe.servings),
-    ingredients,
+    title: recipe.title,
+    time: recipe.time,
+    cost: recipe.cost,
+    meal: recipe.meal,
+    cuisine: recipe.cuisine,
+    proteinSource: recipe.proteinSource,
+    diet: recipe.diet,
+    servings: recipe.servings,
+    kcalPerServing,
+    ingredients: lines.map((line) => ({
+      id: line.id,
+      ingredientId: line.ingredientId,
+      name: line.ingredientName,
+      displayAmount: line.displayAmount,
+      displayUnit: line.displayUnit,
+      amountBase: line.amountBase,
+      baseUnit: line.baseUnit,
+      isOptional: line.isOptional,
+    })),
   };
 }
 
