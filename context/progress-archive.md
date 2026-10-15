@@ -2345,16 +2345,20 @@ sent slots (`buildAcceptedSlots`: exactly 7 dinner slots; locked slots must keep
 recipe; other recipes must be eligible), rebuilds reasons/servings, computes violations; then one
 transaction: re-reads input versions (`getCurrentInputVersions(tx)`), compares them with the
 preview's → 409 `STALE_PREVIEW` + `staleInputs`; revision CAS (existing week) or insert (new
-week) → 409 `STALE_PLAN_REVISION` / `WeekAlreadyGeneratedError`; upserts slots.
+week) → 409 `STALE_PLAN_REVISION` / `WEEK_EXISTS`; upserts slots.
 Slot mismatch → 422 `ACCEPTED_SLOTS_MISMATCH`; ineligible recipe → 422 `RECIPE_NOT_ELIGIBLE`.
 Preview now keeps saved `memberServings` on locked slots and computes violations with
 `evaluateSlots`, so preview and accept agree. `getCurrentInputVersions` runs its 5 queries
 sequentially (parallel queries on one transaction connection trigger a pg@9 deprecation).
+Lock refuses an empty slot (422 `SLOT_EMPTY`); preview/accept treat an existing locked empty
+slot as unlocked. The stored `seed` is informational: slots are client-submitted, not re-derived.
 
 Tests: `npm run test -w api` → 12 files, 208 passed; `bash scripts/verify.sh` passed (2 old web
 lint warnings). New: new-week round trip; locked slot keeps portions after a target change;
 moved revision → 409; recipe edit after preview → 409 `STALE_PREVIEW`, no rows; tampered locked
-slot → 422; week created after a new-week preview → 409.
+slot → 422; week created after a new-week preview → 409 `WEEK_EXISTS`. Review fixes: concurrent
+same-revision accepts and concurrent new-week accepts each give one 200 + one 409
+(`plans.test.ts` → 56 passed; full suites not re-run).
 
 Decisions: client sends the previewed slots, server re-validates (re-running with the seed could
 save a week the user never saw — pantry/prices aren't watermarked). Locked slots keep saved

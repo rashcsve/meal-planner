@@ -79,7 +79,11 @@ into the browser build.
   the slot write — see the "Layering" section of `context/code-standards.md`
   for why the `plans` service, not the route layer, owns that transaction.
   A stale or missing `expectedRevision` fails the CAS or an earlier explicit
-  check and is reported as a typed error, never a silent overwrite. Full
+  check and is reported as a typed error, never a silent overwrite. Accept
+  takes `baseRevision` instead (null means insert a new week, which the
+  unique `week_start_date` turns into 409 `WEEK_EXISTS` on a race), and in
+  the same transaction compares the preview's `inputVersions` with current
+  ones, rejecting a mismatch with 409 `STALE_PREVIEW`. Full
   history in `context/progress-archive.md`'s "Step 29.1" entry.
 - `household_members.dinner_calorie_target` (added in step 27.1, migration
   `0016_add_household_member_dinner_calorie_target.sql`) is a nullable

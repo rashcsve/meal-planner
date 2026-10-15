@@ -608,14 +608,18 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    reasons/summaries still refresh only in R05.6.
 2. **R05.2 — Generation preview.** Endpoint returns a full plan and writes nothing.
    **Resolved 2026-10-15** — `POST /api/plans/generate/preview` returns the planner's
-   slots, violations and `search`, plus `baseRevision` (null for a new week) and
+   slots and `search`, with locked slots carrying their saved `memberServings` and violations
+   recomputed over those slots via `evaluateSlots` (since R05.3), plus `baseRevision` (null for a new week) and
    `inputVersions` (the same watermarks `/generate` stores). `/generate` still writes
    directly until R05.8.
 3. **R05.3 — Accept.** One transaction that checks plan revision and input versions; a
    stale preview is rejected and needs review. **Resolved 2026-10-15** — `POST /api/plans/accept`
    takes the previewed slots and re-validates them (no seed re-run); stale inputs → 409
-   `STALE_PREVIEW`. Locked slots keep saved `memberServings` in preview and accept; reasons are
-   recomputed.
+   `STALE_PREVIEW`; a new-week accept after the week was created → 409 `WEEK_EXISTS`. Locked
+   slots keep saved `memberServings` in preview and accept; reasons are recomputed. Locking an
+   empty slot is refused (422 `SLOT_EMPTY`); an existing locked empty slot is treated as unlocked
+   by preview and accept. The stored `seed` is informational: accepted slots are client-submitted
+   and re-validated, not re-derived, so seed + `plannerVersion` need not reproduce the week.
 4. **R05.4 — Recipe snapshots on accepted slots.** Later recipe edits do not change history.
    **Needs a decision first:** snapshot shape. May split further.
 5. **R05.5 — Swap candidates.** Fit, violated rules and consequences per candidate; stable
