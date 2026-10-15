@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PlannerRecipe } from "shared";
+import type { PlannerIngredientPrice, PlannerRecipe } from "shared";
 import {
   plan,
   buildPlannerContext,
@@ -12,9 +12,13 @@ import {
   slotKey,
   validateMemberDinnerCalories,
   validateWeeklyBudget,
+  validateAssignedSlots,
+  fillRemainingSlots,
   localSearch,
   isBetter,
   evaluatePlan,
+  countDistinctStores,
+  type SlotKey,
 } from "../src/services/planner.js";
 import {
   BUDGET_REPAIR_RECIPE_ID,
@@ -502,6 +506,24 @@ describe("locks", () => {
     const day0Dinner = result.slots.find((slot) => slot.day === 0 && slot.mealSlot === "dinner");
     expect(day0Dinner?.recipeId).toBe(RECIPE_ID.dinnerTooBig);
   });
+
+  it("reports ineligible_slot when an unlocked slot holds an ineligible recipe", () => {
+    const ctx = buildPlannerContext(
+      FIXTURE_RECIPES,
+      FIXTURE_PRICES,
+      FIXTURE_PREFERENCES,
+      FIXTURE_TARGETS,
+    );
+    const assigned = new Map([[slotKey(2, "dinner"), RECIPE_ID.dinnerShrimp as number]]);
+
+    expect(validateAssignedSlots(assigned, [], ctx)).toEqual([
+      {
+        slot: { day: 2, mealSlot: "dinner" },
+        constraint: "ineligible_slot",
+        detail: `recipe uses excluded ingredient ${INGREDIENT_ID.shrimp}`,
+      },
+    ]);
+  });
 });
 
 describe("hard constraint: weekly budget", () => {
@@ -676,6 +698,33 @@ describe("search: incremental budget repair", () => {
     expect([...assigned.values()]).toEqual(Array(7).fill(BUDGET_REPAIR_RECIPE_ID.slowCheap));
     expect(validateWeeklyBudget(ctx, assigned)).toEqual([]);
   });
+
+  it("plan() reports violations from the week after search, not the initial fill", () => {
+    const targets = { ...FIXTURE_TARGETS, weeklyBudgetCzk: 250 };
+    const ctx = buildPlannerContext(
+      BUDGET_REPAIR_RECIPES,
+      FIXTURE_PRICES,
+      FIXTURE_PREFERENCES,
+      targets,
+    );
+    const initialFill = new Map<SlotKey, number>();
+    fillRemainingSlots(ctx, initialFill);
+    expect(validateWeeklyBudget(ctx, initialFill)).not.toEqual([]);
+
+    const result = plan(
+      BUDGET_REPAIR_RECIPES,
+      FIXTURE_PRICES,
+      [],
+      FIXTURE_PREFERENCES,
+      [],
+      targets,
+      1,
+    );
+
+    expect(
+      result.violations.filter((violation) => violation.constraint === "weekly_budget"),
+    ).toEqual([]);
+  });
 });
 
 describe("search: systematic per-dinner pass", () => {
@@ -712,6 +761,26 @@ describe("search: systematic per-dinner pass", () => {
     localSearch(assigned, ctx, new Set());
 
     expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(3);
+  });
+
+  it("ends where best-improvement does, not where first-improvement would", () => {
+    const ctx = contextFor(
+      [
+        { ...dinner(1, "beef", 100), timeMinutes: 30 },
+        { ...dinner(2, "chicken", 100), timeMinutes: 0 },
+        { ...dinner(3, "beef", 100), timeMinutes: 60 },
+      ],
+      1000,
+    );
+    const assigned = new Map([
+      [slotKey(0, "dinner"), 1],
+      [slotKey(1, "dinner"), 3],
+    ]);
+
+    const stats = localSearch(assigned, ctx, new Set());
+
+    expect([...assigned.values()]).toEqual([1, 2]);
+    expect(stats.passes).toBe(2);
   });
 
   it("breaks an exact tie by input recipe order", () => {
@@ -756,11 +825,13 @@ describe("search: systematic per-dinner pass", () => {
       100,
     );
     const assigned = new Map([[slotKey(SATURDAY, "dinner"), 1]]);
-    const stats = { passes: 0, evaluations: 0 };
+    const stats = localSearch(assigned, ctx, new Set());
 
-    localSearch(assigned, ctx, new Set(), stats);
-
-    expect(stats).toEqual({ passes: 2, evaluations: 4 });
+    expect(stats).toEqual({
+      passes: 2,
+      evaluations: 4,
+      stopReason: "no_single_swap_improvement",
+    });
   });
 
   it("stops at the work limit mid-pass, keeping that pass's best swap so far", () => {
@@ -773,14 +844,55 @@ describe("search: systematic per-dinner pass", () => {
       [slotKey(SUNDAY, "dinner"), 1],
     ]);
     const before = evaluatePlan(assigned, ctx);
-    const stats = { passes: 0, evaluations: 0 };
+    const stats = localSearch(assigned, ctx, new Set(), 3);
 
-    localSearch(assigned, ctx, new Set(), stats, 3);
-
-    expect(stats).toEqual({ passes: 1, evaluations: 3 });
+    expect(stats).toEqual({ passes: 1, evaluations: 3, stopReason: "evaluation_limit" });
     expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(3);
     expect(assigned.get(slotKey(SUNDAY, "dinner"))).toBe(1);
     expect(isBetter(evaluatePlan(assigned, ctx), before)).toBe(true);
+  });
+
+  it("reports the work limit, not convergence, when a cut-off pass found nothing yet", () => {
+    const ctx = contextFor(
+      [dinner(1, "chicken", 400), dinner(2, "beef", 200), dinner(3, "pork", 100)],
+      100,
+    );
+    const assigned = new Map([[slotKey(SATURDAY, "dinner"), 3]]);
+    const stats = localSearch(assigned, ctx, new Set(), 1);
+
+    expect(stats).toEqual({ passes: 1, evaluations: 1, stopReason: "evaluation_limit" });
+    expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(3);
+  });
+
+  it("reports the work limit when a pass ends exactly on it and still improved", () => {
+    const ctx = contextFor(
+      [dinner(1, "chicken", 400), dinner(2, "beef", 200), dinner(3, "pork", 100)],
+      100,
+    );
+    const assigned = new Map([
+      [slotKey(SATURDAY, "dinner"), 1],
+      [slotKey(SUNDAY, "dinner"), 1],
+    ]);
+    const stats = localSearch(assigned, ctx, new Set(), 4);
+
+    expect(stats).toEqual({ passes: 1, evaluations: 4, stopReason: "evaluation_limit" });
+    expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(3);
+  });
+
+  it("reports convergence when a pass ends exactly on the limit with no improvement", () => {
+    const ctx = contextFor(
+      [dinner(1, "chicken", 400), dinner(2, "beef", 200), dinner(3, "pork", 100)],
+      100,
+    );
+    const assigned = new Map([[slotKey(SATURDAY, "dinner"), 3]]);
+    const stats = localSearch(assigned, ctx, new Set(), 2);
+
+    expect(stats).toEqual({
+      passes: 1,
+      evaluations: 2,
+      stopReason: "no_single_swap_improvement",
+    });
+    expect(assigned.get(slotKey(SATURDAY, "dinner"))).toBe(3);
   });
 
   it("leaves an empty slot empty; filling is fillRemainingSlots' job", () => {
@@ -791,6 +903,51 @@ describe("search: systematic per-dinner pass", () => {
 
     expect(assigned.has(slotKey(SUNDAY, "dinner"))).toBe(false);
     expect(eligibleRecipes("dinner", ctx)).toHaveLength(2);
+  });
+
+  it("reports convergence, not an optimum, when only a two-dinner change saves a store", () => {
+    const price = (ingredientId: number, store: string): PlannerIngredientPrice => ({
+      ingredientId,
+      ingredientName: `ingredient ${ingredientId}`,
+      store,
+      pricePerUnit: 10,
+      isPromo: false,
+    });
+    const withIngredients = (recipe: PlannerRecipe, ingredientIds: number[]) => ({
+      ...recipe,
+      ingredientIds,
+    });
+    const recipes = [
+      withIngredients(dinner(1, "chicken", 100), [101, 102]),
+      withIngredients(dinner(2, "beef", 100), [101, 102]),
+      withIngredients(dinner(3, "pork", 100), [103]),
+      withIngredients(dinner(4, "fish", 100), [104]),
+    ];
+    const ctx = buildPlannerContext(
+      recipes,
+      [price(101, "A"), price(102, "B"), price(103, "C"), price(104, "C")],
+      FIXTURE_PREFERENCES,
+      { ...FIXTURE_TARGETS, weeklyBudgetCzk: 1000 },
+    );
+    const assigned = new Map([
+      [slotKey(SATURDAY, "dinner"), 1],
+      [slotKey(SUNDAY, "dinner"), 2],
+    ]);
+    const coordinated = new Map([
+      [slotKey(SATURDAY, "dinner"), 3],
+      [slotKey(SUNDAY, "dinner"), 4],
+    ]);
+    const stats = localSearch(assigned, ctx, new Set());
+
+    expect(stats).toEqual({
+      passes: 1,
+      evaluations: 6,
+      stopReason: "no_single_swap_improvement",
+    });
+    expect([...assigned.values()]).toEqual([1, 2]);
+    expect(countDistinctStores(assigned, ctx)).toBe(2);
+    expect(countDistinctStores(coordinated, ctx)).toBe(1);
+    expect(isBetter(evaluatePlan(coordinated, ctx), evaluatePlan(assigned, ctx))).toBe(true);
   });
 });
 
@@ -818,6 +975,15 @@ describe("isBetter: violation count, then severity, then score", () => {
       isBetter(
         { violationCount: 1, severitySum: 0.2, score: 5 },
         { violationCount: 1, severitySum: 0.2, score: 4 },
+      ),
+    ).toBe(true);
+  });
+
+  it("treats severity sums differing only by float noise as tied, so score decides", () => {
+    expect(
+      isBetter(
+        { violationCount: 1, severitySum: 0.1 + 0.2, score: 5 },
+        { violationCount: 1, severitySum: 0.3, score: 4 },
       ),
     ).toBe(true);
   });

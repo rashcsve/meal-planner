@@ -100,7 +100,7 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
 
     const slots = await upsertPlanSlots(week.id, result.slots, tx);
     const evaluation: PlanEvaluationStatus = { status: "current", staleInputs: [] };
-    return { ...week, slots, violations: result.violations, evaluation };
+    return { ...week, slots, violations: result.violations, evaluation, search: result.search };
   });
 }
 

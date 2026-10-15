@@ -12,6 +12,7 @@ import type {
   PlanViolation,
   PlannedSlot,
   MealSlot,
+  SearchSummary,
 } from "shared";
 import { createRng } from "../lib/rng.js";
 
@@ -171,7 +172,7 @@ export function isServingsPlausible(
  * Why a recipe can't fill this slot, or null if it's eligible. Shared by
  * indexEligibleRecipesBySlot (bulk filtering during generation), replaceSlot's
  * server-side validation of a single manually-picked recipe, and
- * validateLockedSlots (re-checking an already-placed lock), so none of the
+ * validateAssignedSlots (re-checking the finished week), so none of the
  * three can ever disagree about what's eligible.
  *
  * @example
@@ -475,46 +476,50 @@ export function fillRemainingSlots(
 }
 
 // ---------------------------------------------------------------------------
-// 4. Check the whole finished plan: locked slots gone stale, each member's
-//    dinner calories, and the weekly budget.
+// 4. Check the whole finished plan: every filled slot's eligibility, each
+//    member's dinner calories, and the weekly budget.
 // ---------------------------------------------------------------------------
 
 /**
- * A locked slot always wins its place in the grid (placeMustUseConstraints
- * never checks eligibility before dropping it in), so a lock set before a
- * new exclusion, a meal-type change, or a changed member target can go
- * stale without the plan ever saying so - including the recipe itself
- * having since become unavailable for planning (archived, or missing the
- * cost/servings/nutrition a plan needs). This runs the same
- * checkSlotEligibility used for unlocked slots against each lock (or, if
- * the recipe is gone entirely, reports that directly) and reports a
- * violation instead - the recipe stays in place either way, per R04.7's
- * "don't silently drop a lock".
+ * Re-checks every filled slot of the finished week, however it was picked.
+ * - Locked slot: can go stale (new exclusion, changed target, recipe
+ *   archived) -> locked_slot_conflict; the recipe stays (R04.7).
+ * - Unlocked slot: picked from eligible recipes, so ineligible_slot
+ *   should never fire; if it does, an earlier stage has a bug.
  *
  * @example
  * A locked dinner recipe uses an ingredient added to neverIngredientIds
  * after the lock was set -> one locked_slot_conflict violation; the recipe
  * remains in that slot.
  */
-export function validateLockedSlots(locked: LockedSlot[], ctx: PlannerContext): PlanViolation[] {
+export function validateAssignedSlots(
+  assigned: Map<SlotKey, number>,
+  locked: LockedSlot[],
+  ctx: PlannerContext,
+): PlanViolation[] {
+  const lockedKeys = new Set(
+    locked.map((lockedSlot) => slotKey(lockedSlot.day, lockedSlot.mealSlot)),
+  );
   const violations: PlanViolation[] = [];
 
-  for (const lockedSlot of locked) {
-    const recipe = ctx.recipesById.get(lockedSlot.recipeId);
-    const reason = recipe
-      ? checkSlotEligibility(
-          recipe,
-          lockedSlot.mealSlot,
-          ctx.neverIngredientIds,
-          ctx.targets.memberTargets,
-        )
-      : `locked recipe ${lockedSlot.recipeId} is no longer available for planning`;
-    if (reason) {
-      violations.push({
-        slot: { day: lockedSlot.day, mealSlot: lockedSlot.mealSlot },
-        constraint: "locked_slot_conflict",
-        detail: reason,
-      });
+  for (let day = 0; day < DAYS_PER_WEEK; day++) {
+    for (const mealSlot of PLANNED_MEAL_SLOTS) {
+      const key = slotKey(day, mealSlot);
+      const recipeId = assigned.get(key);
+      if (recipeId === undefined) continue;
+
+      const isLocked = lockedKeys.has(key);
+      const recipe = ctx.recipesById.get(recipeId);
+      const reason = recipe
+        ? checkSlotEligibility(recipe, mealSlot, ctx.neverIngredientIds, ctx.targets.memberTargets)
+        : `${isLocked ? "locked " : ""}recipe ${recipeId} is no longer available for planning`;
+      if (reason) {
+        violations.push({
+          slot: { day, mealSlot },
+          constraint: isLocked ? "locked_slot_conflict" : "ineligible_slot",
+          detail: reason,
+        });
+      }
     }
   }
 
@@ -893,11 +898,13 @@ export function evaluatePlan(assigned: Map<SlotKey, number>, ctx: PlannerContext
  * isBetter({violationCount:1,severitySum:0.1,score:0},
  *          {violationCount:1,severitySum:0.3,score:5}) -> true
  */
+const SEVERITY_EPSILON = 1e-9;
+
 export function isBetter(candidate: PlanQuality, current: PlanQuality): boolean {
   if (candidate.violationCount !== current.violationCount) {
     return candidate.violationCount < current.violationCount;
   }
-  if (candidate.severitySum !== current.severitySum) {
+  if (Math.abs(candidate.severitySum - current.severitySum) > SEVERITY_EPSILON) {
     return candidate.severitySum < current.severitySum;
   }
   return candidate.score > current.score;
@@ -905,31 +912,28 @@ export function isBetter(candidate: PlanQuality, current: PlanQuality): boolean 
 
 export const MAX_SEARCH_EVALUATIONS = 10_000;
 
-export interface SearchStats {
-  passes: number;
-  evaluations: number;
-}
-
 /**
  * Each pass applies the single best swap among free slots; ties keep the
- * earlier candidate. Stops when a pass finds none, or after maxEvaluations
- * candidate evaluations (applying that pass's best swap so far).
+ * earlier candidate. Stops when a full pass finds none, or after
+ * maxEvaluations candidate evaluations (applying that pass's best swap so
+ * far). Neither stop proves the week is the best possible one.
  * protectedKeys = locked + expiry slots.
  */
 export function localSearch(
   assigned: Map<SlotKey, number>,
   ctx: PlannerContext,
   protectedKeys: Set<SlotKey>,
-  stats?: SearchStats,
   maxEvaluations: number = MAX_SEARCH_EVALUATIONS,
-): Map<SlotKey, number> {
+): SearchSummary {
   const freeKeys = [...assigned.keys()].filter((key) => !protectedKeys.has(key));
   let quality = evaluatePlan(assigned, ctx);
+  let passes = 0;
   let evaluations = 0;
   let improved = true;
+  let cutOff = false;
 
   while (improved && evaluations < maxEvaluations) {
-    if (stats) stats.passes++;
+    passes++;
     let best: { key: SlotKey; recipeId: number; quality: PlanQuality } | null = null;
 
     pass: for (const key of freeKeys) {
@@ -938,11 +942,13 @@ export function localSearch(
 
       for (const candidate of eligibleRecipes(parseSlotKey(key).mealSlot, ctx)) {
         if (candidate.id === currentRecipeId) continue;
-        if (evaluations >= maxEvaluations) break pass;
+        if (evaluations >= maxEvaluations) {
+          cutOff = true;
+          break pass;
+        }
         assigned.set(key, candidate.id);
         const candidateQuality = evaluatePlan(assigned, ctx);
         evaluations++;
-        if (stats) stats.evaluations++;
         assigned.set(key, currentRecipeId);
         if (isBetter(candidateQuality, best?.quality ?? quality)) {
           best = { key, recipeId: candidate.id, quality: candidateQuality };
@@ -957,7 +963,8 @@ export function localSearch(
     }
   }
 
-  return assigned;
+  const stopReason = improved || cutOff ? "evaluation_limit" : "no_single_swap_improvement";
+  return { stopReason, passes, evaluations };
 }
 
 // ---------------------------------------------------------------------------
@@ -989,7 +996,8 @@ export function collectReasons(
  * @param targets - daily calorie and weekly budget targets.
  * @param seed - makes the randomized part (placement ties) reproducible.
  *
- * @returns the 28 slots, any violations, and the seed/version used.
+ * @returns the 28 slots, any violations, the search summary (stop reason,
+ * passes, evaluations), and the seed/version used.
  *
  * @example
  * plan(..., seed: 42) always returns the identical 28-slot result for
@@ -1023,10 +1031,10 @@ export function plan(
 
   // Try to improve the plan without breaking a rule or touching a
   // protected slot.
-  localSearch(assigned, ctx, protectedKeys);
+  const search = localSearch(assigned, ctx, protectedKeys);
 
   // Final check against the finished plan.
-  violations.push(...validateLockedSlots(locked, ctx));
+  violations.push(...validateAssignedSlots(assigned, locked, ctx));
   violations.push(...validateMemberDinnerCalories(ctx, assigned));
   violations.push(...validateWeeklyBudget(ctx, assigned));
 
@@ -1053,5 +1061,5 @@ export function plan(
     }
   }
 
-  return { slots, violations, seed, plannerVersion: PLANNER_VERSION };
+  return { slots, violations, search, seed, plannerVersion: PLANNER_VERSION };
 }

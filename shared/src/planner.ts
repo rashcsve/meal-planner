@@ -70,9 +70,18 @@ export interface PlanViolation {
   severity?: number;
 }
 
+export type SearchStopReason = "no_single_swap_improvement" | "evaluation_limit";
+
+export interface SearchSummary {
+  stopReason: SearchStopReason;
+  passes: number;
+  evaluations: number;
+}
+
 export interface PlanResult {
   slots: PlannedSlot[];
   violations: PlanViolation[];
+  search: SearchSummary;
   seed: number;
   plannerVersion: string;
 }

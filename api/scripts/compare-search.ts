@@ -11,10 +11,11 @@ import {
   localSearch,
   slotKey,
   type PlannerContext,
-  type SearchStats,
   type SlotKey,
 } from "../src/services/planner.js";
 import { BUDGET_REPAIR_RECIPES, FIXTURE_TARGETS } from "../tests/fixtures/plannerFixtures.js";
+
+type SearchStats = { passes: number; evaluations: number };
 
 interface HarnessCase {
   name: string;
@@ -135,7 +136,7 @@ for (const harnessCase of CASES) {
   const protectedKeys = new Set((harnessCase.protectedDays ?? []).map((day) => slotKey(day, "dinner")));
   const rows: Record<string, object> = { initial: describeWeek(initial, ctx) };
 
-  const { week: systematic, row: systematicRun } = timed((week, stats) => localSearch(week, ctx, protectedKeys, stats), initial);
+  const { week: systematic, row: systematicRun } = timed((week, stats) => Object.assign(stats, localSearch(week, ctx, protectedKeys)), initial);
   rows.systematic = { ...describeWeek(systematic, ctx), ...systematicRun };
 
   const legacy = LEGACY_SEEDS.map((seed) => {

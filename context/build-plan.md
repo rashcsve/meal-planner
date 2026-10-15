@@ -548,6 +548,10 @@ way R01 resolved its own four, not by guessing during implementation.
     the work budget," and neither as proof of a global optimum. Includes the store-count
     coordinated-change fixture (r04-search-quality.md §4) asserting the search honestly
     reports convergence rather than silently claiming an unreachable optimum.
+    **Resolved 2026-10-15** — the final check re-validates every filled slot; `plan()`
+    returns `search: { stopReason, passes, evaluations }` with `no_single_swap_improvement`
+    or `evaluation_limit`. Returned on generate only (not persisted, not on GET); revisit
+    in R05 if the UI needs it after reload.
 
 ### R05 — Preview, accept, swaps and concurrent edits
 

@@ -589,6 +589,14 @@ describe("evaluation staleness on read (R04.8c)", () => {
     expect(body.evaluation).toEqual({ status: "current", staleInputs: [] });
   });
 
+  it("returns why the search stopped on generate", async () => {
+    await seedPlannableHousehold();
+    const res = await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const body = (await res.json()) as { search: { stopReason: string; evaluations: number } };
+    expect(body.search.stopReason).toBe("no_single_swap_improvement");
+    expect(body.search.evaluations).toBeGreaterThan(0);
+  });
+
   it("reports not_evaluated for a legacy week with no stored violations", async () => {
     await db
       .insert(planWeeks)

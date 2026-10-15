@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R04.15 — final validation and honest stop-reason reporting.
+**Next step:** R05 — preview, accept, swaps and concurrent edits (slices not yet split).
 
 ## R04 — planner correctness and search quality
 
@@ -26,6 +26,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R04.12 | Empty slots: not a search case; contract test only, no search change | complete 10-14 |
 | R04.13 | Comparison harness; systematic ties legacy on rules, trails best seed on score | complete 10-14 |
 | R04.14 | Work limit: 10,000 evaluations per search, no wall-clock cutoff | complete 10-14 |
+| R04.15 | Final validation of every filled slot; stop reason reported (converged vs work limit) | complete 10-15 |
 
 ## Earlier milestones
 
@@ -41,10 +42,10 @@ Short status only. Full entries (decisions, tests, verification) live in
 - R04 — Decide if budget enforcement can be optional before checkout pricing exists.
 - R04.8 — Staleness ignores pantry changes and the date, so expiry violations go stale unnoticed.
 - R04 — Expiry slots are still protected from search; unprotect once expiry coverage is in the comparator.
-- R04.15 — One systematic run beats 7–8 of 10 legacy seeds at 20/50 recipes, mid-pack at 5; only
+- R04 — One systematic run beats 7–8 of 10 legacy seeds at 20/50 recipes, mid-pack at 5; only
   best-of-10 beats it (see R04.13). Multiple starts only if that gap is worth the extra work.
-- R04.15 — Add a fixture where best- and first-improvement end differently; current tests can't tell them apart.
-- R04.15 — `isBetter` compares `severitySum` exactly; consider an epsilon for float noise.
+- R05 — `search` summary is generate-only by decision (not saved, not on GET). Revisit if the
+  UI needs the stop reason after reload.
 - R05 — If the search runs over a saved week with gaps, decide whether it may fill empty
   slots (and whether an over-budget fill beats leaving it empty). See R04.12.
 - R05 — `setSlotLocked`/`replaceSlot` don't re-evaluate, so stored violations go stale

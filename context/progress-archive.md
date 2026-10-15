@@ -2254,3 +2254,27 @@ Verified 2026-10-14: `npm run test -w api` → 12 files/181 tests pass (planner 
 typecheck and lint clean. Comparison harness not re-run.
 
 **Next step:** R04.15 (final validation, honest stop-reason reporting), after review.
+
+## R04.15 — Final validation and honest stop-reason reporting — `complete` (2026-10-15)
+
+After search, the final check re-validates every filled slot, not just locked ones. `plan()`
+now returns `search: { stopReason, passes, evaluations }` (`SearchSummary` in
+`shared/src/planner.ts`), and `generatePlan` passes it through on the generate response.
+`stopReason` is `no_single_swap_improvement` (a full pass found nothing better) or
+`evaluation_limit` (the limit was hit mid-pass, or a pass ending on the limit still improved).
+Neither claims the week is optimal.
+
+Decisions:
+- `search` is generate-only: not persisted, not on GET. Follow-up in progress.md (R05).
+- `isBetter` compares `severitySum` with `SEVERITY_EPSILON = 1e-9` to ignore float noise.
+
+Tests (`api/tests/planner.test.ts`, `api/tests/plans.test.ts`): best- vs first-improvement
+fixture (ends `[1, 2]`, first-improvement would end `[2, 1]`); r04-search-quality.md §4
+store-count fixture (converges without the two-dinner change); stop reason at the limit
+mid-pass, and when a pass ends exactly on the limit with and without improvement; generate
+response carries `search`.
+
+Verified 2026-10-15: `npm run test -w api` → 12 files/190 tests pass (planner file 52);
+typecheck and lint clean (2 old web warnings).
+
+**Next step:** R05, after review.
