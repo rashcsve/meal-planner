@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import {
+  acceptPlanSchema,
   generatePlanSchema,
   generatePreviewSchema,
   replaceSlotSchema,
@@ -10,6 +11,7 @@ import {
 } from "shared";
 import { weekParamSchema, slotParamSchema } from "../lib/params.js";
 import {
+  acceptPlan,
   generatePlan,
   previewPlan,
   getWeek,
@@ -29,6 +31,9 @@ import {
   HouseholdMemberMissingDinnerTargetError,
   StaleRevisionError,
   ExpectedRevisionRequiredError,
+  StalePreviewError,
+  AcceptedSlotsMismatchError,
+  SlotEmptyError,
 } from "../lib/errors.js";
 
 function mapPlanError(err: unknown): never {
@@ -39,6 +44,24 @@ function mapPlanError(err: unknown): never {
     throw new HTTPException(409, {
       message: err.message,
       cause: { code: "STALE_PLAN_REVISION" },
+    });
+  }
+  if (err instanceof StalePreviewError) {
+    throw new HTTPException(409, {
+      message: err.message,
+      cause: { code: "STALE_PREVIEW", staleInputs: err.staleInputs },
+    });
+  }
+  if (err instanceof AcceptedSlotsMismatchError) {
+    throw new HTTPException(422, {
+      message: err.message,
+      cause: { code: "ACCEPTED_SLOTS_MISMATCH" },
+    });
+  }
+  if (err instanceof SlotEmptyError) {
+    throw new HTTPException(422, {
+      message: err.message,
+      cause: { code: "SLOT_EMPTY" },
     });
   }
   if (err instanceof SlotLockedError) {
@@ -116,6 +139,25 @@ export const plansRoute = new Hono()
       try {
         const preview = await previewPlan(weekStartDate, seed);
         return c.json(preview);
+      } catch (err) {
+        mapPlanError(err);
+      }
+    },
+  )
+  .post(
+    "/accept",
+    zValidator("json", acceptPlanSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(422, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
+    async (c) => {
+      try {
+        const week = await acceptPlan(c.req.valid("json"));
+        return c.json(week);
       } catch (err) {
         mapPlanError(err);
       }

@@ -2336,3 +2336,28 @@ Preview returns `baseRevision` + `inputVersions` so R05.3 can detect a stale pre
 Open: R05.3 must choose re-run-with-seed vs. re-validate previewed slots.
 
 **Next step:** R05.3 — accept.
+
+## R05.3 — Accept — `awaiting review` (2026-10-15)
+
+`POST /api/plans/accept` with `{ weekStartDate, seed, baseRevision, inputVersions, slots }`
+saves a previewed week. Service `acceptPlan` (`services/plans.ts`): reads inputs, checks the
+sent slots (`buildAcceptedSlots`: exactly 7 dinner slots; locked slots must keep their saved
+recipe; other recipes must be eligible), rebuilds reasons/servings, computes violations; then one
+transaction: re-reads input versions (`getCurrentInputVersions(tx)`), compares them with the
+preview's → 409 `STALE_PREVIEW` + `staleInputs`; revision CAS (existing week) or insert (new
+week) → 409 `STALE_PLAN_REVISION` / `WeekAlreadyGeneratedError`; upserts slots.
+Slot mismatch → 422 `ACCEPTED_SLOTS_MISMATCH`; ineligible recipe → 422 `RECIPE_NOT_ELIGIBLE`.
+Preview now keeps saved `memberServings` on locked slots and computes violations with
+`evaluateSlots`, so preview and accept agree. `getCurrentInputVersions` runs its 5 queries
+sequentially (parallel queries on one transaction connection trigger a pg@9 deprecation).
+
+Tests: `npm run test -w api` → 12 files, 208 passed; `bash scripts/verify.sh` passed (2 old web
+lint warnings). New: new-week round trip; locked slot keeps portions after a target change;
+moved revision → 409; recipe edit after preview → 409 `STALE_PREVIEW`, no rows; tampered locked
+slot → 422; week created after a new-week preview → 409.
+
+Decisions: client sends the previewed slots, server re-validates (re-running with the seed could
+save a week the user never saw — pantry/prices aren't watermarked). Locked slots keep saved
+portions; reasons are recomputed. Version check runs inside the transaction, after inputs are read.
+
+**Next step:** R05.4 — recipe snapshots on accepted slots (snapshot shape decision first).

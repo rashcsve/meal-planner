@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MEAL_SLOTS } from "./planner.js";
 
 // Revision starts at 1 and only ever increments; 0 is never a valid value.
 const expectedRevisionSchema = z
@@ -18,6 +19,33 @@ export type GeneratePlanInput = z.infer<typeof generatePlanSchema>;
 export const generatePreviewSchema = generatePlanSchema.omit({ expectedRevision: true });
 
 export type GeneratePreviewInput = z.infer<typeof generatePreviewSchema>;
+
+const inputVersionSchema = z.iso
+  .datetime({ error: "Input version must be an ISO timestamp" })
+  .transform((value) => new Date(value))
+  .nullable();
+
+export const acceptPlanSchema = z.object({
+  weekStartDate: z.iso.date({ error: "Week start date must be YYYY-MM-DD" }),
+  seed: z.number({ error: "Seed must be a number" }).int("Seed must be a whole number"),
+  baseRevision: expectedRevisionSchema.nullable(),
+  inputVersions: z.object({
+    recipesVersionAt: inputVersionSchema,
+    targetsVersionAt: inputVersionSchema,
+    exclusionsVersionAt: inputVersionSchema,
+  }),
+  slots: z
+    .array(
+      z.object({
+        day: z.number().int().min(0).max(6),
+        mealSlot: z.enum(MEAL_SLOTS),
+        recipeId: z.number().int().positive().nullable(),
+      }),
+    )
+    .min(1, "A plan needs at least one slot"),
+});
+
+export type AcceptPlanInput = z.infer<typeof acceptPlanSchema>;
 
 export const replaceSlotSchema = z.object({
   recipeId: z

@@ -142,9 +142,32 @@ export class SlotLockedError extends Error {
   }
 }
 
+export class SlotEmptyError extends Error {
+  constructor(day: number, mealSlot: string) {
+    super(`Slot for day ${day}, ${mealSlot} has no recipe to lock`);
+    this.name = "SlotEmptyError";
+  }
+}
+
 export class RecipeNotEligibleError extends Error {
   constructor(recipeId: number, day: number, mealSlot: string, reason: string) {
     super(`Recipe ${recipeId} can't fill day ${day}, ${mealSlot}: ${reason}`);
     this.name = "RecipeNotEligibleError";
+  }
+}
+
+export class AcceptedSlotsMismatchError extends Error {
+  constructor(reason: string) {
+    super(`Accepted plan doesn't match the week: ${reason}`);
+    this.name = "AcceptedSlotsMismatchError";
+  }
+}
+
+export class StalePreviewError extends Error {
+  readonly staleInputs: string[];
+  constructor(weekStartDate: string, staleInputs: string[]) {
+    super(`Preview for week ${weekStartDate} is out of date (${staleInputs.join(", ")} changed)`);
+    this.name = "StalePreviewError";
+    this.staleInputs = staleInputs;
   }
 }

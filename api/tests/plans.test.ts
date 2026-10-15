@@ -12,6 +12,7 @@ import {
   pantryItems,
   planWeeks,
   planSlots,
+  ingredientPreferences,
 } from "../src/db/schema.js";
 import { plansRoute } from "../src/routes/plans.js";
 import { archiveRecipe } from "../src/services/recipes.js";
@@ -145,6 +146,14 @@ async function seedPlanWeek(overrides: Partial<{ weekStartDate: string; revision
   return week!;
 }
 
+async function seedRecipe() {
+  const [recipe] = await db
+    .insert(recipes)
+    .values({ title: "Seeded lunch", time: 20, cost: 100, meal: "lunch", servings: 1 })
+    .returning();
+  return recipe!;
+}
+
 async function seedPlanSlot(
   planWeekId: number,
   overrides: Partial<{
@@ -257,7 +266,8 @@ describe("revision contract", () => {
 
   it("returns the new revision from a successful lock", async () => {
     const week = await seedPlanWeek({ revision: 1 });
-    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch" });
+    const recipe = await seedRecipe();
+    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch", recipeId: recipe.id });
 
     const res = await putJson(`/api/plans/${week.weekStartDate}/slots/0/lunch/lock`, {
       expectedRevision: 1,
@@ -271,7 +281,8 @@ describe("revision contract", () => {
 describe("stale mutations", () => {
   it("rejects a lock with a stale revision and does not apply it", async () => {
     const week = await seedPlanWeek({ revision: 3 });
-    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch", locked: false });
+    const recipe = await seedRecipe();
+    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch", locked: false, recipeId: recipe.id });
 
     const res = await putJson(`/api/plans/${week.weekStartDate}/slots/0/lunch/lock`, {
       expectedRevision: 1,
@@ -351,8 +362,9 @@ describe("stale mutations", () => {
 describe("concurrent mutations", () => {
   it("lets only one of two same-revision locks succeed", async () => {
     const week = await seedPlanWeek({ revision: 1 });
-    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch" });
-    await seedPlanSlot(week.id, { day: 1, mealSlot: "lunch" });
+    const recipe = await seedRecipe();
+    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch", recipeId: recipe.id });
+    await seedPlanSlot(week.id, { day: 1, mealSlot: "lunch", recipeId: recipe.id });
 
     const [resA, resB] = await Promise.all([
       putJson(`/api/plans/${week.weekStartDate}/slots/0/lunch/lock`, { expectedRevision: 1 }),
@@ -540,7 +552,8 @@ describe("re-evaluation after lock (R05.1)", () => {
 
   it("marks the week not_evaluated when the household is incomplete, without failing the lock", async () => {
     const week = await seedPlanWeek({ revision: 1 });
-    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch" });
+    const recipe = await seedRecipe();
+    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch", recipeId: recipe.id });
     await db
       .update(planWeeks)
       .set({
@@ -1209,5 +1222,280 @@ describe("generation preview (R05.2)", () => {
 
     expect(res.status).toBe(422);
     expect(await db.select().from(planWeeks)).toEqual([]);
+  });
+});
+
+describe("accept (R05.3)", () => {
+  type Preview = {
+    weekStartDate: string;
+    seed: number;
+    baseRevision: number | null;
+    inputVersions: Record<string, string | null>;
+    slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    violations: unknown[];
+  };
+
+  async function preview(seed = 1): Promise<Preview> {
+    const res = await postJson("/api/plans/generate/preview", {
+      weekStartDate: "2026-01-05",
+      seed,
+    });
+    return (await res.json()) as Preview;
+  }
+
+  function accept(body: Preview) {
+    const { weekStartDate, seed, baseRevision, inputVersions, slots } = body;
+    return postJson("/api/plans/accept", {
+      weekStartDate,
+      seed,
+      baseRevision,
+      inputVersions,
+      slots,
+    });
+  }
+
+  it("saves a new week exactly as previewed", async () => {
+    await seedPlannableHousehold();
+    const previewed = await preview();
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(200);
+    const accepted = (await res.json()) as Preview & { revision: number };
+    expect(accepted.revision).toBe(1);
+    expect(accepted.violations).toEqual(previewed.violations);
+    expect(accepted.slots).toEqual(previewed.slots.map((slot) => expect.objectContaining(slot)));
+  });
+
+  it("keeps a locked slot's saved portions in both preview and accept", async () => {
+    const { member } = await seedPlannableHousehold();
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as { revision: number };
+    await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const [lockedBefore] = await db.select().from(planSlots).where(eq(planSlots.day, 0));
+    await db
+      .update(householdMembers)
+      .set({ dinnerCalorieTarget: 800, updatedAt: new Date() })
+      .where(eq(householdMembers.id, member.id));
+
+    const previewed = await preview(7);
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(200);
+    const accepted = (await res.json()) as Preview;
+    expect(accepted.slots).toEqual(previewed.slots.map((s) => expect.objectContaining(s)));
+    expect(accepted.violations).toEqual(previewed.violations);
+    const [lockedAfter] = await db.select().from(planSlots).where(eq(planSlots.day, 0));
+    expect(lockedAfter!.memberServings).toEqual(lockedBefore!.memberServings);
+    expect(lockedAfter!.locked).toBe(true);
+  });
+
+  async function errorDetails(res: Response) {
+    return ((await res.json()) as { error: { details?: Record<string, unknown> } }).error.details;
+  }
+
+  async function generateAndLockDay0() {
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as { revision: number };
+    await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+  }
+
+  it("rejects a preview whose plan revision moved on", async () => {
+    await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const previewed = await preview(7);
+    await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: previewed.baseRevision,
+    });
+    const slotsBefore = await db.select().from(planSlots);
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(409);
+    expect(await errorDetails(res)).toMatchObject({ code: "STALE_PLAN_REVISION" });
+    expect(await db.select().from(planSlots)).toEqual(slotsBefore);
+  });
+
+  it("rejects a preview made before a recipe edit and writes nothing", async () => {
+    const { dinnerRecipe } = await seedPlannableHousehold();
+    const previewed = await preview();
+    await db
+      .update(recipes)
+      .set({ updatedAt: new Date(Date.now() + 1000) })
+      .where(eq(recipes.id, dinnerRecipe.id));
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(409);
+    expect(await errorDetails(res)).toEqual({ code: "STALE_PREVIEW", staleInputs: ["recipes"] });
+    expect(await db.select().from(planWeeks)).toEqual([]);
+  });
+
+  it("rejects a changed recipe on a locked slot", async () => {
+    const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
+    await generateAndLockDay0();
+    const previewed = await preview(7);
+    const day0 = previewed.slots.find((s) => s.day === 0)!;
+    day0.recipeId = day0.recipeId === dinnerRecipe.id ? dinnerRecipe2.id : dinnerRecipe.id;
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(422);
+    expect(await errorDetails(res)).toMatchObject({ code: "ACCEPTED_SLOTS_MISMATCH" });
+  });
+
+  it("rejects a new-week preview once someone else created the week", async () => {
+    await seedPlannableHousehold();
+    const previewed = await preview();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(409);
+    const [week] = await db.select().from(planWeeks);
+    expect(week!.revision).toBe(1);
+  });
+
+  it("rejects a preview whose slot was locked to another recipe after it", async () => {
+    const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const previewed = await preview(7);
+    const day0 = previewed.slots.find((s) => s.day === 0)!;
+    await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: day0.recipeId === dinnerRecipe.id ? dinnerRecipe2.id : dinnerRecipe.id,
+      expectedRevision: previewed.baseRevision,
+    });
+    await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: previewed.baseRevision! + 1,
+    });
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(409);
+    expect(await errorDetails(res)).toMatchObject({ code: "STALE_PLAN_REVISION" });
+  });
+
+  it("rejects input versions from the future and writes nothing", async () => {
+    await seedPlannableHousehold();
+    const previewed = await preview();
+    previewed.inputVersions.recipesVersionAt = "2100-01-01T00:00:00.000Z";
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(409);
+    expect(await errorDetails(res)).toEqual({ code: "STALE_PREVIEW", staleInputs: ["recipes"] });
+    expect(await db.select().from(planWeeks)).toEqual([]);
+  });
+
+  it("stores the server's input versions, not the client's", async () => {
+    await seedPlannableHousehold();
+    const previewed = await preview();
+
+    await accept(previewed);
+
+    const [week] = await db.select().from(planWeeks);
+    const current = await getCurrentInputVersions();
+    expect(week!.recipesVersionAt).toEqual(current.recipesVersionAt);
+    expect(week!.targetsVersionAt).toEqual(current.targetsVersionAt);
+    expect(week!.exclusionsVersionAt).toEqual(current.exclusionsVersionAt);
+  });
+
+  it("rejects a preview made before a target edit", async () => {
+    const { member } = await seedPlannableHousehold();
+    const previewed = await preview();
+    await db
+      .update(householdMembers)
+      .set({ updatedAt: new Date(Date.now() + 1000) })
+      .where(eq(householdMembers.id, member.id));
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(409);
+    expect(await errorDetails(res)).toEqual({ code: "STALE_PREVIEW", staleInputs: ["targets"] });
+  });
+
+  it("rejects a preview made before an exclusion was added", async () => {
+    await seedPlannableHousehold();
+    const previewed = await preview();
+    const [unused] = await db
+      .insert(ingredients)
+      .values({ name: "Unused", baseUnit: "g", kcalPer100g: 100 })
+      .returning();
+    await db.insert(ingredientPreferences).values({ ingredientId: unused!.id, rule: "never" });
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(409);
+    expect(await errorDetails(res)).toEqual({
+      code: "STALE_PREVIEW",
+      staleInputs: ["exclusions"],
+    });
+  });
+
+  it("rejects a plan with a missing slot", async () => {
+    await seedPlannableHousehold();
+    const previewed = await preview();
+    previewed.slots = previewed.slots.slice(1);
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(422);
+    expect(await errorDetails(res)).toMatchObject({ code: "ACCEPTED_SLOTS_MISMATCH" });
+  });
+
+  it("rejects an ineligible recipe on an unlocked slot", async () => {
+    const { lunchRecipe } = await seedPlannableHousehold();
+    const previewed = await preview();
+    previewed.slots.find((s) => s.day === 1)!.recipeId = lunchRecipe.id;
+
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(422);
+    expect(await errorDetails(res)).toMatchObject({ code: "RECIPE_NOT_ELIGIBLE" });
+  });
+
+  it("returns 404 for a base revision on a week that doesn't exist", async () => {
+    await seedPlannableHousehold();
+    const previewed = await preview();
+
+    const res = await accept({ ...previewed, baseRevision: 1 });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses to lock an empty slot", async () => {
+    const week = await seedPlanWeek();
+    await seedPlanSlot(week.id, { day: 0, mealSlot: "dinner" });
+
+    const res = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: week.revision,
+    });
+
+    expect(res.status).toBe(422);
+    expect(await errorDetails(res)).toMatchObject({ code: "SLOT_EMPTY" });
+  });
+
+  it("treats an already locked empty slot as unlocked in preview and accept", async () => {
+    await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await db
+      .update(planSlots)
+      .set({ recipeId: null, locked: true, memberServings: [] })
+      .where(eq(planSlots.day, 0));
+
+    const previewed = await preview(7);
+    const res = await accept(previewed);
+
+    expect(res.status).toBe(200);
+    const [day0] = await db.select().from(planSlots).where(eq(planSlots.day, 0));
+    expect(day0!.recipeId).not.toBeNull();
+    expect(day0!.memberServings).not.toEqual([]);
+    expect(day0!.locked).toBe(false);
   });
 });

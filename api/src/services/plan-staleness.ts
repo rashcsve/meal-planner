@@ -7,7 +7,7 @@ export interface PlanEvaluationStatus {
   staleInputs: StaleInput[];
 }
 
-const WATERMARKS: [StaleInput, keyof CurrentInputVersions][] = [
+export const WATERMARKS: [StaleInput, keyof CurrentInputVersions][] = [
   ["recipes", "recipesVersionAt"],
   ["targets", "targetsVersionAt"],
   ["exclusions", "exclusionsVersionAt"],

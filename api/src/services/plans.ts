@@ -1,4 +1,5 @@
-import type { LockedSlot, MealSlot, MemberServing } from "shared";
+import { PLANNER_VERSION } from "shared";
+import type { AcceptPlanInput, LockedSlot, MealSlot, MemberServing } from "shared";
 import {
   plan,
   buildPlannerContext,
@@ -9,6 +10,8 @@ import {
   evaluateExistingWeek,
   scoreSlot,
   slotKey,
+  DAYS_PER_WEEK,
+  PLANNED_MEAL_SLOTS,
   type SlotKey,
   type PlannerContext,
 } from "./planner.js";
@@ -20,14 +23,23 @@ import {
   insertPlanWeek,
   casIncrementRevision,
 } from "../repositories/planWeeks.js";
-import { getCurrentInputVersions } from "../repositories/planInputVersions.js";
-import { evaluateStaleness, type PlanEvaluationStatus } from "./plan-staleness.js";
+import {
+  getCurrentInputVersions,
+  type CurrentInputVersions,
+} from "../repositories/planInputVersions.js";
+import {
+  evaluateStaleness,
+  WATERMARKS,
+  type PlanEvaluationStatus,
+  type StaleInput,
+} from "./plan-staleness.js";
 import {
   findSlotsByWeekId,
   findLockedSlotsByWeekId,
   updateSlotLocked,
   updateSlotRecipe,
   upsertPlanSlots,
+  type PlanSlotInput,
 } from "../repositories/planSlots.js";
 import {
   PlanWeekNotFoundError,
@@ -40,6 +52,10 @@ import {
   HouseholdSettingsNotConfiguredError,
   NoHouseholdMembersError,
   HouseholdMemberMissingDinnerTargetError,
+  AcceptedSlotsMismatchError,
+  StalePreviewError,
+  WeekAlreadyGeneratedError,
+  SlotEmptyError,
 } from "../lib/errors.js";
 
 const INCOMPLETE_HOUSEHOLD_ERRORS = [
@@ -133,22 +149,169 @@ async function runPlanner(
     inputs.targets,
     seed,
   );
-  return { inputVersions, result };
+  return { inputVersions, inputs, result };
 }
 
 export async function previewPlan(weekStartDate: string, seed: number) {
   const existingWeek = await findPlanWeekByDate(weekStartDate);
-  const { inputVersions, result } = await runPlanner(weekStartDate, seed, existingWeek);
+  const { inputVersions, inputs, result } = await runPlanner(weekStartDate, seed, existingWeek);
+  const lockedRows = existingWeek ? await findLockedSlotsByWeekId(existingWeek.id) : [];
+  const slots = result.slots.map((slot) => {
+    const saved = lockedRows.find(
+      (row) => row.day === slot.day && row.mealSlot === slot.mealSlot && row.recipeId !== null,
+    );
+    return saved ? { ...slot, memberServings: saved.memberServings } : slot;
+  });
+  const ctx = buildPlannerContext(
+    inputs.recipes,
+    inputs.prices,
+    inputs.preferences,
+    inputs.targets,
+  );
   return {
     weekStartDate,
     seed: result.seed,
     plannerVersion: result.plannerVersion,
     baseRevision: existingWeek?.revision ?? null,
     inputVersions,
-    slots: result.slots,
-    violations: result.violations,
+    slots,
+    violations: evaluateSlots(slots, inputs.pantry, ctx),
     search: result.search,
   };
+}
+
+function buildAcceptedSlots(
+  sent: { day: number; mealSlot: MealSlot; recipeId: number | null }[],
+  savedSlots: Awaited<ReturnType<typeof findSlotsByWeekId>>,
+  inputs: PlanInputs,
+  ctx: PlannerContext,
+): PlanSlotInput[] {
+  const expectedKeys = new Set<SlotKey>();
+  for (let day = 0; day < DAYS_PER_WEEK; day++) {
+    for (const mealSlot of PLANNED_MEAL_SLOTS) expectedKeys.add(slotKey(day, mealSlot));
+  }
+  const sentKeys = new Set(sent.map((slot) => slotKey(slot.day, slot.mealSlot)));
+  if (sent.length !== expectedKeys.size || [...expectedKeys].some((key) => !sentKeys.has(key))) {
+    throw new AcceptedSlotsMismatchError(
+      `expected one slot for each of ${[...expectedKeys].join(", ")}`,
+    );
+  }
+
+  const assigned = new Map<SlotKey, number>();
+  for (const slot of sent) {
+    if (slot.recipeId !== null) assigned.set(slotKey(slot.day, slot.mealSlot), slot.recipeId);
+  }
+
+  return sent.map(({ day, mealSlot, recipeId }) => {
+    const saved = savedSlots.find((row) => row.day === day && row.mealSlot === mealSlot);
+    if (saved?.locked && saved.recipeId !== null) {
+      if (saved.recipeId !== recipeId) {
+        throw new AcceptedSlotsMismatchError(`day ${day}, ${mealSlot} is locked to another recipe`);
+      }
+      return {
+        day,
+        mealSlot,
+        recipeId,
+        locked: true,
+        reasons:
+          recipeId === null
+            ? []
+            : collectReasons(
+                day,
+                mealSlot,
+                recipeId,
+                inputs.recipes,
+                inputs.prices,
+                inputs.pantry,
+                assigned,
+              ),
+        memberServings: saved.memberServings,
+      };
+    }
+    if (recipeId === null) {
+      return { day, mealSlot, recipeId, locked: false, reasons: [], memberServings: [] };
+    }
+
+    const recipe = ctx.recipesById.get(recipeId);
+    if (!recipe) {
+      throw new RecipeNotEligibleError(
+        recipeId,
+        day,
+        mealSlot,
+        "recipe is missing or lacks data needed to plan with",
+      );
+    }
+    const ineligible = checkSlotEligibility(
+      recipe,
+      mealSlot,
+      ctx.neverIngredientIds,
+      inputs.targets.memberTargets,
+    );
+    if (ineligible) throw new RecipeNotEligibleError(recipeId, day, mealSlot, ineligible);
+
+    return {
+      day,
+      mealSlot,
+      recipeId,
+      locked: false,
+      reasons: collectReasons(
+        day,
+        mealSlot,
+        recipeId,
+        inputs.recipes,
+        inputs.prices,
+        inputs.pantry,
+        assigned,
+      ),
+      memberServings: computeMemberServings(recipe, inputs.targets.memberTargets),
+    };
+  });
+}
+
+function changedInputs(
+  sent: AcceptPlanInput["inputVersions"],
+  current: CurrentInputVersions,
+): StaleInput[] {
+  return WATERMARKS.filter(
+    ([, key]) => (sent[key]?.getTime() ?? null) !== (current[key]?.getTime() ?? null),
+  ).map(([input]) => input);
+}
+
+export async function acceptPlan(input: AcceptPlanInput) {
+  const { weekStartDate, seed, baseRevision, inputVersions } = input;
+  const existingWeek = await findPlanWeekByDate(weekStartDate);
+  if (existingWeek && baseRevision === null) throw new WeekAlreadyGeneratedError(weekStartDate);
+  if (!existingWeek && baseRevision !== null) throw new PlanWeekNotFoundError(weekStartDate);
+  if (existingWeek && existingWeek.revision !== baseRevision) {
+    throw new StaleRevisionError(weekStartDate, baseRevision!);
+  }
+
+  const savedSlots = existingWeek ? await findSlotsByWeekId(existingWeek.id) : [];
+  const inputs = await getPlanInputs(weekStartDate);
+  const ctx = buildPlannerContext(
+    inputs.recipes,
+    inputs.prices,
+    inputs.preferences,
+    inputs.targets,
+  );
+  const slots = buildAcceptedSlots(input.slots, savedSlots, inputs, ctx);
+  const violations = evaluateSlots(slots, inputs.pantry, ctx);
+
+  return db.transaction(async (tx) => {
+    const current = await getCurrentInputVersions(tx);
+    const staleInputs = changedInputs(inputVersions, current);
+    if (staleInputs.length > 0) throw new StalePreviewError(weekStartDate, staleInputs);
+
+    const weekData = { seed, plannerVersion: PLANNER_VERSION, violations, ...current };
+    const week = existingWeek
+      ? await casIncrementRevision(existingWeek.id, baseRevision!, weekData, tx)
+      : await insertPlanWeek({ weekStartDate, ...weekData }, tx);
+    if (!week) throw new StaleRevisionError(weekStartDate, baseRevision!);
+
+    const savedRows = await upsertPlanSlots(week.id, slots, tx);
+    const evaluation: PlanEvaluationStatus = { status: "current", staleInputs: [] };
+    return { ...week, slots: savedRows, violations, evaluation };
+  });
 }
 
 export async function generatePlan(weekStartDate: string, seed: number, expectedRevision?: number) {
@@ -220,6 +383,8 @@ export async function setSlotLocked(
 ) {
   const week = await findWeekOrThrow(weekStartDate);
   const slots = await findSlotsByWeekId(week.id);
+  const target = slots.find((slot) => slot.day === day && slot.mealSlot === mealSlot);
+  if (locked && target && target.recipeId === null) throw new SlotEmptyError(day, mealSlot);
   const evaluation = await reevaluateSlots(
     weekStartDate,
     slots.map((slot) =>

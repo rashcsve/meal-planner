@@ -29,7 +29,7 @@ export const DAYS_PER_WEEK = 7;
  * the shared MealSlot type for a later phase but are never filled or
  * validated (see context/build-plan.md step 27.1).
  */
-const PLANNED_MEAL_SLOTS: readonly MealSlot[] = ["dinner"];
+export const PLANNED_MEAL_SLOTS: readonly MealSlot[] = ["dinner"];
 
 /**
  * Pantry items expiring within this many days are a hard "must be used by"

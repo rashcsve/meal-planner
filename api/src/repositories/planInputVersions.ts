@@ -1,5 +1,5 @@
 import { max } from "drizzle-orm";
-import { db } from "../db/index.js";
+import { db, type DbClient } from "../db/index.js";
 import {
   recipes,
   recipeIngredients,
@@ -20,15 +20,22 @@ function latestOf(a: Date | null, b: Date | null): Date | null {
   return a > b ? a : b;
 }
 
-export async function getCurrentInputVersions(): Promise<CurrentInputVersions> {
-  const [[recipesRow], [ingredientLinesRow], [membersRow], [settingsRow], [preferencesRow]] =
-    await Promise.all([
-      db.select({ value: max(recipes.updatedAt) }).from(recipes),
-      db.select({ value: max(recipeIngredients.updatedAt) }).from(recipeIngredients),
-      db.select({ value: max(householdMembers.updatedAt) }).from(householdMembers),
-      db.select({ value: max(householdSettings.updatedAt) }).from(householdSettings),
-      db.select({ value: max(ingredientPreferences.updatedAt) }).from(ingredientPreferences),
-    ]);
+export async function getCurrentInputVersions(
+  client: DbClient = db,
+): Promise<CurrentInputVersions> {
+  const [recipesRow] = await client.select({ value: max(recipes.updatedAt) }).from(recipes);
+  const [ingredientLinesRow] = await client
+    .select({ value: max(recipeIngredients.updatedAt) })
+    .from(recipeIngredients);
+  const [membersRow] = await client
+    .select({ value: max(householdMembers.updatedAt) })
+    .from(householdMembers);
+  const [settingsRow] = await client
+    .select({ value: max(householdSettings.updatedAt) })
+    .from(householdSettings);
+  const [preferencesRow] = await client
+    .select({ value: max(ingredientPreferences.updatedAt) })
+    .from(ingredientPreferences);
 
   return {
     recipesVersionAt: latestOf(recipesRow?.value ?? null, ingredientLinesRow?.value ?? null),

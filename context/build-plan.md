@@ -612,9 +612,10 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    `inputVersions` (the same watermarks `/generate` stores). `/generate` still writes
    directly until R05.8.
 3. **R05.3 — Accept.** One transaction that checks plan revision and input versions; a
-   stale preview is rejected and needs review. **Open question:** a locked slot's
-   `memberServings` are recomputed from current targets (preview and `/generate`), not
-   kept from the saved row as R05.1 does — decide which one accept stores.
+   stale preview is rejected and needs review. **Resolved 2026-10-15** — `POST /api/plans/accept`
+   takes the previewed slots and re-validates them (no seed re-run); stale inputs → 409
+   `STALE_PREVIEW`. Locked slots keep saved `memberServings` in preview and accept; reasons are
+   recomputed.
 4. **R05.4 — Recipe snapshots on accepted slots.** Later recipe edits do not change history.
    **Needs a decision first:** snapshot shape. May split further.
 5. **R05.5 — Swap candidates.** Fit, violated rules and consequences per candidate; stable
