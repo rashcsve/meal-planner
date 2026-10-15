@@ -115,12 +115,11 @@ async function getLockedSlots(planWeekId: number): Promise<LockedSlot[]> {
     }));
 }
 
-export async function generatePlan(weekStartDate: string, seed: number, expectedRevision?: number) {
-  const existingWeek = await findPlanWeekByDate(weekStartDate);
-  if (existingWeek && expectedRevision === undefined) {
-    throw new ExpectedRevisionRequiredError(weekStartDate);
-  }
-
+async function runPlanner(
+  weekStartDate: string,
+  seed: number,
+  existingWeek: Awaited<ReturnType<typeof findPlanWeekByDate>>,
+) {
   const locked = existingWeek ? await getLockedSlots(existingWeek.id) : [];
   const inputVersions = await getCurrentInputVersions();
   const inputs = await getPlanInputs(weekStartDate);
@@ -134,6 +133,31 @@ export async function generatePlan(weekStartDate: string, seed: number, expected
     inputs.targets,
     seed,
   );
+  return { inputVersions, result };
+}
+
+export async function previewPlan(weekStartDate: string, seed: number) {
+  const existingWeek = await findPlanWeekByDate(weekStartDate);
+  const { inputVersions, result } = await runPlanner(weekStartDate, seed, existingWeek);
+  return {
+    weekStartDate,
+    seed: result.seed,
+    plannerVersion: result.plannerVersion,
+    baseRevision: existingWeek?.revision ?? null,
+    inputVersions,
+    slots: result.slots,
+    violations: result.violations,
+    search: result.search,
+  };
+}
+
+export async function generatePlan(weekStartDate: string, seed: number, expectedRevision?: number) {
+  const existingWeek = await findPlanWeekByDate(weekStartDate);
+  if (existingWeek && expectedRevision === undefined) {
+    throw new ExpectedRevisionRequiredError(weekStartDate);
+  }
+
+  const { inputVersions, result } = await runPlanner(weekStartDate, seed, existingWeek);
 
   return db.transaction(async (tx) => {
     let week;
@@ -321,9 +345,7 @@ export async function replaceSlot(
   const memberServings = computeMemberServings(plannerRecipe, inputs.targets.memberTargets);
   const violations = evaluateSlots(
     slots.map((slot) =>
-      slot.day === day && slot.mealSlot === mealSlot
-        ? { ...slot, recipeId, memberServings }
-        : slot,
+      slot.day === day && slot.mealSlot === mealSlot ? { ...slot, recipeId, memberServings } : slot,
     ),
     inputs.pantry,
     ctx,

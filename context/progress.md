@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.2 — generation preview (returns a full plan, writes nothing).
+**Next step:** R05.3 — accept (one transaction; checks plan revision and input versions).
 
 ## R04 — planner correctness and search quality
 
@@ -33,6 +33,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | Step | What | Status |
 | --- | --- | --- |
 | R05.1 | Lock/unlock and replace re-evaluate stored violations (saved portions, `empty_slot`) + advance watermarks; incomplete household → `not_evaluated` | complete 10-15 |
+| R05.2 | `POST /api/plans/generate/preview`: full plan + `baseRevision` + `inputVersions`, no writes; `/generate` kept until accept lands | complete 10-15 |
 
 ## Earlier milestones
 
@@ -45,6 +46,9 @@ Short status only. Full entries (decisions, tests, verification) live in
 
 ## Open follow-ups
 
+- R05.3 — Accept: re-run with seed or re-validate the previewed slots? Re-running may save a
+  week the user never saw (pantry/prices aren't watermarked).
+- R05.8 — Retire direct-write `/generate` once the web uses preview → accept.
 - R04 — Decide if budget enforcement can be optional before checkout pricing exists.
 - R04.8 — Staleness ignores pantry changes and the date, so expiry violations go stale unnoticed.
 - R04 — Expiry slots are still protected from search; unprotect once expiry coverage is in the comparator.

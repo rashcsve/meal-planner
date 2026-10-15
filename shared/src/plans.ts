@@ -15,6 +15,10 @@ export const generatePlanSchema = z.object({
 
 export type GeneratePlanInput = z.infer<typeof generatePlanSchema>;
 
+export const generatePreviewSchema = generatePlanSchema.omit({ expectedRevision: true });
+
+export type GeneratePreviewInput = z.infer<typeof generatePreviewSchema>;
+
 export const replaceSlotSchema = z.object({
   recipeId: z
     .number({ error: "Recipe is required" })

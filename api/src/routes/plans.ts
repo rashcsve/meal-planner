@@ -2,10 +2,16 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { generatePlanSchema, replaceSlotSchema, setSlotLockedSchema } from "shared";
+import {
+  generatePlanSchema,
+  generatePreviewSchema,
+  replaceSlotSchema,
+  setSlotLockedSchema,
+} from "shared";
 import { weekParamSchema, slotParamSchema } from "../lib/params.js";
 import {
   generatePlan,
+  previewPlan,
   getWeek,
   setSlotLocked,
   replaceSlot,
@@ -90,6 +96,26 @@ export const plansRoute = new Hono()
       try {
         const week = await generatePlan(weekStartDate, seed, expectedRevision);
         return c.json(week);
+      } catch (err) {
+        mapPlanError(err);
+      }
+    },
+  )
+  .post(
+    "/generate/preview",
+    zValidator("json", generatePreviewSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(422, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
+    async (c) => {
+      const { weekStartDate, seed } = c.req.valid("json");
+      try {
+        const preview = await previewPlan(weekStartDate, seed);
+        return c.json(preview);
       } catch (err) {
         mapPlanError(err);
       }

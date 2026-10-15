@@ -607,8 +607,14 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    now fits, `empty_slot`; incomplete household → `not_evaluated`. Other slots'
    reasons/summaries still refresh only in R05.6.
 2. **R05.2 — Generation preview.** Endpoint returns a full plan and writes nothing.
+   **Resolved 2026-10-15** — `POST /api/plans/generate/preview` returns the planner's
+   slots, violations and `search`, plus `baseRevision` (null for a new week) and
+   `inputVersions` (the same watermarks `/generate` stores). `/generate` still writes
+   directly until R05.8.
 3. **R05.3 — Accept.** One transaction that checks plan revision and input versions; a
-   stale preview is rejected and needs review.
+   stale preview is rejected and needs review. **Open question:** a locked slot's
+   `memberServings` are recomputed from current targets (preview and `/generate`), not
+   kept from the saved row as R05.1 does — decide which one accept stores.
 4. **R05.4 — Recipe snapshots on accepted slots.** Later recipe edits do not change history.
    **Needs a decision first:** snapshot shape. May split further.
 5. **R05.5 — Swap candidates.** Fit, violated rules and consequences per candidate; stable

@@ -1121,3 +1121,93 @@ describe("slot candidates", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("generation preview (R05.2)", () => {
+  it("returns a full plan for a new week without creating it", async () => {
+    await seedPlannableHousehold();
+
+    const res = await postJson("/api/plans/generate/preview", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      baseRevision: number | null;
+      slots: unknown[];
+      violations: unknown[];
+      search: unknown;
+      inputVersions: Record<string, string | null>;
+    };
+    expect(body.baseRevision).toBeNull();
+    expect(body.slots.length).toBeGreaterThan(0);
+    expect(body.violations).toBeInstanceOf(Array);
+    expect(body.search).toBeDefined();
+    expect(await db.select().from(planWeeks)).toEqual([]);
+    expect(await db.select().from(planSlots)).toEqual([]);
+
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    expect(generateRes.status).toBe(200);
+    const stored = (await generateRes.json()) as Record<string, string | null>;
+    expect(body.inputVersions).toEqual({
+      recipesVersionAt: stored.recipesVersionAt,
+      targetsVersionAt: stored.targetsVersionAt,
+      exclusionsVersionAt: stored.exclusionsVersionAt,
+    });
+    expect(stored.recipesVersionAt).not.toBeNull();
+  });
+
+  it("keeps locks and leaves a saved week untouched", async () => {
+    await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as {
+      revision: number;
+      slots: { day: number; mealSlot: string; recipeId: number | null }[];
+    };
+    const lockedRecipeId = generated.slots.find(
+      (s) => s.day === 0 && s.mealSlot === "dinner",
+    )!.recipeId;
+    const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const locked = (await lockRes.json()) as { revision: number };
+    const weeksBefore = await db.select().from(planWeeks);
+    const slotsBefore = await db.select().from(planSlots);
+
+    const res = await postJson("/api/plans/generate/preview", {
+      weekStartDate: "2026-01-05",
+      seed: 7,
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      baseRevision: number | null;
+      slots: { day: number; mealSlot: string; recipeId: number | null; locked: boolean }[];
+    };
+    expect(body.baseRevision).toBe(locked.revision);
+    expect(body.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")).toMatchObject({
+      recipeId: lockedRecipeId,
+      locked: true,
+    });
+    expect(await db.select().from(planWeeks)).toEqual(weeksBefore);
+    expect(await db.select().from(planSlots)).toEqual(slotsBefore);
+  });
+
+  it("rejects an incomplete household with 422 and writes nothing", async () => {
+    await seedPlannableHousehold(null);
+
+    const res = await postJson("/api/plans/generate/preview", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+
+    expect(res.status).toBe(422);
+    expect(await db.select().from(planWeeks)).toEqual([]);
+  });
+});

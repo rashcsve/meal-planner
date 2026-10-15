@@ -2316,3 +2316,23 @@ Review fixes (`/step-review r05.1`):
 - Not checked: web shows only the generate response's violations, not the stored ones (R05.8).
 
 **Next step:** R05.2 — generation preview.
+
+## R05.2 — Generation preview — `complete` (2026-10-15)
+
+`POST /api/plans/generate/preview` with `{ weekStartDate, seed }` returns `weekStartDate`, `seed`,
+`plannerVersion`, `baseRevision` (null for an unsaved week), `inputVersions`, `slots`,
+`violations`, `search`. It writes nothing: no transaction, no revision bump.
+`services/plans.ts`: planner run extracted to `runPlanner` (existing week's locks + inputs +
+watermarks), shared by `previewPlan` and `generatePlan`. `shared/src/plans.ts`:
+`generatePreviewSchema` = `generatePlanSchema` without `expectedRevision`. Route reuses
+`mapPlanError`; bad body → 422.
+
+Tests: `npm run test -w api` → 12 files, 202 passed; typecheck clean; lint 2 old web warnings.
+New integration: new week preview creates no rows; preview of a saved, locked week keeps the
+lock and leaves `plan_weeks`/`plan_slots` rows byte-identical; incomplete household → 422, no rows.
+
+Decisions: `/generate` still writes directly — web depends on it until R05.8.
+Preview returns `baseRevision` + `inputVersions` so R05.3 can detect a stale preview.
+Open: R05.3 must choose re-run-with-seed vs. re-validate previewed slots.
+
+**Next step:** R05.3 — accept.
