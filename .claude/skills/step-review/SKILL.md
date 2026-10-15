@@ -67,6 +67,10 @@ Also check these project rules, which no hook enforces. Each violation is at lea
 - changes a layout during a token-only design slice — tokens first, layouts after
 - deletes an import without rebuilding the current shopping list — deletion cascades
 
+Check doc drift: does `context/build-plan.md` (status lines, headers, open decisions,
+acceptance criteria), `context/architecture.md`, or `context/code-standards.md` still
+describe the code as it now stands? List each stale passage under `Docs to update`.
+
 Run read-only checks when useful, but do not mutate the workspace to make them pass. Report
 the exact command and result. Distinguish a verified defect from a concern that needs more
 evidence.
@@ -83,6 +87,7 @@ Verdict: ready | ready with minor issues | not ready
 
 Checked: <commands run and results, one line>
 Not checked: <one line, only if something important was not covered>
+Docs to update: <file:line — what is stale, one per line; or "none">
 ```
 
 Severity: **Critical** = data loss, security, broken core behaviour; **Important** = must
