@@ -38,7 +38,7 @@ import {
 
 function mapPlanError(err: unknown): never {
   if (err instanceof WeekAlreadyGeneratedError) {
-    throw new HTTPException(409, { message: err.message });
+    throw new HTTPException(409, { message: err.message, cause: { code: "WEEK_EXISTS" } });
   }
   if (err instanceof StaleRevisionError) {
     throw new HTTPException(409, {

@@ -37,7 +37,7 @@ export class IngredientNotFoundError extends Error {
 
 export class WeekAlreadyGeneratedError extends Error {
   constructor(weekStartDate: string) {
-    super(`A plan for the week of ${weekStartDate} was already generated`);
+    super(`A plan for the week of ${weekStartDate} already exists`);
     this.name = "WeekAlreadyGeneratedError";
   }
 }

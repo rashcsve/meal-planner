@@ -1358,6 +1358,7 @@ describe("accept (R05.3)", () => {
     const res = await accept(previewed);
 
     expect(res.status).toBe(409);
+    expect(await errorDetails(res)).toMatchObject({ code: "WEEK_EXISTS" });
     const [week] = await db.select().from(planWeeks);
     expect(week!.revision).toBe(1);
   });
@@ -1379,6 +1380,32 @@ describe("accept (R05.3)", () => {
 
     expect(res.status).toBe(409);
     expect(await errorDetails(res)).toMatchObject({ code: "STALE_PLAN_REVISION" });
+  });
+
+  it("lets only one of two same-revision accepts succeed", async () => {
+    await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const [first, second] = [await preview(7), await preview(8)];
+
+    const results = await Promise.all([accept(first), accept(second)]);
+
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    const loser = results.find((r) => r.status === 409)!;
+    expect(await errorDetails(loser)).toMatchObject({ code: "STALE_PLAN_REVISION" });
+    const [week] = await db.select().from(planWeeks);
+    expect(week!.revision).toBe(2);
+  });
+
+  it("lets only one of two new-week accepts create the week", async () => {
+    await seedPlannableHousehold();
+    const [first, second] = [await preview(1), await preview(2)];
+
+    const results = await Promise.all([accept(first), accept(second)]);
+
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    const loser = results.find((r) => r.status === 409)!;
+    expect(await errorDetails(loser)).toMatchObject({ code: "WEEK_EXISTS" });
+    expect(await db.select().from(planWeeks)).toHaveLength(1);
   });
 
   it("rejects input versions from the future and writes nothing", async () => {
