@@ -2407,3 +2407,23 @@ every other filled slot against the post-swap assignment and writes the changed 
 characterization). Typecheck clean; lint only the 2 pre-existing web warnings.
 
 **Next:** R05.7 — selected days and copy-last-week.
+
+## R05.8b — Preview → accept on the week page — `awaiting review` (2026-11-03)
+
+**Outcome:** `WeekPage` "Generate week" calls `useGeneratePreview` (`/generate/preview`); the
+preview renders in `WeekGrid` with `PreviewBar`. Accept → `useAcceptPlan` (`/accept`) writes the
+response into the week query. `useGeneratePlan` (direct `/generate`) removed from the web.
+
+**Decisions:**
+- Accept sends only `{ day, mealSlot, recipeId }` per slot plus the preview's seed, `baseRevision`
+  and `inputVersions`.
+- 409 `STALE_PREVIEW` → `StalePreviewError` → stale bar; other accept errors keep the preview.
+- No day selection / rail while previewing (rail actions write to the saved week).
+- Page story mocks `fetch` (`stories/mockApi.ts`, no new deps); unmocked requests throw.
+- Regenerating an already-saved week is out of scope (page only offers Generate on empty).
+
+**Verified:** `npm run test -w web` → 28 files / 83 tests pass (+4 in `WeekPage.stories.tsx`;
+all 4 failed before on the unmocked `/generate`). `bash scripts/verify.sh` clean; lint only the
+2 pre-existing web warnings.
+
+**Next:** R05.8c — retire direct-write `/generate` in the api.

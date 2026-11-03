@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.8 — preview → accept flow on the week page.
+**Next step:** R05.8c — retire direct-write `/generate` in the api.
 
 ## R04 — planner correctness and search quality
 
@@ -43,6 +43,8 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.6 | Replace refreshes reasons on every filled slot (locked too; only reasons change); filling an empty slot pinned by test | awaiting review |
 | R05.7a | `POST /copy-last-week/preview`: last week's recipes as a no-write preview; target locks kept; ineligible → empty; accept via `/accept` | awaiting review |
 | R05.7b | Optional `days` on `/generate/preview`; unselected days kept like locks (saved portions, `locked: false`); new week → empty | awaiting review |
+| R05.8a | `PreviewBar` component + stories | complete 11-03 |
+| R05.8b | Week page: Generate → preview → Accept / Try again / Discard; stale preview → "Preview again" | awaiting review |
 
 ## Earlier milestones
 
@@ -62,7 +64,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 
 - R07 — Accept's version check runs at READ COMMITTED: an input edit committed after the check
   but before accept commits isn't caught. Same gap as lock/replace.
-- R05.8 — Retire direct-write `/generate` once the web uses preview → accept.
+- R05.8c — Retire direct-write `/generate` now that the web uses preview → accept.
 - R04 — Decide if budget enforcement can be optional before checkout pricing exists.
 - R04.8 — Staleness ignores pantry changes and the date, so expiry violations go stale unnoticed.
 - R04 — Expiry slots are still protected from search; unprotect once expiry coverage is in the comparator.
@@ -72,7 +74,7 @@ Short status only. Full entries (decisions, tests, verification) live in
   UI needs the stop reason after reload.
 - R05 — If the search runs over a saved week with gaps, decide whether it may fill empty
   slots (and whether an over-budget fill beats leaving it empty). See R04.12.
-- R05.8 — Web shows only the generate response's violations; stored ones (after lock/swap,
+- R05 (no step yet; not done in R05.8b) — Web shows only preview violations; stored ones (after lock/swap,
   incl. `empty_slot`) appear only once the week page reads them.
 - R07 — Ingredient edits (`ingredients.updated_at`) don't mark plans stale. Deliberate for now.
 - R07 — Partial deletes and `now()`-is-transaction-start both miss staleness.

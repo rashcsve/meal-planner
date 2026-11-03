@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InferResponseType } from "hono/client";
-import type { GeneratePlanInput, MealSlot } from "shared";
+import type { GeneratePreviewInput, MealSlot } from "shared";
 import { apiClient } from "../../app/apiClient";
 import { unwrapResponse } from "../../shared/api/unwrapResponse";
 import { parseErrorResponse } from "../../shared/api/parseErrorResponse";
@@ -13,7 +13,8 @@ export const weekKeys = {
 
 export type PlanWeek = InferResponseType<(typeof apiClient.api.plans)[":weekStartDate"]["$get"]>;
 export type PlanSlot = PlanWeek["slots"][number];
-export type GeneratePlanResult = InferResponseType<typeof apiClient.api.plans.generate.$post>;
+export type PlanPreview = InferResponseType<typeof apiClient.api.plans.generate.preview.$post>;
+export type AcceptPlanResult = InferResponseType<typeof apiClient.api.plans.accept.$post>;
 export type SlotCandidates = InferResponseType<
   (typeof apiClient.api.plans)[":weekStartDate"]["slots"][":day"][":mealSlot"]["candidates"]["$get"]
 >;
@@ -39,17 +40,47 @@ export function useWeek(weekStartDate: string) {
   });
 }
 
-async function postGeneratePlan(input: GeneratePlanInput): Promise<GeneratePlanResult> {
-  const res = await apiClient.api.plans.generate.$post({ json: input });
+async function postGeneratePreview(input: GeneratePreviewInput): Promise<PlanPreview> {
+  const res = await apiClient.api.plans.generate.preview.$post({ json: input });
   return unwrapResponse(res);
 }
 
-export function useGeneratePlan() {
+export function useGeneratePreview() {
+  return useMutation({ mutationFn: postGeneratePreview });
+}
+
+export class StalePreviewError extends Error {}
+
+type ErrorBodyWithCode = { error?: { message?: string; details?: { code?: string } } } | null;
+
+async function postAcceptPlan(preview: PlanPreview): Promise<AcceptPlanResult> {
+  const res = await apiClient.api.plans.accept.$post({
+    json: {
+      weekStartDate: preview.weekStartDate,
+      seed: preview.seed,
+      baseRevision: preview.baseRevision,
+      inputVersions: preview.inputVersions,
+      slots: preview.slots.map(({ day, mealSlot, recipeId }) => ({ day, mealSlot, recipeId })),
+    },
+  });
+  if (res.status === 409) {
+    const body = (await res
+      .clone()
+      .json()
+      .catch(() => null)) as ErrorBodyWithCode;
+    if (body?.error?.details?.code === "STALE_PREVIEW") {
+      throw new StalePreviewError(body.error.message);
+    }
+  }
+  return unwrapResponse(res);
+}
+
+export function useAcceptPlan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: postGeneratePlan,
-    onSuccess: (data, variables) => {
-      queryClient.setQueryData<PlanWeek | null>(weekKeys.detail(variables.weekStartDate), data);
+    mutationFn: postAcceptPlan,
+    onSuccess: (data, preview) => {
+      queryClient.setQueryData(weekKeys.detail(preview.weekStartDate), data);
     },
   });
 }

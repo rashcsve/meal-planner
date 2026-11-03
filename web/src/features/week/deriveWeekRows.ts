@@ -23,13 +23,18 @@ export interface WeekDayRow {
   reasonTags: ReasonTagInfo[];
 }
 
+type WeekRowSlot = Pick<
+  PlanSlot,
+  "day" | "mealSlot" | "recipeId" | "locked" | "memberServings" | "reasons"
+> & { recipeSnapshot?: PlanSlot["recipeSnapshot"] };
+
 function memberName(memberId: number, members: HouseholdMemberEntry[]): string {
   return members.find((m) => m.id === memberId)?.name ?? `Member ${memberId}`;
 }
 
 export function deriveWeekRows(
   weekStartDate: string,
-  slots: PlanSlot[],
+  slots: WeekRowSlot[],
   recipes: RecipeCatalogEntry[],
   members: HouseholdMemberEntry[],
 ): WeekDayRow[] {

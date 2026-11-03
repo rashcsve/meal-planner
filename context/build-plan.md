@@ -665,6 +665,12 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
   `recipeSnapshot` (display amounts, units, kcal) and fall back to the live recipe when NULL.
 
 8. **R05.8 — Preview → accept flow** on the week page.
+   Split 2026-11-03: **R05.8a** (done) — `PreviewBar` (ready / busy / stale / error) + stories.
+   **R05.8b** (done) — "Generate week" calls `/generate/preview`; the grid shows the preview with
+   `PreviewBar`; Accept posts it to `/accept` (seed, `baseRevision`, `inputVersions`, slot
+   recipe ids); 409 `STALE_PREVIEW` → stale bar with "Preview again"; other errors keep the
+   preview. Day selection is off while previewing. Tested via a WeekPage story with a stubbed `fetch`.
+   **R05.8c** — retire direct-write `/generate` in the api.
 9. **R05.9 — Swap picker** at `/plan/:week/swap/:slotId`; back/cancel does not mutate the week.
 10. **R05.10 — Optimistic lock/unlock.** onMutate/onError/onSettled, cancelQueries, rollback,
     conflict recovery; delayed responses do not overwrite newer revisions.

@@ -15,11 +15,12 @@ import {
   useHouseholdMembersCatalog,
   useHouseholdSettingsCatalog,
 } from "../../shared/api/household";
-import { useWeek, useGeneratePlan } from "./useWeek";
+import { useWeek, useGeneratePreview, useAcceptPlan, StalePreviewError } from "./useWeek";
 import { deriveWeekRows } from "./deriveWeekRows";
 import { WeekNav } from "./WeekNav";
 import { WeekGrid } from "./WeekGrid";
 import { MealDetailRail } from "./MealDetailRail";
+import { PreviewBar, type PreviewStatus } from "./PreviewBar";
 
 const START_PARAM = "start";
 const DEFAULT_START_DAY_OF_WEEK = 1;
@@ -49,18 +50,40 @@ export function WeekPage() {
     settingsQuery.data?.timezone,
   );
   const weekQuery = useWeek(weekStartDate);
-  const generatePlan = useGeneratePlan();
+  const generatePreview = useGeneratePreview();
+  const acceptPlan = useAcceptPlan();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const preview = generatePreview.data;
+
+  function discardPreview() {
+    generatePreview.reset();
+    acceptPlan.reset();
+  }
 
   function goToWeek(next: string) {
     setWeekStartDate(next);
     setSelectedDay(null);
-    generatePlan.reset();
+    discardPreview();
   }
 
   function handleGenerate() {
-    generatePlan.mutate({ weekStartDate, seed: Math.floor(Math.random() * 1_000_000) });
+    acceptPlan.reset();
+    generatePreview.mutate({ weekStartDate, seed: Math.floor(Math.random() * 1_000_000) });
   }
+
+  function handleAccept() {
+    if (!preview) return;
+    acceptPlan.mutate(preview, { onSuccess: () => generatePreview.reset() });
+  }
+
+  const previewStatus: PreviewStatus =
+    acceptPlan.isPending || generatePreview.isPending
+      ? "busy"
+      : acceptPlan.error instanceof StalePreviewError
+        ? "stale"
+        : acceptPlan.isError
+          ? "error"
+          : "ready";
 
   const nav = (
     <WeekNav
@@ -104,7 +127,7 @@ export function WeekPage() {
     );
   }
 
-  if (!weekQuery.data) {
+  if (!weekQuery.data && !preview) {
     return (
       <div className="flex h-full flex-col overflow-hidden">
         {nav}
@@ -112,14 +135,17 @@ export function WeekPage() {
           <EmptyState
             message="No plan generated for this week yet."
             action={
-              <Button onClick={handleGenerate} disabled={generatePlan.isPending}>
+              <Button onClick={handleGenerate} disabled={generatePreview.isPending}>
                 Generate week
               </Button>
             }
           />
-          {generatePlan.isError && (
+          {generatePreview.isError && (
             <div className="mt-2">
-              <ErrorState title="Couldn't generate a plan" message={generatePlan.error.message} />
+              <ErrorState
+                title="Couldn't generate a plan"
+                message={generatePreview.error.message}
+              />
             </div>
           )}
         </div>
@@ -127,9 +153,10 @@ export function WeekPage() {
     );
   }
 
+  const slots = preview?.slots ?? weekQuery.data?.slots ?? [];
   const selectedSlot =
-    selectedDay !== null
-      ? weekQuery.data.slots.find((s) => s.day === selectedDay && s.mealSlot === "dinner")
+    !preview && selectedDay !== null
+      ? weekQuery.data?.slots.find((s) => s.day === selectedDay && s.mealSlot === "dinner")
       : undefined;
 
   return (
@@ -137,11 +164,22 @@ export function WeekPage() {
       {nav}
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         <div className="flex-1 overflow-auto p-3.5">
-          {generatePlan.isSuccess && generatePlan.data.violations.length > 0 && (
+          {preview && (
+            <div className="mb-2">
+              <PreviewBar
+                status={previewStatus}
+                message={acceptPlan.error?.message}
+                onAccept={handleAccept}
+                onDiscard={discardPreview}
+                onRegenerate={handleGenerate}
+              />
+            </div>
+          )}
+          {preview && preview.violations.length > 0 && (
             <div className="mb-2">
               <ErrorState
                 title="Some slots couldn't be filled"
-                message={generatePlan.data.violations
+                message={preview.violations
                   .map((v) =>
                     v.slot
                       ? `${formatDayLabel(addDays(weekStartDate, v.slot.day))} ${v.slot.mealSlot}: ${v.detail}`
@@ -155,17 +193,17 @@ export function WeekPage() {
             <WeekGrid
               rows={deriveWeekRows(
                 weekStartDate,
-                weekQuery.data.slots,
+                slots,
                 recipesQuery.data ?? [],
                 membersQuery.data ?? [],
               )}
-              selectedDay={selectedDay}
-              onSelectDay={setSelectedDay}
+              selectedDay={preview ? null : selectedDay}
+              onSelectDay={preview ? () => {} : setSelectedDay}
               onDeselect={() => setSelectedDay(null)}
             />
           </div>
         </div>
-        {selectedSlot && (
+        {selectedSlot && weekQuery.data && (
           <MealDetailRail
             weekStartDate={weekStartDate}
             revision={weekQuery.data.revision}
