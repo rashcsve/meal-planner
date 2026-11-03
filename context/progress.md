@@ -34,24 +34,24 @@ Short status only. Full entries (decisions, tests, verification) live in
 | --- | --- | --- |
 | R05.1 | Lock/unlock and replace re-evaluate stored violations (saved portions, `empty_slot`) + advance watermarks; incomplete household → `not_evaluated` | complete 10-15 |
 | R05.2 | `POST /api/plans/generate/preview`: full plan + `baseRevision` + `inputVersions`, no writes; `/generate` kept until accept lands | complete 10-15 |
-| R05.3 | `POST /api/plans/accept`: re-validates previewed slots; versions + revision checked in one transaction; locked slots keep saved portions | awaiting review |
-| R05.4 | `plan_slots.recipe_snapshot` (jsonb) written on accept/generate/replace; locked slots keep their saved snapshot; GET returns it | awaiting review |
+| R05.3 | `POST /api/plans/accept`: re-validates previewed slots; versions + revision checked in one transaction; locked slots keep saved portions | complete 11-03 |
+| R05.4 | `plan_slots.recipe_snapshot` (jsonb) written on accept/generate/replace; locked slots keep their saved snapshot; GET returns it | complete 11-03 |
 | R05.4b | Week rows and rail read `recipeSnapshot`, live recipe when NULL | complete 11-03 |
-| R05.5a | Candidates carry whole-week `violations`; order: violation count → severity → score → calorie gap → recipe id | awaiting review |
-| R05.5b | Candidates carry `consequences`: week cost + per-member dinner kcal, with deltas vs current (null if slot empty), integers | awaiting review |
-| R05.5c | Candidates paged (`limit` 1–50, default 20; `offset`) + `total`; top-three `suggestions` skip the current recipe | awaiting review |
-| R05.6 | Replace refreshes reasons on every filled slot (locked too; only reasons change); filling an empty slot pinned by test | awaiting review |
-| R05.7a | `POST /copy-last-week/preview`: last week's recipes as a no-write preview; target locks kept; ineligible → empty; accept via `/accept` | awaiting review |
-| R05.7b | Optional `days` on `/generate/preview`; unselected days keep their recipe (`locked: false`), portions recomputed as accept saves them; new week → empty | awaiting review |
+| R05.5a | Candidates carry whole-week `violations`; order: violation count → severity → score → calorie gap → recipe id | complete 11-03 |
+| R05.5b | Candidates carry `consequences`: week cost + per-member dinner kcal, with deltas vs current (null if slot empty), integers | complete 11-03 |
+| R05.5c | Candidates paged (`limit` 1–50, default 20; `offset`) + `total`; top-three `suggestions` skip the current recipe | complete 11-03 |
+| R05.6 | Replace refreshes reasons on every filled slot (locked too; only reasons change); filling an empty slot pinned by test | complete 11-03 |
+| R05.7a | `POST /copy-last-week/preview`: last week's recipes as a no-write preview; target locks kept; ineligible → empty; accept via `/accept` | complete 11-03 |
+| R05.7b | Optional `days` on `/generate/preview`; unselected days keep their recipe (`locked: false`), portions recomputed as accept saves them; new week → empty | complete 11-03 |
 | R05.8a | `PreviewBar` component + stories | complete 11-03 |
-| R05.8b | Week page: Generate → preview → Accept / Try again / Discard; stale preview → "Preview again" | awaiting review |
+| R05.8b | Week page: Generate → preview → Accept / Try again / Discard; stale preview → "Preview again" | complete 11-03 |
 
 ## Earlier milestones
 
 - Steps 1–27, 27.1, 28, 29, 29.1, 30 — complete (28's blocker closed by 29.1)
-- Step 31 (meal detail rail) — awaiting review
-- R01 (contracts, regression cases) — awaiting review
-- R02 (quantities, nutrition, recipe writing) — awaiting review
+- Step 31 (meal detail rail) — complete 11-03
+- R01 (contracts, regression cases) — complete 11-03
+- R02 (quantities, nutrition, recipe writing) — complete 11-03
 - R03.1–R03.4 (household targets and UI) — complete 11-03
 
 ## Open follow-ups

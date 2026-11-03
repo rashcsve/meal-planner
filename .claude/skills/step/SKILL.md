@@ -27,6 +27,9 @@ depends on an archived entry. If the id is missing, ambiguous or already complet
 and stop. If a milestone id is given (`R05`), pick the next unfinished slice from its
 implementation slices or the progress "Next step", and say which.
 
+If any `progress.md` row is still `awaiting review`, list those ids and ask whether their
+review is done. Mark each confirmed one `complete MM-DD` before starting; leave the rest.
+
 The repository is authoritative about current behaviour; the plan about intended outcome.
 Raise mismatches; never overwrite working code to match the plan.
 
