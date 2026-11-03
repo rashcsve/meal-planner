@@ -2388,3 +2388,22 @@ GET week returns it unchanged (`select()` already includes the column).
 disabled. Typecheck clean; lint only the 2 pre-existing web warnings.
 
 **Next:** R05.4b — web reads `recipeSnapshot` with live fallback.
+
+## R05.6 — Swap confirmation — `awaiting review` (2026-11-03)
+
+**Outcome:** `replaceSlot` (`services/plans.ts`) recomputes `reasons` via `collectReasons` for
+every other filled slot against the post-swap assignment and writes the changed ones with new
+`updateSlotReasons` (`repositories/planSlots.ts`) inside the replace transaction.
+
+**Decisions:**
+- All filled slots, not just the protein-variety window — simple, can't drift from the window.
+- Locked slots get fresh reasons (display text); recipe, servings and snapshot untouched.
+- Empty slots: fill only (already worked; test added). No clearing.
+- Response shape unchanged (single slot); web refetches the week.
+- Reason refresh bumps `updatedAt`, like every other slot write.
+
+**Verified:** `npm test` → api 12 files / 243 tests, web 26 files / 75 tests pass (+3 in
+`plans.test.ts` "swap confirmation (R05.6)"; 2 failed before the change, the empty-slot one was
+characterization). Typecheck clean; lint only the 2 pre-existing web warnings.
+
+**Next:** R05.7 — selected days and copy-last-week.

@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.6 — swap confirmation (empty slots; revalidate week, refresh neighbours).
+**Next step:** R05.7 — selected days and copy-last-week.
 
 ## R04 — planner correctness and search quality
 
@@ -40,6 +40,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.5a | Candidates carry whole-week `violations`; order: violation count → severity → score → calorie gap → recipe id | awaiting review |
 | R05.5b | Candidates carry `consequences`: week cost + per-member dinner kcal, with deltas vs current (null if slot empty), integers | awaiting review |
 | R05.5c | Candidates paged (`limit` 1–50, default 20; `offset`) + `total`; top-three `suggestions` skip the current recipe | awaiting review |
+| R05.6 | Replace refreshes reasons on every filled slot (locked too; only reasons change); filling an empty slot pinned by test | awaiting review |
 
 ## Earlier milestones
 

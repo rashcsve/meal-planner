@@ -1944,3 +1944,146 @@ describe("recipe snapshots (R05.4)", () => {
     expect(row!.recipeSnapshot).toBeNull();
   });
 });
+
+describe("swap confirmation (R05.6)", () => {
+  type WeekSlot = {
+    day: number;
+    mealSlot: string;
+    recipeId: number | null;
+    locked: boolean;
+    reasons: string[];
+    memberServings: unknown[];
+    recipeSnapshot: unknown;
+  };
+  type WeekBody = {
+    revision: number;
+    slots: WeekSlot[];
+    violations: unknown[];
+    evaluation: unknown;
+  };
+
+  async function getWeek() {
+    return (await (await app.request("/api/plans/2026-01-05")).json()) as WeekBody;
+  }
+
+  async function seedChickenDinnerWeek() {
+    const seeded = await seedPlannableHousehold();
+    await db
+      .update(recipes)
+      .set({ proteinSource: "chicken" })
+      .where(eq(recipes.id, seeded.dinnerRecipe.id));
+    await db
+      .update(recipes)
+      .set({ proteinSource: "beef" })
+      .where(eq(recipes.id, seeded.dinnerRecipe2.id));
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await db
+      .update(planSlots)
+      .set({
+        recipeId: seeded.dinnerRecipe.id,
+        memberServings: [{ memberId: seeded.member.id, servings: 1 }],
+      })
+      .where(eq(planSlots.mealSlot, "dinner"));
+    await db.update(planSlots).set({ reasons: ["stale"] });
+    return seeded;
+  }
+
+  it("recomputes reasons for every filled slot, not just the swapped one", async () => {
+    const { dinnerRecipe2 } = await seedChickenDinnerWeek();
+    const before = await getWeek();
+
+    const res = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: dinnerRecipe2.id,
+      expectedRevision: before.revision,
+    });
+    expect(res.status).toBe(200);
+
+    const after = await getWeek();
+    const at = (day: number, mealSlot: string) =>
+      after.slots.find((s) => s.day === day && s.mealSlot === mealSlot)!;
+    expect(at(1, "dinner").reasons).toEqual(["no chicken in 4 days"]);
+    expect(at(2, "dinner").reasons).toEqual(["chicken repeats within 4 days (also day 1)"]);
+    for (const slot of after.slots.filter((s) => s.recipeId !== null)) {
+      expect(slot.reasons).not.toContain("stale");
+    }
+  });
+
+  it("refreshes a locked neighbour's reasons without touching its recipe, servings or snapshot", async () => {
+    const { dinnerRecipe2 } = await seedChickenDinnerWeek();
+    await db
+      .update(planSlots)
+      .set({ locked: true })
+      .where(and(eq(planSlots.day, 1), eq(planSlots.mealSlot, "dinner")));
+    const before = await getWeek();
+    const lockedBefore = before.slots.find((s) => s.day === 1 && s.mealSlot === "dinner")!;
+
+    await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: dinnerRecipe2.id,
+      expectedRevision: before.revision,
+    });
+
+    const lockedAfter = (await getWeek()).slots.find(
+      (s) => s.day === 1 && s.mealSlot === "dinner",
+    )!;
+    expect(lockedAfter).toEqual({
+      ...lockedBefore,
+      reasons: ["no chicken in 4 days"],
+      updatedAt: expect.any(String),
+    });
+  });
+
+  it("keeps a neighbour's stored reasons when its recipe is no longer plannable", async () => {
+    const { dinnerRecipe, dinnerRecipe2 } = await seedChickenDinnerWeek();
+    await db.update(recipes).set({ cost: null }).where(eq(recipes.id, dinnerRecipe.id));
+    const before = await getWeek();
+
+    const res = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: dinnerRecipe2.id,
+      expectedRevision: before.revision,
+    });
+    expect(res.status).toBe(200);
+
+    const after = await getWeek();
+    const neighbours = after.slots.filter((s) => !(s.day === 0 && s.mealSlot === "dinner"));
+    for (const slot of neighbours.filter((s) => s.mealSlot === "dinner")) {
+      expect(slot.reasons).toEqual(["stale"]);
+    }
+    for (const slot of neighbours.filter((s) => s.mealSlot !== "dinner" && s.recipeId !== null)) {
+      expect(slot.reasons).not.toContain("stale");
+    }
+  });
+
+  it("fills an empty slot and clears its empty_slot violation", async () => {
+    const { dinnerRecipe2, member } = await seedPlannableHousehold();
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as { revision: number };
+    await db
+      .update(planSlots)
+      .set({ recipeId: null, memberServings: [], recipeSnapshot: null, reasons: [] })
+      .where(and(eq(planSlots.day, 0), eq(planSlots.mealSlot, "dinner")));
+    await putJson("/api/plans/2026-01-05/slots/1/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const before = await getWeek();
+    expect(before.violations).toContainEqual(
+      expect.objectContaining({ slot: { day: 0, mealSlot: "dinner" }, constraint: "empty_slot" }),
+    );
+
+    const res = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: dinnerRecipe2.id,
+      expectedRevision: before.revision,
+    });
+    expect(res.status).toBe(200);
+
+    const after = await getWeek();
+    const filled = after.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    expect(filled.recipeId).toBe(dinnerRecipe2.id);
+    expect(filled.memberServings).toEqual([{ memberId: member.id, servings: 0.5 }]);
+    expect(filled.recipeSnapshot).not.toBeNull();
+    expect(after.violations).not.toContainEqual(
+      expect.objectContaining({ slot: { day: 0, mealSlot: "dinner" } }),
+    );
+    expect(after.evaluation).toEqual({ status: "current", staleInputs: [] });
+  });
+});

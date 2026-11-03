@@ -46,6 +46,7 @@ import {
   findLockedSlotsByWeekId,
   updateSlotLocked,
   updateSlotRecipe,
+  updateSlotReasons,
   upsertPlanSlots,
   type PlanSlotInput,
 } from "../repositories/planSlots.js";
@@ -625,6 +626,26 @@ export async function replaceSlot(
     inputs.pantry,
     assigned,
   );
+  const neighbourReasons = slots
+    .filter(
+      (slot) =>
+        slot.recipeId !== null &&
+        ctx.recipesById.has(slot.recipeId) &&
+        !(slot.day === day && slot.mealSlot === mealSlot),
+    )
+    .map((slot) => ({
+      slot,
+      reasons: collectReasons(
+        slot.day,
+        slot.mealSlot as MealSlot,
+        slot.recipeId!,
+        inputs.recipes,
+        inputs.prices,
+        inputs.pantry,
+        assigned,
+      ),
+    }))
+    .filter(({ slot, reasons }) => JSON.stringify(reasons) !== JSON.stringify(slot.reasons));
   const memberServings = computeMemberServings(plannerRecipe, inputs.targets.memberTargets);
   const violations = evaluateSlots(
     slots.map((slot) =>
@@ -654,6 +675,15 @@ export async function replaceSlot(
       tx,
     );
     if (!slot) throw new PlanSlotNotFoundError(day, mealSlot);
+    for (const neighbour of neighbourReasons) {
+      await updateSlotReasons(
+        week.id,
+        neighbour.slot.day,
+        neighbour.slot.mealSlot as MealSlot,
+        neighbour.reasons,
+        tx,
+      );
+    }
     return { ...slot, revision: updatedWeek.revision };
   });
 }

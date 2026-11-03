@@ -75,6 +75,19 @@ export async function updateSlotLocked(
   return slot;
 }
 
+export async function updateSlotReasons(
+  planWeekId: number,
+  day: number,
+  mealSlot: MealSlot,
+  reasons: string[],
+  client: DbClient = db,
+) {
+  await client
+    .update(planSlots)
+    .set({ reasons, updatedAt: new Date() })
+    .where(slotAddress(planWeekId, day, mealSlot));
+}
+
 export async function updateSlotRecipe(
   planWeekId: number,
   day: number,

@@ -639,6 +639,11 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    the slot's current recipe, same on every page.
 6. **R05.6 — Swap confirmation.** Handles empty slots; revalidates the whole week and
    updates neighboring reasons/summaries.
+   **Resolved 2026-11-03** — replace recomputes `reasons` for every other filled slot from the
+   post-swap week (locked slots too: only `reasons` changes) and writes the changed ones in the
+   same transaction; whole-week violations were already recomputed (R05.1). Filling an empty slot
+   already worked; now pinned by a test. Response stays the single slot; the web refetches the week.
+   No "clear a slot" — not in scope.
 7. **R05.7 — Selected days and copy-last-week.** Copy assignments into a new draft, then
    evaluate against current rules and stock; preserve cooked records.
 
