@@ -2241,3 +2241,116 @@ describe("copy last week preview (R05.7a)", () => {
     expect(res.status).toBe(422);
   });
 });
+
+describe("regenerate selected days (R05.7b)", () => {
+  type Slot = {
+    day: number;
+    mealSlot: string;
+    recipeId: number | null;
+    locked: boolean;
+    memberServings: { memberId: number; servings: number }[];
+  };
+  type Preview = {
+    seed: number;
+    baseRevision: number | null;
+    inputVersions: Record<string, string | null>;
+    slots: Slot[];
+  };
+
+  function daysPreview(days: unknown, weekStartDate = "2026-01-05") {
+    return postJson("/api/plans/generate/preview", { weekStartDate, seed: 7, days });
+  }
+
+  it("keeps unselected days' recipes, not as locks, with portions accept will save", async () => {
+    const { member } = await seedPlannableHousehold();
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as { slots: Slot[] };
+    await db
+      .update(householdMembers)
+      .set({ dinnerCalorieTarget: 800, updatedAt: new Date() })
+      .where(eq(householdMembers.id, member.id));
+
+    const res = await daysPreview([2]);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Preview;
+    for (const saved of generated.slots.filter((s) => s.day !== 2)) {
+      expect(
+        body.slots.find((s) => s.day === saved.day && s.mealSlot === saved.mealSlot),
+      ).toMatchObject({ recipeId: saved.recipeId, locked: false });
+    }
+    for (const day of [0, 2]) {
+      const saved = generated.slots.find((s) => s.day === day && s.mealSlot === "dinner")!;
+      const previewed = body.slots.find((s) => s.day === day && s.mealSlot === "dinner")!;
+      expect(previewed.recipeId).not.toBeNull();
+      expect(previewed.memberServings).not.toEqual(saved.memberServings);
+    }
+    const accepted = (await (
+      await postJson("/api/plans/accept", {
+        weekStartDate: "2026-01-05",
+        seed: body.seed,
+        baseRevision: body.baseRevision,
+        inputVersions: body.inputVersions,
+        slots: body.slots,
+      })
+    ).json()) as { slots: Slot[] };
+    for (const previewed of body.slots) {
+      expect(
+        accepted.slots.find((s) => s.day === previewed.day && s.mealSlot === previewed.mealSlot)
+          ?.memberServings,
+      ).toEqual(previewed.memberServings);
+    }
+  });
+
+  it("leaves unselected days empty for a new week", async () => {
+    await seedPlannableHousehold();
+
+    const body = (await (await daysPreview([0, 4])).json()) as Preview;
+
+    expect(body.baseRevision).toBeNull();
+    for (const slot of body.slots) {
+      if (slot.day === 0 || slot.day === 4) expect(slot.recipeId).not.toBeNull();
+      else expect(slot).toMatchObject({ recipeId: null, memberServings: [] });
+    }
+    expect(await db.select().from(planWeeks)).toEqual([]);
+  });
+
+  it("keeps a locked slot on a selected day, and can be accepted", async () => {
+    await seedPlannableHousehold();
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as { revision: number; slots: Slot[] };
+    await putJson("/api/plans/2026-01-05/slots/1/dinner/lock", {
+      expectedRevision: generated.revision,
+    });
+    const lockedRecipeId = generated.slots.find(
+      (s) => s.day === 1 && s.mealSlot === "dinner",
+    )!.recipeId;
+
+    const body = (await (await daysPreview([1])).json()) as Preview;
+
+    expect(body.slots.find((s) => s.day === 1 && s.mealSlot === "dinner")).toMatchObject({
+      recipeId: lockedRecipeId,
+      locked: true,
+    });
+    const acceptRes = await postJson("/api/plans/accept", {
+      weekStartDate: "2026-01-05",
+      seed: body.seed,
+      baseRevision: body.baseRevision,
+      inputVersions: body.inputVersions,
+      slots: body.slots,
+    });
+    expect(acceptRes.status).toBe(200);
+  });
+
+  it.each([[[]], [[7]], [[-1]], [[1, 1]], [[1.5]]])("rejects days %j with 422", async (days) => {
+    await seedPlannableHousehold();
+
+    const res = await daysPreview(days);
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Validation failed");
+  });
+});

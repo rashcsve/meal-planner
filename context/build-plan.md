@@ -654,8 +654,10 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    locked slots keep recipe and saved portions; copied slots get portions from current targets;
    a recipe no longer plannable leaves its slot empty; violations use current rules and stock;
    `seed` is the source week's (informational); no source week → 404. Cooked records arrive in R08.
-   **R05.7b** — regenerate selected days: unselected days keep their recipes and saved portions
-   like locks; for a new week they stay empty.
+   **R05.7b** (done) — regenerate selected days: optional `days` (0–6, unique, ≥ 1) on
+   `/generate/preview`; unselected days keep their recipes and saved portions like locks (returned
+   `locked: false`); for a new week they stay empty; reasons recomputed over the final week.
+   Accept still recomputes portions of unlocked slots from current targets.
 
 **Web slices**
 

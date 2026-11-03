@@ -42,7 +42,19 @@ export const generatePlanSchema = z.object({
 
 export type GeneratePlanInput = z.infer<typeof generatePlanSchema>;
 
-export const generatePreviewSchema = generatePlanSchema.omit({ expectedRevision: true });
+export const generatePreviewSchema = generatePlanSchema.omit({ expectedRevision: true }).extend({
+  days: z
+    .array(
+      z
+        .number()
+        .int("Day must be a whole number")
+        .min(0, "Day must be 0-6")
+        .max(6, "Day must be 0-6"),
+    )
+    .min(1, "Select at least one day")
+    .refine((days) => new Set(days).size === days.length, "Days must not repeat")
+    .optional(),
+});
 
 export type GeneratePreviewInput = z.infer<typeof generatePreviewSchema>;
 

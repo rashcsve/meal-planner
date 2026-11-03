@@ -137,9 +137,9 @@ export const plansRoute = new Hono()
       }
     }),
     async (c) => {
-      const { weekStartDate, seed } = c.req.valid("json");
+      const { weekStartDate, seed, days } = c.req.valid("json");
       try {
-        const preview = await previewPlan(weekStartDate, seed);
+        const preview = await previewPlan(weekStartDate, seed, days);
         return c.json(preview);
       } catch (err) {
         mapPlanError(err);

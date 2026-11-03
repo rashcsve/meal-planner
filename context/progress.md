@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.7b — regenerate selected days.
+**Next step:** R05.8 — preview → accept flow on the week page.
 
 ## R04 — planner correctness and search quality
 
@@ -42,7 +42,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.5c | Candidates paged (`limit` 1–50, default 20; `offset`) + `total`; top-three `suggestions` skip the current recipe | awaiting review |
 | R05.6 | Replace refreshes reasons on every filled slot (locked too; only reasons change); filling an empty slot pinned by test | awaiting review |
 | R05.7a | `POST /copy-last-week/preview`: last week's recipes as a no-write preview; target locks kept; ineligible → empty; accept via `/accept` | awaiting review |
-| R05.7b | Regenerate selected days; unselected days kept like locks | not started |
+| R05.7b | Optional `days` on `/generate/preview`; unselected days kept like locks (saved portions, `locked: false`); new week → empty | awaiting review |
 
 ## Earlier milestones
 
@@ -54,6 +54,11 @@ Short status only. Full entries (decisions, tests, verification) live in
 - R03.1–R03.4 (household targets and UI) — awaiting review
 
 ## Open follow-ups
+
+- R05.7b — Accept recomputes portions of kept (unselected, unlocked) days from current targets;
+  preview shows their saved portions. Decide if accept should keep them.
+- R05.7b — For a new week, the planner fills every day and unselected days are cleared after;
+  selected days were chosen against those discarded neighbours (variety, budget, expiry).
 
 - R07 — Accept's version check runs at READ COMMITTED: an input edit committed after the check
   but before accept commits isn't caught. Same gap as lock/replace.

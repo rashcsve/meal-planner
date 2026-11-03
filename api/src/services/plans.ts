@@ -178,8 +178,9 @@ async function runPlanner(
   weekStartDate: string,
   seed: number,
   existingWeek: Awaited<ReturnType<typeof findPlanWeekByDate>>,
+  keptSlots: LockedSlot[] = [],
 ) {
-  const locked = existingWeek ? await getLockedSlots(existingWeek.id) : [];
+  const locked = [...(existingWeek ? await getLockedSlots(existingWeek.id) : []), ...keptSlots];
   const inputVersions = await getCurrentInputVersions();
   const inputs = await getPlanInputs(weekStartDate);
 
@@ -195,16 +196,37 @@ async function runPlanner(
   return { inputVersions, inputs, result };
 }
 
-export async function previewPlan(weekStartDate: string, seed: number) {
+export async function previewPlan(weekStartDate: string, seed: number, days?: number[]) {
   const existingWeek = await findPlanWeekByDate(weekStartDate);
-  const { inputVersions, inputs, result } = await runPlanner(weekStartDate, seed, existingWeek);
-  const lockedRows = existingWeek ? await findLockedSlotsByWeekId(existingWeek.id) : [];
-  const slots = result.slots.map((slot) => {
-    const saved = lockedRows.find(
-      (row) => row.day === slot.day && row.mealSlot === slot.mealSlot && row.recipeId !== null,
+  const savedRows = existingWeek ? await findSlotsByWeekId(existingWeek.id) : [];
+  const isKept = (day: number) => days !== undefined && !days.includes(day);
+  const keptRows = savedRows.filter(
+    (row) => isKept(row.day) && !row.locked && row.recipeId !== null,
+  );
+  const { inputVersions, inputs, result } = await runPlanner(
+    weekStartDate,
+    seed,
+    existingWeek,
+    keptRows.map((row) => ({
+      day: row.day,
+      mealSlot: row.mealSlot as MealSlot,
+      recipeId: row.recipeId!,
+    })),
+  );
+  const planned = result.slots.map((slot) => {
+    const saved = savedRows.find(
+      (row) =>
+        row.day === slot.day &&
+        row.mealSlot === slot.mealSlot &&
+        row.recipeId !== null &&
+        (row.locked || isKept(row.day)),
     );
-    return saved ? { ...slot, memberServings: saved.memberServings } : slot;
+    if (saved?.locked) return { ...slot, memberServings: saved.memberServings };
+    if (saved) return { ...slot, locked: false };
+    if (isKept(slot.day)) return { ...slot, recipeId: null, reasons: [], memberServings: [] };
+    return slot;
   });
+  const slots = days === undefined ? planned : withReasons(planned, inputs);
   const ctx = buildPlannerContext(
     inputs.recipes,
     inputs.prices,
@@ -221,6 +243,25 @@ export async function previewPlan(weekStartDate: string, seed: number) {
     violations: evaluateSlots(slots, inputs.pantry, ctx),
     search: result.search,
   };
+}
+
+function withReasons<T extends EvaluatedSlot>(slots: T[], inputs: PlanInputs) {
+  const { assigned } = toSlotMaps(slots);
+  return slots.map((slot) => ({
+    ...slot,
+    reasons:
+      slot.recipeId === null
+        ? []
+        : collectReasons(
+            slot.day,
+            slot.mealSlot as MealSlot,
+            slot.recipeId,
+            inputs.recipes,
+            inputs.prices,
+            inputs.pantry,
+            assigned,
+          ),
+  }));
 }
 
 function previousWeekStart(weekStartDate: string): string {
@@ -273,22 +314,7 @@ export async function previewCopyLastWeek(weekStartDate: string) {
     }
   }
 
-  const { assigned } = toSlotMaps(copied);
-  const slots = copied.map((slot) => ({
-    ...slot,
-    reasons:
-      slot.recipeId === null
-        ? []
-        : collectReasons(
-            slot.day,
-            slot.mealSlot as MealSlot,
-            slot.recipeId,
-            inputs.recipes,
-            inputs.prices,
-            inputs.pantry,
-            assigned,
-          ),
-  }));
+  const slots = withReasons(copied, inputs);
   return {
     weekStartDate,
     sourceWeekStartDate,
