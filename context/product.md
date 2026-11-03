@@ -39,7 +39,8 @@ and data. Deterministic code owns scaling, units, nutrition, inventory, money an
 constraints. Models assist reviewed extraction; pasted recipe text comes first.
 Basic shopping by aisle must work before offers or scheduled leaflet ingestion exist.
 
-Use the design canvas's **Now** boards as the visual reference. Older mobile boards
+Use the design canvas's **Now** boards for layout and flows, and design system v1
+(`.claude/rules/web.md`) for the look. Older mobile boards
 supply layout, not lunch/macro requirements. Authentication is required before public
 access; a local build can precede it. Session and ownership design depend on the actual
 release audience, not an assumed future native app.

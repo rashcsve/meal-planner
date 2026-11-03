@@ -34,52 +34,82 @@ Rules:
   Features never import from each other. Shared things move to `shared/`.
 - No component library. No barrel files. No atomic design.
 - Types are never hand-written to mirror the backend — they're inferred.
-- Desktop app: viewport-height layout, panes scroll independently, never the page.
-  12px base, mouse-sized targets, keyboard shortcuts.
+- Desktop-first: viewport-height layout, panes scroll independently, never the page.
+  14px base, 44px targets, keyboard shortcuts. Narrow widths stack, never clip.
 
-## Design system
+## Design system — v1
 
 Primitives in `web/src/shared/ui/`. Tokens in `web/src/index.css`.
 
+Visual reference: screenshots in `context/design/v1/` — `style-guide.png` plus one
+per screen (`today`, `plan`, `shopping`, `fridge`, `recipes`, `recipe-detail`,
+`household`). The screens fix layout and copy; this section fixes the look. Where a
+screenshot and this section disagree, this section wins.
+
+Editable source (owner only): https://claude.ai/artifact/DpL7zNqvqVntG8si6KxsFe —
+boards "Design system v1 — style guide" and the row "Old pages, style A design
+system". When the design changes, replace the PNGs in the same commit.
+
 ### Principles
 
-- Numbers are the display type. Archivo variable, the width axis does the work:
-  numerals condensed+heavy, labels narrow+uppercase, body normal.
-- Borders, not shadows. No elevation anywhere. 1px lines, 2px radius only.
-- One saturated colour at a time. The UI is greyscale on paper.
-- Density is a feature: 12px base, 16px hit targets, viewport-height layout.
+- The page explains itself. Every list says why (reason lines, status tags with
+  words); the look stays quiet so the explanations carry the screen.
+- Borders, not shadows. White cards with a 1px divider line, no elevation.
+- Greyscale first. Colour only carries meaning (see semantic colour).
+- Real food photos, never illustrations.
 
 ### Tokens
 
-surfaces paper #EFEEE9 · card #FFF · sink #E7E5DF · rail #F4F3EF
-text ink #17191C · muted #6B6E73 · faint #9A9C9F
-borders line #DAD8D1 · hair #E6E4DE
-semantic promo #D93A20 · check #B8860B · ok #2E7D52 · lock #1F3F8F
-tints promo #FBE7E2 · check #FDF3D6 · ok #E3F0E9 · lock #E7E9EE
+surfaces page #FAFAF9 · surface #FFFFFF · fill #F5F5F4 · dark card #18181B
+text ink #18181B · muted #57534E · subtle #A8A29E
+borders border #D6D3D1 (controls) · divider #E7E5E4 (cards, rows)
+semantic ok #2D6A4F · warning #B54708 · danger #B42318 · lock #1F3F8F
+tints ok #ECFDF3 · warning #FFFAEB · danger #FEF3F2 · lock #E7E9EE
+radius tag 4px · control 6px · card 8px · circles only for dots and avatars
+spacing 4 · 8 · 12 · 16 · 24 · 32
 
 ### Semantic colour — each means exactly one thing
 
-- promo money saved, over budget, expired
-- check the model is unsure, needs the user's eyes
-- ok confirmed match, uses pantry stock
+- ok uses what's in the fridge, inside the calorie target, money saved,
+  confirmed match; also the accent (current-page underline, text links)
+- warning expires soon, a guessed value, the model is unsure — needs the user's eyes
+- danger expires today or expired, binned, over target or budget; destructive actions
 - lock user intent (locked meal), focus ring
 
-promo and check are opposites: promo is good news needing no action, check is
-"look at this". Never use promo for warnings or check for savings.
+Colour never carries meaning alone: every tag or tone also has words.
 
-Destructive actions (delete, remove) currently borrow promo's red for visual
-weight without claiming its meaning — this is a deliberate exception, not a
-fifth semantic colour.
+### Type
 
-### Type scale
+Inter only. Sentence case everywhere — no uppercase, no letter-spaced labels.
 
-9 · 10 · 11 · 12 · 13 · 15 · 18 · 25 · 34. Nothing between.
+| Role          | Size / weight |
+| ------------- | ------------- |
+| Page title    | 24 / 600      |
+| Stat          | 28 / 600      |
+| Section title | 16 / 600      |
+| Body          | 14 / 400      |
+| Small text    | 13 / 400      |
+| Label         | 12 / 500, muted |
+
 Tabular numerals wherever numbers stack in a column.
+
+### Components
+
+- Buttons 44px tall, 6px radius, 14/500. Primary: ink fill, white text — one per
+  area. Secondary: white with a border line. Destructive: white, danger text and
+  danger-tint border. Icon buttons are 44px squares, never circles.
+- Top menu: 56px white header with a bottom divider; plain links, the current
+  page marked by a 2px ok underline.
+- Inputs 44px, 6px radius, border line, always with a visible `<label>`.
+- Status tags 12/600 on the tone's tint, 4px radius.
+- Dark card: only for tonight's dinner, at most once per screen.
+- Photos: `object-fit: cover`, card or control radius. No photo: a fill-coloured
+  tile with the dish name, never a drawing.
 
 ### Rules
 
-- Row state = 2px inset bar on the first cell, never a background wash.
-- One primary button per view; ghost for everything else.
+- Row state = a tag or a 3px left bar in the tone, never a full background wash.
+- One primary button per area; secondary for everything else.
 - Never remove focus-visible — keyboard nav is a feature of this app.
 - No hex values outside index.css. Ever.
 - No dark mode, no animation beyond skeleton shimmer.

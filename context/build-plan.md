@@ -18,7 +18,9 @@ it is not a request for one large diff or an automatic commit.
 1. Explicit user decisions in this conversation, recorded below.
 2. This revised plan: requirements, dependencies, acceptance criteria and open decisions.
 3. Supplied `MASTER-PLAN-v2.md`: learning goals and feature coverage, mapped below.
-4. Design 5, **Use It Up**, bottom row **Now**, in the supplied design HTML.
+4. Design 5, **Use It Up**, bottom row **Now**, in the supplied design HTML, for layout,
+   copy and flows; its look is replaced by design system v1 (`.claude/rules/web.md`,
+   Design system — v1) and the "Old pages, style A design system" boards.
    Mobile boards supply layout only: ignore their older lunches/macros content.
 5. [planner-logic-review.md](planner-logic-review.md): findings to verify against code,
    not a claim that proposed repairs have already been made.
@@ -669,12 +671,13 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
 **Modules:** design section of `CLAUDE.md` at implementation time, `web/src/index.css`,
 shared primitives/stories, shell/router, existing recipe/fridge/plan/household views.
 
-**Changes:** first update tokens/primitives/reference route only: Young Serif display,
-Figtree text, sage/terracotta, semantic expiry tones, 14/18/24/pill radii and 44px targets.
+**Changes:** first update tokens/primitives/reference route only, to design system v1
+in `.claude/rules/web.md`: Inter, greyscale with ok/warning/danger/lock tones,
+4/6/8px radii, 44px targets, underline top menu, sentence-case labels.
 Then update layouts: top navigation (Today, Plan, Shopping, Fridge, Recipes, Import),
 Household access and future spend slot; redirect `/week` → `/plan`, `/pantry` → `/fridge`
 while preserving deep-link parameters. Keep shortcuts, move hints to a `?` sheet.
-Add DishArt with a stable fallback palette and optional image. Give every built screen
+Add DishPhoto: the recipe's photo, or a plain fill tile with the dish name. Give every built screen
 loading/error/empty states; generation empty state uses R05's actual behavior.
 
 **Dependencies:** R03–R05 contracts for the screens being restyled. Token work can be
@@ -682,7 +685,8 @@ an isolated slice once those contracts are agreed; do not mix logic changes into
 
 **Verification / done:** Storybook/a11y checks and desktop/narrow browser journeys;
 no broken old links, invisible focus, clipped rails or inaccessible touch actions.
-Use NowPlan, NowGenerate, NowFridge, NowRecipes and NowHousehold as references.
+Use NowPlan, NowGenerate, NowFridge, NowRecipes and NowHousehold for layout, and the
+S1 boards plus the v1 style guide for the look.
 
 **Risk / rollback:** separate token and layout changes. Plan mobile overflow/navigation
 now, rather than undoing fixed desktop assumptions in R14. No blanket feature rewrite.
@@ -690,8 +694,8 @@ now, rather than undoing fixed desktop assumptions in R14. No blanket feature re
 **Learning** (v2 35–38) — explain before code:
 - which primitives changed only through tokens and which needed markup changes —
   the honest measure of how token-driven the system was
-- why a generated dish illustration beats a photo per recipe for consistency and cost,
-  and what changes if photos arrive later
+- where recipe photos come from, how they are stored, and what the fallback tile
+  does when a recipe has none
 
 **Boards:** listed under Verification above.
 
