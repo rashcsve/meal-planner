@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.5b — per-candidate consequences (weekly cost and per-member dinner kcal vs the current recipe).
+**Next step:** R05.5c — candidate paging (`limit`/`offset` + `total`) and top-three `suggestions`.
 
 ## R04 — planner correctness and search quality
 
@@ -38,6 +38,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.4 | `plan_slots.recipe_snapshot` (jsonb) written on accept/generate/replace; locked slots keep their saved snapshot; GET returns it | awaiting review |
 | R05.4b | Week rows and rail read `recipeSnapshot`, live recipe when NULL | complete 11-03 |
 | R05.5a | Candidates carry whole-week `violations`; order: violation count → severity → score → calorie gap → recipe id | awaiting review |
+| R05.5b | Candidates carry `consequences`: week cost + per-member dinner kcal, with deltas vs current (null if slot empty), integers | awaiting review |
 
 ## Earlier milestones
 

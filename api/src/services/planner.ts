@@ -605,15 +605,7 @@ export function validateWeeklyBudget(
   assigned: Map<SlotKey, number>,
   savedServings?: Map<SlotKey, MemberServing[]>,
 ): PlanViolation[] {
-  const total = [...assigned].reduce((sum, [key, recipeId]) => {
-    const recipe = ctx.recipesById.get(recipeId);
-    if (!recipe) return sum;
-    const totalServings = slotServings(key, recipe, ctx, savedServings).reduce(
-      (servingsSum, member) => servingsSum + member.servings,
-      0,
-    );
-    return sum + scaleToServings(recipe.costCzk, recipe.baseServings, totalServings);
-  }, 0);
+  const total = weekCostCzk(ctx, assigned, savedServings);
 
   if (total <= ctx.targets.weeklyBudgetCzk) return [];
 
@@ -625,6 +617,24 @@ export function validateWeeklyBudget(
       severity: (total - ctx.targets.weeklyBudgetCzk) / ctx.targets.weeklyBudgetCzk,
     },
   ];
+}
+
+export function weekCostCzk(
+  ctx: PlannerContext,
+  assigned: Map<SlotKey, number>,
+  savedServings?: Map<SlotKey, MemberServing[]>,
+): number {
+  let total = 0;
+  for (const [key, recipeId] of assigned) {
+    const recipe = ctx.recipesById.get(recipeId);
+    if (!recipe) continue;
+    const servings = slotServings(key, recipe, ctx, savedServings).reduce(
+      (sum, member) => sum + member.servings,
+      0,
+    );
+    total += scaleToServings(recipe.costCzk, recipe.baseServings, servings);
+  }
+  return total;
 }
 
 export function evaluateExistingWeek(

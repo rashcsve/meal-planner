@@ -17,6 +17,7 @@ import {
   evaluateExistingWeek,
   scoreSlot,
   slotKey,
+  weekCostCzk,
   DAYS_PER_WEEK,
   PLANNED_MEAL_SLOTS,
   type SlotKey,
@@ -102,17 +103,20 @@ async function reevaluateSlots(
   return { violations, ...inputVersions };
 }
 
-function evaluateSlots(
-  slots: {
-    day: number;
-    mealSlot: string;
-    recipeId: number | null;
-    locked: boolean;
-    memberServings: MemberServing[];
-  }[],
-  pantry: PlanInputs["pantry"],
-  ctx: PlannerContext,
-) {
+type EvaluatedSlot = {
+  day: number;
+  mealSlot: string;
+  recipeId: number | null;
+  locked: boolean;
+  memberServings: MemberServing[];
+};
+
+function evaluateSlots(slots: EvaluatedSlot[], pantry: PlanInputs["pantry"], ctx: PlannerContext) {
+  const { assigned, locked, savedServings } = toSlotMaps(slots);
+  return evaluateExistingWeek(assigned, locked, pantry, ctx, savedServings);
+}
+
+function toSlotMaps(slots: EvaluatedSlot[]) {
   const assigned = new Map<SlotKey, number>();
   const locked: LockedSlot[] = [];
   const savedServings = new Map<SlotKey, MemberServing[]>();
@@ -123,8 +127,12 @@ function evaluateSlots(
     savedServings.set(slotKey(slot.day, mealSlot), slot.memberServings);
     if (slot.locked) locked.push({ day: slot.day, mealSlot, recipeId: slot.recipeId });
   }
+  return { assigned, locked, savedServings };
+}
 
-  return evaluateExistingWeek(assigned, locked, pantry, ctx, savedServings);
+function slotsWeekCost(slots: EvaluatedSlot[], ctx: PlannerContext): number {
+  const { assigned, savedServings } = toSlotMaps(slots);
+  return Math.round(weekCostCzk(ctx, assigned, savedServings));
 }
 
 async function getLockedSlots(planWeekId: number): Promise<LockedSlot[]> {
@@ -472,19 +480,41 @@ export async function getSlotCandidates(weekStartDate: string, day: number, meal
     inputs.targets,
   );
   const assigned = buildOtherSlotsAssigned(slots, day, mealSlot);
+  const currentRecipe =
+    targetSlot.recipeId === null ? undefined : ctx.recipesById.get(targetSlot.recipeId);
+  const currentWeekCost = currentRecipe ? slotsWeekCost(slots, ctx) : null;
+  const currentKcal = new Map(
+    currentRecipe
+      ? targetSlot.memberServings.map((m) => [
+          m.memberId,
+          Math.round(m.servings * currentRecipe.calories),
+        ])
+      : [],
+  );
 
   const candidates = eligibleRecipes(mealSlot, ctx)
     .map((recipe) => {
       const memberServings = computeMemberServings(recipe, inputs.targets.memberTargets);
-      const violations = evaluateSlots(
-        slots.map((slot) =>
-          slot.day === day && slot.mealSlot === mealSlot
-            ? { ...slot, recipeId: recipe.id, memberServings }
-            : slot,
-        ),
-        inputs.pantry,
-        ctx,
+      const candidateSlots = slots.map((slot) =>
+        slot.day === day && slot.mealSlot === mealSlot
+          ? { ...slot, recipeId: recipe.id, memberServings }
+          : slot,
       );
+      const violations = evaluateSlots(candidateSlots, inputs.pantry, ctx);
+      const weekCost = slotsWeekCost(candidateSlots, ctx);
+      const consequences = {
+        weekCostCzk: weekCost,
+        weekCostDeltaCzk: currentWeekCost === null ? null : weekCost - currentWeekCost,
+        members: memberServings.map((member) => {
+          const dinnerKcal = Math.round(member.servings * recipe.calories);
+          const current = currentKcal.get(member.memberId);
+          return {
+            memberId: member.memberId,
+            dinnerKcal,
+            dinnerKcalDelta: current === undefined ? null : dinnerKcal - current,
+          };
+        }),
+      };
       const calorieGap = memberServings.reduce((sum, member) => {
         const target = inputs.targets.memberTargets.find((t) => t.memberId === member.memberId);
         return (
@@ -496,6 +526,7 @@ export async function getSlotCandidates(weekStartDate: string, day: number, meal
         memberServings,
         score: scoreSlot(day, mealSlot, recipe.id, assigned, ctx),
         violations,
+        consequences,
         calorieGap,
       };
     })

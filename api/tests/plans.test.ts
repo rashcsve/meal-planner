@@ -1134,14 +1134,14 @@ describe("slot candidates", () => {
     expect(res.status).toBe(404);
   });
 
-  async function addDinnerRecipe(title: string, kcalPerServing: number) {
+  async function addDinnerRecipe(title: string, kcalPerServing: number, cost = 100) {
     const [ingredient] = await db
       .insert(ingredients)
       .values({ name: `${title} base`, baseUnit: "g", kcalPer100g: kcalPerServing })
       .returning();
     const [recipe] = await db
       .insert(recipes)
-      .values({ title, time: 20, cost: 100, meal: "dinner", servings: 1 })
+      .values({ title, time: 20, cost, meal: "dinner", servings: 1 })
       .returning();
     await db.insert(recipeIngredients).values({
       recipeId: recipe!.id,
@@ -1205,6 +1205,141 @@ describe("slot candidates", () => {
     expect(byId.get(dinnerRecipe.id)!.violations).not.toContainEqual(
       expect.objectContaining({ slot: atSlot }),
     );
+  });
+
+  type Consequences = {
+    weekCostCzk: number;
+    weekCostDeltaCzk: number | null;
+    members: { memberId: number; dinnerKcal: number; dinnerKcalDelta: number | null }[];
+  };
+  type ConsequenceBody = { candidates: { recipeId: number; consequences: Consequences }[] };
+  type GeneratedWeek = {
+    revision: number;
+    slots: {
+      day: number;
+      mealSlot: string;
+      recipeId: number | null;
+      memberServings: { memberId: number; servings: number }[];
+    }[];
+  };
+
+  async function fetchConsequences() {
+    const res = await app.request("/api/plans/2026-01-05/slots/0/dinner/candidates");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as ConsequenceBody;
+    return new Map(body.candidates.map((c) => [c.recipeId, c.consequences]));
+  }
+
+  it("reports week cost and member dinner kcal per candidate, with deltas vs the current recipe (R05.5b)", async () => {
+    const { dinnerRecipe } = await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as GeneratedWeek;
+    const far = await addDinnerRecipe("Far", 1000);
+    const odd = await addDinnerRecipe("Odd", 1001);
+
+    const totalServings = (slot: GeneratedWeek["slots"][number]) =>
+      slot.memberServings.reduce((sum, m) => sum + m.servings, 0);
+    const weekCost = generated.slots.reduce((sum, slot) => sum + 100 * totalServings(slot), 0);
+    const current = generated.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    const currentCost = 100 * totalServings(current);
+    const currentKcal =
+      current.memberServings[0]!.servings * (current.recipeId === dinnerRecipe.id ? 400 : 800);
+    const memberId = current.memberServings[0]!.memberId;
+
+    const byId = await fetchConsequences();
+
+    expect(byId.get(far.id)).toEqual({
+      weekCostCzk: weekCost - currentCost + 50,
+      weekCostDeltaCzk: 50 - currentCost,
+      members: [{ memberId, dinnerKcal: 500, dinnerKcalDelta: 500 - currentKcal }],
+    });
+    expect(byId.get(odd.id)!.members).toEqual([
+      { memberId, dinnerKcal: 501, dinnerKcalDelta: 501 - currentKcal },
+    ]);
+  });
+
+  it("candidate consequences match the committed week after replacing with it (R05.5b)", async () => {
+    await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as GeneratedWeek;
+    const previousId = generated.slots.find(
+      (s) => s.day === 0 && s.mealSlot === "dinner",
+    )!.recipeId!;
+    const far = await addDinnerRecipe("Far", 1000);
+
+    const before = (await fetchConsequences()).get(far.id)!;
+    const replaceRes = await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: far.id,
+      expectedRevision: generated.revision,
+    });
+    expect(replaceRes.status).toBe(200);
+    const after = await fetchConsequences();
+
+    expect(after.get(far.id)).toEqual({
+      weekCostCzk: before.weekCostCzk,
+      weekCostDeltaCzk: 0,
+      members: before.members.map((m) => ({ ...m, dinnerKcalDelta: 0 })),
+    });
+    expect(after.get(previousId)!.weekCostDeltaCzk! + before.weekCostDeltaCzk!).toBe(0);
+  });
+
+  it("rounds a fractional week cost to an integer (R05.5b)", async () => {
+    await seedPlannableHousehold();
+    const generateRes = await postJson("/api/plans/generate", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
+    const generated = (await generateRes.json()) as GeneratedWeek;
+    const pricey = await addDinnerRecipe("Pricey", 1000, 101);
+
+    const totalServings = (slot: GeneratedWeek["slots"][number]) =>
+      slot.memberServings.reduce((sum, m) => sum + m.servings, 0);
+    const weekCost = generated.slots.reduce((sum, slot) => sum + 100 * totalServings(slot), 0);
+    const current = generated.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    const currentCost = 100 * totalServings(current);
+
+    const consequences = (await fetchConsequences()).get(pricey.id)!;
+
+    expect(consequences.weekCostCzk).toBe(weekCost - currentCost + 51);
+    expect(consequences.weekCostDeltaCzk).toBe(51 - currentCost);
+  });
+
+  it("reports a null kcal delta for a member with no saved serving (R05.5b)", async () => {
+    const { member } = await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const [newcomer] = await db
+      .insert(householdMembers)
+      .values({ name: "Newcomer", dailyCalorieTarget: 900, dinnerCalorieTarget: 400 })
+      .returning();
+    const far = await addDinnerRecipe("Far", 1000);
+
+    const members = (await fetchConsequences()).get(far.id)!.members;
+
+    expect(members.find((m) => m.memberId === member.id)!.dinnerKcalDelta).not.toBeNull();
+    expect(members.find((m) => m.memberId === newcomer!.id)!.dinnerKcalDelta).toBeNull();
+  });
+
+  it("reports null deltas when the slot is empty (R05.5b)", async () => {
+    await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await db
+      .update(planSlots)
+      .set({ recipeId: null, memberServings: [] })
+      .where(and(eq(planSlots.day, 0), eq(planSlots.mealSlot, "dinner")));
+    const far = await addDinnerRecipe("Far", 1000);
+
+    const consequences = (await fetchConsequences()).get(far.id)!;
+
+    expect(consequences.weekCostDeltaCzk).toBeNull();
+    expect(consequences.members).toEqual([
+      expect.objectContaining({ dinnerKcal: 500, dinnerKcalDelta: null }),
+    ]);
   });
 });
 

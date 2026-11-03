@@ -630,7 +630,10 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    Split 2026-11-03: **R05.5a** (done) — each candidate carries the whole week's `violations`
    with it in the slot (same `evaluateSlots` as replace); order is violation count → severity
    sum → slot score → calorie gap (Σ |member kcal − dinner target|) → recipe id.
-   **R05.5b** — consequences (weekly cost, per-member kcal vs current recipe).
+   **R05.5b** (done) — `consequences`: `weekCostCzk` (same total as the budget check) and
+   per-member `dinnerKcal`, each with a delta vs the current recipe at its saved servings;
+   deltas null when the slot is empty or its recipe is missing from the inputs; a member's kcal
+   delta is null when the slot has no saved serving for them; all values rounded to integers.
    **R05.5c** — `limit`/`offset` + `total`, top-three `suggestions`.
 6. **R05.6 — Swap confirmation.** Handles empty slots; revalidates the whole week and
    updates neighboring reasons/summaries.
