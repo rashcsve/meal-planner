@@ -1,8 +1,8 @@
 # Code standards
 
-Conventions live primarily in `CLAUDE.md`. This file adds the executable
-verification commands the skills (`/step`, `/step-review`, `/recover`) should
-actually run, plus the couple of standards CLAUDE.md doesn't spell out.
+Conventions live in `AGENTS.md` and `.claude/rules/` (`api.md`, `web.md`). This file
+adds the executable verification commands the skills (`/step`, `/step-review`,
+`/recover`) should actually run, plus the couple of standards those don't spell out.
 
 ## Verification commands
 
@@ -14,6 +14,7 @@ actually run, plus the couple of standards CLAUDE.md doesn't spell out.
 | Full test suite (api + web) | `npm test` | yes — api tests spin up Postgres via Testcontainers |
 | API tests only | `npm run test -w api` | yes |
 | Web tests only (incl. Storybook stories) | `npm run test -w web` | no |
+| Generate a migration (in `api/`) | `npx drizzle-kit generate` | no |
 | Apply migrations | `npm run migrate` | yes — needs the dev Postgres container running |
 | Start dev Postgres | `docker compose -f api/docker-compose.yml up -d` | yes |
 | Run api + web together | `npm run dev:all` | yes |
@@ -41,8 +42,8 @@ here if that turns out to be awkward.
 
 ## Migrations
 
-Generate through `drizzle-kit` (`npm run migrate -w api` applies; generation is
-via the project's normal `drizzle-kit generate` command). Read the generated
+Generate with `npx drizzle-kit generate` in `api/`; apply with `npm run migrate`
+(only applies, never generates). Read the generated
 SQL before applying. Flag anything destructive — `DROP`, `TRUNCATE`,
 `ALTER ... DROP`, a column rename executed as drop+add — and stop for approval
 before applying it. Never hand-edit a generated migration to make it pass; if a
@@ -62,5 +63,5 @@ itself calls `npx prettier --write` directly and doesn't depend on this script.
 
 ## Commits
 
-Conventional Commits as specified in `CLAUDE.md`. Never run `git commit`
+Conventional Commits as specified in `AGENTS.md`. Never run `git commit`
 without being asked, even inside `/step`.

@@ -44,7 +44,8 @@ household preferences. Personal project, built to production standards.
 - Typecheck: `npm run typecheck` · Lint: `npm run lint`
 - Fast local check (typecheck + lint): `bash scripts/verify.sh`
 - Format a touched file: `npx prettier --write <path>`
-- Migrations: `npm run migrate` (read the generated SQL first)
+- Migrations: generate with `npx drizzle-kit generate` in `api/`, read the SQL, then
+  apply with `npm run migrate`
 - Full command table: `context/code-standards.md`
 
 ## Stack
@@ -159,12 +160,18 @@ meal-planner/
       repositories/
       lib/
     drizzle/          generated migrations
+    scripts/          seed and planner comparison scripts
     tests/
     docker-compose.yml
     drizzle.config.ts
+    vitest.config.ts
   web/                frontend (React + Vite)
   shared/             Zod schemas shared between api and web
-  package.json        workspace root, delegates scripts to api
+  context/            plan, progress, product, architecture, code standards, design
+  scripts/            verify.sh, scan-secrets.sh
+  .claude/            hooks, rules (api.md, web.md), skills
+  .github/workflows/  CI
+  package.json        workspace root; test, typecheck, lint, dev:all run api and web
   AGENTS.md
   CLAUDE.md
 ```

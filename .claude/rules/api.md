@@ -11,7 +11,7 @@ paths:
 routes/         HTTP only: parse, validate, call service, format response
 services/       business logic. No HTTP, no SQL
 repositories/   all database access
-db/             schema, migrations, connection
+db/             schema, connection (migrations live in api/drizzle/)
 config/         validated environment
 lib/            shared utilities
 ```
@@ -28,7 +28,7 @@ test.
 
 **Errors**
 
-- Throw `HTTPException` from Hono for expected failures
+- Services throw domain errors from `lib/errors.ts`; routes map them to `HTTPException`
 - One error-handling middleware formats all responses
 - Never swallow an error silently
 

@@ -1,24 +1,27 @@
 # Architecture
 
 This records what the repository actually does, and decisions that resolve a
-question the build plan leaves open. `CLAUDE.md` has the conventions everyone
-must follow; this file has the current concrete shape of the system.
+question the build plan leaves open. `AGENTS.md` and `.claude/rules/` have the
+conventions everyone must follow; this file has the current concrete shape of the system.
 
 [build-plan.md](build-plan.md) describes the Use It Up milestones (R01–R14);
-[progress.md](progress.md) shows which are delivered. The fixed-portion model is
-not implemented yet. Descriptions below are about the current code; numeric step
+[progress.md](progress.md) shows which are delivered. Household share proposal and
+confirmation exist (`services/householdShares.ts`, `/api/household/share-proposal`,
+`/confirm-shares`), but planning does not use shares yet. Descriptions below are about the current code; numeric step
 references (e.g. "step 29.1") point to [build-plan-v1.md](archive/build-plan-v1.md).
 
 ## Layout
 
 ```
 api/src/
-  index.ts        entrypoint, mounts routes, does not import from routes/services directly for app construction vs listen
+  index.ts        entrypoint: builds the Hono app, mounts routes, exports AppType, listens
   config/         Zod-validated env (DATABASE_URL, PORT, NODE_ENV, LOG_LEVEL, CORS_ORIGIN)
   db/             drizzle schema (schema.ts) + pooled connection (index.ts)
-  routes/         recipes.ts, pantry.ts, plans.ts, household.ts — HTTP parsing/validation only
-  services/       recipes, pantry, nutrition, planner, plans, plan-inputs,
-                  householdMembers, householdSettings, ingredientPrices,
+  routes/         recipes.ts, ingredients.ts, pantry.ts, plans.ts, household.ts —
+                  HTTP parsing/validation only
+  services/       recipes, recipeIngredients, ingredients, pantry, nutrition, planner,
+                  plans, plan-inputs, plan-staleness, householdMembers,
+                  householdSettings, householdShares, ingredientPrices,
                   ingredientPreferences — business logic, no HTTP, no raw SQL
   repositories/   one file per aggregate; all Drizzle queries live here
   lib/            errors.ts, errorHandler.ts, logger.ts, requestLogger.ts,
@@ -27,10 +30,14 @@ api/drizzle/      generated, reviewed SQL migrations (source of truth for schema
 api/tests/        vitest + testcontainers, real Postgres per run
 shared/src/       zod schemas + inferred types, imported by both api and web
 web/src/
-  app/            shell, router, TanStack Query client, typed API client
+  App.tsx         router (<Routes>)
+  app/            shell (AppShell, Sidebar), TanStack Query client, typed API client
   features/       recipes, pantry, week, household (shopping/import are step 34+, not built yet)
   shared/api/     read-only query hooks shared across features (recipeCatalog.ts,
-                  household.ts) — features never import each other's files directly
+                  household.ts) plus response helpers (unwrapResponse.ts,
+                  parseErrorResponse.ts) — features never import each other's files directly
+  shared/layout/  DetailRail
+  shared/lib/     pure helpers (week, expiry, planReasons, formatting, cx, …)
   shared/ui/      design-system primitives
   stories/        Storybook stories, run as real Vitest tests
 ```
@@ -125,13 +132,16 @@ into the browser build.
 
 - `POST /generate/preview` and `POST /copy-last-week/preview` write nothing. They
   return the full week plus `baseRevision`, `inputVersions` and violations.
-  Generate takes optional `days`: unselected days are kept like locks (saved
-  portions, `locked: false`). Copy-last-week keeps target locks and leaves
+  Generate takes optional `days`: unselected days keep their recipe (`locked: false`)
+  with portions recomputed from current targets, as accept will save them; only
+  locked slots keep saved portions. For a new week unselected days stay empty.
+  Copy-last-week keeps target locks and leaves
   ineligible recipes empty.
 - `POST /accept` saves a preview: it re-validates the slots and checks revision and
   input versions in one transaction (see Database).
 - `POST /generate` still writes directly; no web caller is left. Retiring it is R05.8c.
-- Lock, unlock and replace re-evaluate stored violations and advance watermarks.
+- `GET /:weekStartDate` returns the saved week with stored violations and staleness.
+- Lock (`PUT .../lock`), unlock (`DELETE .../lock`) and replace (`PUT .../:mealSlot`) re-evaluate stored violations and advance watermarks.
   Replace refreshes reasons on every filled slot.
 - `GET .../candidates` ranks swaps by violation count → severity → score →
   calorie gap → recipe id, carries whole-week `violations` and `consequences`
@@ -145,8 +155,9 @@ Discard). A 409 `STALE_PREVIEW` shows "Preview again". Copy-last-week and
 ## Error handling
 
 `lib/errors.ts` defines domain error classes (e.g. `PlanWeekNotFoundError`,
-`RecipeNotFoundError`); each route's `mapXError` function translates them to
-`HTTPException` with the right status. `lib/errorHandler.ts` is the single
+`RecipeNotFoundError`); routes translate them to `HTTPException` with the right
+status — `plans.ts` through one `mapPlanError` function, the other routes inline in
+`try/catch` with `instanceof`. `lib/errorHandler.ts` is the single
 `onError` handler mounted once, so every response — expected or not — goes
 through one envelope. Never swallow an error inside a service; throw a typed
 domain error and let the route layer map it.
@@ -159,26 +170,18 @@ domain error and let the route layer map it.
   several files' `afterEach` hooks do blanket deletes on tables (`recipes`,
   `ingredients`) that more than one file uses, which corrupts a concurrently
   running file's fixtures otherwise.
-  - Files that exist and were last verified passing 2026-09-18
-    (`npm run test -w api` → 7 files / 81 tests): `recipes.test.ts`,
-    `nutrition.test.ts`, `planner.test.ts`, `unitConversions.test.ts`,
-    `units.test.ts`, `plans.test.ts` (persistence, the revision
-    compare-and-swap, concurrent-mutation races, rollback on a
-    mid-transaction failure, lock preservation across regeneration, and —
-    added in step 31 — locked-slot/ineligible-recipe replace rejection and
-    the `/candidates` endpoint's eligibility filtering/ranking), and
-    `household.test.ts` (added in step 30 — settings get/put/validation,
-    members list, member dinner-target update and its 404/400/422 cases).
-  - **No test file exists yet** for pantry, ingredient preferences, or
-    ingredient prices — predates step 29, tracked as a follow-up, not fixed
-    here. (Household settings/members are now covered — step 30 added the
-    routes and their tests together, since those routes did not exist
-    before this step.)
+  - 12 files in `api/tests/` (shared seeds in `tests/fixtures/`). The largest are
+    `plans.test.ts` (persistence, revision compare-and-swap, races, preview,
+    accept, copy-last-week, `days`, snapshots, candidates, staleness) and
+    `planner.test.ts` (search, constraints, violations).
+  - No route-level tests for pantry, ingredient preferences or ingredient prices;
+    they are exercised only indirectly through `plans.test.ts` seeds.
 - `web`: Vitest + Storybook's `@storybook/addon-vitest`, every story runs as a
   real headless-Chromium test; accessibility violations fail the run
   (`preview.tsx`'s `a11y.test: 'error'`).
 - Root `npm test` / `npm run typecheck` / `npm run lint` run both workspaces;
-  CI (`\.github/workflows/ci.yml`) runs the same three as separate jobs.
+  CI (`.github/workflows/ci.yml`) runs the same three as separate jobs, plus a
+  `secret-scan` job (`scripts/scan-secrets.sh`).
 
 ## Frontend state
 
@@ -211,5 +214,5 @@ first rail usage that needed a non-desktop-only layout.
 skills (`.claude/skills/`). They read this `context/` directory plus
 `context/build-plan.md` and `context/progress.md`. Two now-redundant review
 skills (`architecture-review`, `frontend-review`) were folded into `/step-review`
-and removed. No other build/finish/debug skills should be added — see the
-build plan's step 29 §C.
+and removed. No other build/finish/debug skills should be added — see step 29 §C
+in [build-plan-v1.md](archive/build-plan-v1.md).

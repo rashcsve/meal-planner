@@ -13,7 +13,7 @@ Lives in `web/`. Vite + React + TypeScript.
 | Server state | TanStack Query — this IS the state architecture         |
 | Client state | useState / useReducer only                              |
 | API client   | Hono `hc` typed RPC, importing AppType from the backend |
-| Forms        | react-hook-form + Zod (schemas imported from backend)   |
+| Forms        | react-hook-form + Zod (schemas imported from `shared/`) |
 | Styling      | Tailwind v4                                             |
 | Component tests | Storybook + `@storybook/addon-vitest` — every story runs as a real Vitest test in headless Chromium |
 
@@ -35,11 +35,18 @@ Rules:
 - No component library. No barrel files. No atomic design.
 - Types are never hand-written to mirror the backend — they're inferred.
 - Desktop-first: viewport-height layout, panes scroll independently, never the page.
-  14px base, 44px targets, keyboard shortcuts. Narrow widths stack, never clip.
+  Keyboard shortcuts. Narrow widths stack, never clip.
 
-## Design system — v1
+## Current look
 
-Primitives in `web/src/shared/ui/`. Tokens in `web/src/index.css`.
+Primitives in `web/src/shared/ui/`. Tokens in `web/src/index.css` — Archivo, 12px
+base, 2px radius, `paper/card/ink/line/…` colours. Until R06 lands, new and changed
+screens use these existing tokens and primitives, not the v1 values below.
+
+## Design system — v1 (target for R06, not yet built)
+
+R06 ([build-plan.md](../../context/build-plan.md) "R06 — Use It Up design refresh")
+migrates `index.css` and the primitives to this.
 
 Visual reference: screenshots in `context/design/v1/` — `style-guide.png` plus one
 per screen (`today`, `plan`, `shopping`, `fridge`, `recipes`, `recipe-detail`,

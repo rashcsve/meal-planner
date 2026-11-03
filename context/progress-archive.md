@@ -172,7 +172,7 @@ user has not yet reviewed the full set of R01 changes together.
 (the first, decision-free rule slice) whenever the user asks to resume
 implementation.
 
-## R02 — Reliable quantities, nutrition and recipe writing — `in progress`
+## R02 — Reliable quantities, nutrition and recipe writing — `awaiting review`
 
 R02 bundles several distinct pieces of work (nutrition status, scaling
 centralization, ingredient-line writing/editing, archiving/versioning), so it
