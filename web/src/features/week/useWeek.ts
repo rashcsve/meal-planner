@@ -189,14 +189,41 @@ export function useSetSlotLocked() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: putSlotLocked,
+    onMutate: async (variables) => {
+      const key = weekKeys.detail(variables.weekStartDate);
+      await queryClient.cancelQueries({ queryKey: key, exact: true });
+      const previous = queryClient.getQueryData<PlanWeek | null>(key);
+      queryClient.setQueryData(key, (prev: PlanWeek | null | undefined) =>
+        mergeSlot(prev, variables.day, variables.mealSlot, prev?.revision ?? 0, {
+          locked: variables.locked,
+        }),
+      );
+      return { previous };
+    },
+    onError: (_error, variables, context) => {
+      queryClient.setQueryData(
+        weekKeys.detail(variables.weekStartDate),
+        (prev: PlanWeek | null | undefined) =>
+          prev && context?.previous && prev.revision === context.previous.revision
+            ? context.previous
+            : prev,
+      );
+    },
     onSuccess: (data, variables) => {
       queryClient.setQueryData(
         weekKeys.detail(variables.weekStartDate),
         (prev: PlanWeek | null | undefined) =>
-          mergeSlot(prev, variables.day, variables.mealSlot, data.revision, {
-            locked: data.locked,
-          }),
+          prev && data.revision <= prev.revision
+            ? prev
+            : mergeSlot(prev, variables.day, variables.mealSlot, data.revision, {
+                locked: data.locked,
+              }),
       );
     },
+    onSettled: (_data, _error, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: weekKeys.detail(variables.weekStartDate),
+        exact: true,
+      }),
   });
 }

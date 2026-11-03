@@ -4,7 +4,7 @@ export interface MockRoute {
   method: string;
   path: RegExp;
   status?: number;
-  body: unknown;
+  body: unknown | ((request: RecordedRequest) => unknown);
 }
 
 export interface RecordedRequest {
@@ -19,10 +19,12 @@ export function mockApi(routes: MockRoute[]) {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     const method = (init?.method ?? "GET").toUpperCase();
     const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
-    requests.push({ method, url, body });
+    const request = { method, url, body };
+    requests.push(request);
     const route = routes.find((r) => r.method === method && r.path.test(url));
     if (!route) throw new Error(`Unmocked request: ${method} ${url}`);
-    return new Response(JSON.stringify(route.body), {
+    const payload = typeof route.body === "function" ? await route.body(request) : route.body;
+    return new Response(JSON.stringify(payload), {
       status: route.status ?? 200,
       headers: { "Content-Type": "application/json" },
     });

@@ -680,6 +680,11 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    **R05.9b** (done) — rail shows the top three `suggestions` plus a link to the picker.
 10. **R05.10 — Optimistic lock/unlock.** onMutate/onError/onSettled, cancelQueries, rollback,
     conflict recovery; delayed responses do not overwrite newer revisions.
+    Split 2026-11-03: **R05.10a** (done) — `useSetSlotLocked` flips `locked` in the cached week
+    at once (after cancelling its in-flight fetch); on error rolls back unless a newer revision
+    arrived; a response whose revision is not newer than the cache is ignored; the week is
+    refetched when the request settles (409 recovery). Tested via WeekPage stories with held
+    responses. **R05.10b** — "Lock" button on filled, unlocked slots in the rail.
 
 **Verification slice**
 
