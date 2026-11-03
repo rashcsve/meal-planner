@@ -16,6 +16,9 @@ and share values are household settings, not values to infer silently from old d
 
 The current code still uses individual dinner calorie targets and recipe-dependent
 servings. It already generates seven dinners and stores each plan's member servings.
+Generation now goes through a preview the user accepts or discards. Copy-last-week
+and per-day regeneration exist in the api only. Swap candidates show week cost and
+kcal consequences before the swap is confirmed.
 The new model is **planned, not implemented**. Existing saved portions must survive
 migration; applying a new model to an existing week requires an explicit operation.
 

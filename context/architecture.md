@@ -93,8 +93,8 @@ into the browser build.
   write it, building each distinct recipe once per write; a locked slot keeps its saved
   snapshot while it points at the same recipe, even after that recipe is edited.
   It is display/history only — rule checks still read live recipes. NULL means a
-  pre-R05.4 or empty slot. Nothing reads it yet; from R05.4b the web reads it and
-  falls back to the live recipe when NULL.
+  pre-R05.4 or empty slot. The web week rows and meal rail read it (R05.4b) and
+  fall back to the live recipe when NULL.
 - `household_members.dinner_calorie_target` (added in step 27.1, migration
   `0016_add_household_member_dinner_calorie_target.sql`) is a nullable
   `numeric` with a `> 0` check constraint. Nullable is deliberate: an
@@ -119,6 +119,29 @@ into the browser build.
   (fixed ±10%, `planner.ts`) and currency (fixed CZK, column/type names)
   stayed hardcoded by deliberate scope decision — see `context/progress-archive.md`'s
   "Step 30" entry.
+
+## Plan flow (R05)
+
+`/api/plans` endpoints, all in `routes/plans.ts`:
+
+- `POST /generate/preview` and `POST /copy-last-week/preview` write nothing. They
+  return the full week plus `baseRevision`, `inputVersions` and violations.
+  Generate takes optional `days`: unselected days are kept like locks (saved
+  portions, `locked: false`). Copy-last-week keeps target locks and leaves
+  ineligible recipes empty.
+- `POST /accept` saves a preview: it re-validates the slots and checks revision and
+  input versions in one transaction (see Database).
+- `POST /generate` still writes directly; no web caller is left. Retiring it is R05.8c.
+- Lock, unlock and replace re-evaluate stored violations and advance watermarks.
+  Replace refreshes reasons on every filled slot.
+- `GET .../candidates` ranks swaps by violation count → severity → score →
+  calorie gap → recipe id, carries whole-week `violations` and `consequences`
+  (week cost, per-member kcal, deltas), is paged (`limit`/`offset`, `total`) and
+  returns top-three `suggestions`.
+
+Web: `WeekPage` runs Generate → preview → `PreviewBar` (Accept / Try again /
+Discard). A 409 `STALE_PREVIEW` shows "Preview again". Copy-last-week and
+`days` have no web UI yet.
 
 ## Error handling
 
