@@ -1,14 +1,37 @@
 {
   "permissions": {
     "defaultMode": "plan",
-    "allow": ["Bash(npm run *)", "Bash(echo \"EXIT=$?\")", "Bash(npx prettier *)"],
-    "deny": ["Bash(*DROP*)", "Bash(*TRUNCATE*)", "Read(.env)"],
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(npx prettier *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Bash(*DROP*)",
+      "Bash(*TRUNCATE*)",
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(rm -rf*)"
+    ],
     "ask": [
       "Bash(npx drizzle-kit migrate*)",
       "Bash(npx drizzle-kit push*)",
       "Bash(*psql*)",
       "Bash(docker exec*)",
-      "Bash(npm run migrate*)"
+      "Bash(npm run migrate*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(npm install*)",
+      "Bash(npm i *)",
+      "Bash(docker compose down -v*)",
+      "Bash(docker compose -f * down -v*)"
     ]
   },
   "hooks": {

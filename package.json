@@ -15,7 +15,8 @@
     "typecheck": "npm run typecheck -w api && npm run typecheck -w web",
     "lint": "npm run lint -w api && npm run lint -w web",
     "migrate": "npm run migrate -w api",
-    "format": "prettier --write"
+    "format": "prettier --write",
+    "test:hooks": "node --test .claude/hooks/guard.test.mjs"
   },
   "devDependencies": {
     "concurrently": "^10.0.5",
