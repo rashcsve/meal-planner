@@ -7,13 +7,23 @@ import { playwright } from "@vitest/browser-playwright";
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom/client",
+      "react/jsx-dev-runtime",
+      "react-router-dom",
+      "@tanstack/react-query",
+      "react-hook-form",
+      "@hookform/resolvers/zod",
+      "hono/client",
+    ],
+  },
   test: {
     projects: [
       {
         extends: true,
-        plugins: [
-          storybookTest({ configDir: path.join(dirname, ".storybook") }),
-        ],
+        plugins: [storybookTest({ configDir: path.join(dirname, ".storybook") })],
         test: {
           name: "storybook",
           browser: {
