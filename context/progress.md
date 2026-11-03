@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.10b — Lock button in the rail.
+**Next step:** R05.11 — Browser journeys.
 
 ## R04 — planner correctness and search quality
 
@@ -49,6 +49,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.9a | Swap picker at `/week/:week/swap/:day/:mealSlot`: paged candidates + consequences; Cancel writes nothing | complete 11-03 |
 | R05.9b | Rail shows top-three `suggestions` + "See all options" link to the picker; empty slots too, locked none | complete 11-03 |
 | R05.10a | Optimistic lock/unlock: instant flip, rollback on error, older responses ignored, refetch on settle | complete 11-03 |
+| R05.10b | Rail "Lock" button on filled, unlocked slots; lock failure shows its own error | complete 11-03 |
 
 ## Earlier milestones
 

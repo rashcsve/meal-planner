@@ -684,7 +684,7 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
     at once (after cancelling its in-flight fetch); on error rolls back unless a newer revision
     arrived; a response whose revision is not newer than the cache is ignored; the week is
     refetched when the request settles (409 recovery). Tested via WeekPage stories with held
-    responses. **R05.10b** — "Lock" button on filled, unlocked slots in the rail.
+    responses. **R05.10b** (done) — "Lock" button on filled, unlocked slots in the rail.
 
 **Verification slice**
 

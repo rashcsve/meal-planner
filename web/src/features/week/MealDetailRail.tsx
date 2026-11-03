@@ -48,12 +48,12 @@ export function MealDetailRail({
     members,
   );
 
-  function handleUnlock() {
+  function handleSetLocked(locked: boolean) {
     setSlotLocked.mutate({
       weekStartDate,
       day: slot.day,
       mealSlot,
-      locked: false,
+      locked,
       expectedRevision: revision,
     });
   }
@@ -155,12 +155,27 @@ export function MealDetailRail({
                   <span aria-hidden="true">🔒</span>
                   Locked
                 </span>
-                <Button variant="ghost" onClick={handleUnlock} disabled={setSlotLocked.isPending}>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleSetLocked(false)}
+                  disabled={setSlotLocked.isPending}
+                >
                   Unlock to edit
                 </Button>
               </div>
             ) : (
               <>
+                {slot.recipeId !== null && (
+                  <div className="mb-2.5 flex justify-end">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSetLocked(true)}
+                      disabled={setSlotLocked.isPending}
+                    >
+                      Lock
+                    </Button>
+                  </div>
+                )}
                 <span className="type-label text-9 text-faint">Replace with</span>
                 {candidatesQuery.isLoading && (
                   <div className="mt-1.5 flex flex-col gap-1">
@@ -215,7 +230,12 @@ export function MealDetailRail({
             )}
             {setSlotLocked.isError && (
               <div className="mt-2">
-                <ErrorState title="Couldn't unlock meal" message={setSlotLocked.error.message} />
+                <ErrorState
+                  title={
+                    setSlotLocked.variables?.locked ? "Couldn't lock meal" : "Couldn't unlock meal"
+                  }
+                  message={setSlotLocked.error.message}
+                />
               </div>
             )}
           </div>
