@@ -1133,6 +1133,79 @@ describe("slot candidates", () => {
     const res = await app.request("/api/plans/2026-01-05/slots/0/dinner/candidates");
     expect(res.status).toBe(404);
   });
+
+  async function addDinnerRecipe(title: string, kcalPerServing: number) {
+    const [ingredient] = await db
+      .insert(ingredients)
+      .values({ name: `${title} base`, baseUnit: "g", kcalPer100g: kcalPerServing })
+      .returning();
+    const [recipe] = await db
+      .insert(recipes)
+      .values({ title, time: 20, cost: 100, meal: "dinner", servings: 1 })
+      .returning();
+    await db.insert(recipeIngredients).values({
+      recipeId: recipe!.id,
+      ingredientId: ingredient!.id,
+      amountBase: 100,
+      isOptional: false,
+    });
+    await db.insert(ingredientPrices).values({
+      ingredientId: ingredient!.id,
+      store: "Store",
+      amount: 1,
+      unit: "g",
+      price: 10,
+      validFrom: "2020-01-01",
+    });
+    return recipe!;
+  }
+
+  type CandidateBody = {
+    candidates: {
+      recipeId: number;
+      violations: { slot: { day: number; mealSlot: string } | null; constraint: string }[];
+    }[];
+  };
+
+  it("orders by violations, severity, score, calorie closeness, then recipe id (R05.5)", async () => {
+    const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const far = await addDinnerRecipe("Far", 1000);
+    const close = await addDinnerRecipe("Close", 420);
+    const twin = await addDinnerRecipe("Twin", 400);
+    const slight = await addDinnerRecipe("Slight", 1800);
+
+    const res = await app.request("/api/plans/2026-01-05/slots/0/dinner/candidates");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as CandidateBody;
+
+    expect(body.candidates.map((c) => c.recipeId)).toEqual([
+      dinnerRecipe2.id,
+      dinnerRecipe.id,
+      twin.id,
+      close.id,
+      slight.id,
+      far.id,
+    ]);
+  });
+
+  it("lists the week's violations with each candidate in the slot (R05.5)", async () => {
+    const { dinnerRecipe } = await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const far = await addDinnerRecipe("Far", 1000);
+
+    const res = await app.request("/api/plans/2026-01-05/slots/0/dinner/candidates");
+    const body = (await res.json()) as CandidateBody;
+    const byId = new Map(body.candidates.map((c) => [c.recipeId, c]));
+    const atSlot = { day: 0, mealSlot: "dinner" };
+
+    expect(byId.get(far.id)!.violations).toContainEqual(
+      expect.objectContaining({ constraint: "member_dinner_calories", slot: atSlot }),
+    );
+    expect(byId.get(dinnerRecipe.id)!.violations).not.toContainEqual(
+      expect.objectContaining({ slot: atSlot }),
+    );
+  });
 });
 
 describe("generation preview (R05.2)", () => {

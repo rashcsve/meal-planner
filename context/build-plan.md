@@ -627,6 +627,11 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
 5. **R05.5 — Swap candidates.** Fit, violated rules and consequences per candidate; stable
    tie-breaking (fit, then calorie closeness); paging; top three for the rail. May split
    further.
+   Split 2026-11-03: **R05.5a** (done) — each candidate carries the whole week's `violations`
+   with it in the slot (same `evaluateSlots` as replace); order is violation count → severity
+   sum → slot score → calorie gap (Σ |member kcal − dinner target|) → recipe id.
+   **R05.5b** — consequences (weekly cost, per-member kcal vs current recipe).
+   **R05.5c** — `limit`/`offset` + `total`, top-three `suggestions`.
 6. **R05.6 — Swap confirmation.** Handles empty slots; revalidates the whole week and
    updates neighboring reasons/summaries.
 7. **R05.7 — Selected days and copy-last-week.** Copy assignments into a new draft, then

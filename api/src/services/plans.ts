@@ -1,5 +1,12 @@
 import { PLANNER_VERSION } from "shared";
-import type { AcceptPlanInput, LockedSlot, MealSlot, MemberServing, RecipeSnapshot } from "shared";
+import type {
+  AcceptPlanInput,
+  LockedSlot,
+  MealSlot,
+  MemberServing,
+  PlanViolation,
+  RecipeSnapshot,
+} from "shared";
 import {
   plan,
   buildPlannerContext,
@@ -467,14 +474,55 @@ export async function getSlotCandidates(weekStartDate: string, day: number, meal
   const assigned = buildOtherSlotsAssigned(slots, day, mealSlot);
 
   const candidates = eligibleRecipes(mealSlot, ctx)
-    .map((recipe) => ({
-      recipeId: recipe.id,
-      memberServings: computeMemberServings(recipe, inputs.targets.memberTargets),
-      score: scoreSlot(day, mealSlot, recipe.id, assigned, ctx),
-    }))
-    .sort((a, b) => b.score - a.score);
+    .map((recipe) => {
+      const memberServings = computeMemberServings(recipe, inputs.targets.memberTargets);
+      const violations = evaluateSlots(
+        slots.map((slot) =>
+          slot.day === day && slot.mealSlot === mealSlot
+            ? { ...slot, recipeId: recipe.id, memberServings }
+            : slot,
+        ),
+        inputs.pantry,
+        ctx,
+      );
+      const calorieGap = memberServings.reduce((sum, member) => {
+        const target = inputs.targets.memberTargets.find((t) => t.memberId === member.memberId);
+        return (
+          sum + Math.abs(member.servings * recipe.calories - (target?.dinnerCalorieTarget ?? 0))
+        );
+      }, 0);
+      return {
+        recipeId: recipe.id,
+        memberServings,
+        score: scoreSlot(day, mealSlot, recipe.id, assigned, ctx),
+        violations,
+        calorieGap,
+      };
+    })
+    .sort(compareCandidates)
+    .map(({ calorieGap: _calorieGap, ...candidate }) => candidate);
 
   return { candidates };
+}
+
+const SEVERITY_EPSILON = 1e-9;
+
+function severitySum(violations: PlanViolation[]): number {
+  return violations.reduce((sum, violation) => sum + (violation.severity ?? 0), 0);
+}
+
+function compareCandidates(
+  a: { recipeId: number; score: number; violations: PlanViolation[]; calorieGap: number },
+  b: { recipeId: number; score: number; violations: PlanViolation[]; calorieGap: number },
+): number {
+  if (a.violations.length !== b.violations.length) {
+    return a.violations.length - b.violations.length;
+  }
+  const severityDiff = severitySum(a.violations) - severitySum(b.violations);
+  if (Math.abs(severityDiff) > SEVERITY_EPSILON) return severityDiff;
+  if (a.score !== b.score) return b.score - a.score;
+  if (a.calorieGap !== b.calorieGap) return a.calorieGap - b.calorieGap;
+  return a.recipeId - b.recipeId;
 }
 
 export async function replaceSlot(

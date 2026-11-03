@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.4b — web week page and rail read `recipeSnapshot`, falling back to the live recipe when NULL.
+**Next step:** R05.5b — per-candidate consequences (weekly cost and per-member dinner kcal vs the current recipe).
 
 ## R04 — planner correctness and search quality
 
@@ -36,6 +36,8 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.2 | `POST /api/plans/generate/preview`: full plan + `baseRevision` + `inputVersions`, no writes; `/generate` kept until accept lands | complete 10-15 |
 | R05.3 | `POST /api/plans/accept`: re-validates previewed slots; versions + revision checked in one transaction; locked slots keep saved portions | awaiting review |
 | R05.4 | `plan_slots.recipe_snapshot` (jsonb) written on accept/generate/replace; locked slots keep their saved snapshot; GET returns it | awaiting review |
+| R05.4b | Week rows and rail read `recipeSnapshot`, live recipe when NULL | complete 11-03 |
+| R05.5a | Candidates carry whole-week `violations`; order: violation count → severity → score → calorie gap → recipe id | awaiting review |
 
 ## Earlier milestones
 
@@ -48,7 +50,6 @@ Short status only. Full entries (decisions, tests, verification) live in
 
 ## Open follow-ups
 
-- R05.4b — Web still reads recipes live; switch week rows and rail to `recipeSnapshot`.
 - R07 — Accept's version check runs at READ COMMITTED: an input edit committed after the check
   but before accept commits isn't caught. Same gap as lock/replace.
 - R05.8 — Retire direct-write `/generate` once the web uses preview → accept.
