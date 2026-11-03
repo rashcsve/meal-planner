@@ -648,6 +648,14 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    No "clear a slot" — not in scope.
 7. **R05.7 — Selected days and copy-last-week.** Copy assignments into a new draft, then
    evaluate against current rules and stock; preserve cooked records.
+   Split 2026-11-03: **R05.7a** (done) — `POST /api/plans/copy-last-week/preview` with
+   `{ weekStartDate }` copies the week 7 days earlier into a preview (no writes) in the
+   generate-preview shape plus `sourceWeekStartDate`, no `search`; saved via `/accept`. Target
+   locked slots keep recipe and saved portions; copied slots get portions from current targets;
+   a recipe no longer plannable leaves its slot empty; violations use current rules and stock;
+   `seed` is the source week's (informational); no source week → 404. Cooked records arrive in R08.
+   **R05.7b** — regenerate selected days: unselected days keep their recipes and saved portions
+   like locks; for a new week they stay empty.
 
 **Web slices**
 

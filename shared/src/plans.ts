@@ -46,6 +46,10 @@ export const generatePreviewSchema = generatePlanSchema.omit({ expectedRevision:
 
 export type GeneratePreviewInput = z.infer<typeof generatePreviewSchema>;
 
+export const copyLastWeekPreviewSchema = generatePlanSchema.pick({ weekStartDate: true });
+
+export type CopyLastWeekPreviewInput = z.infer<typeof copyLastWeekPreviewSchema>;
+
 const inputVersionSchema = z.iso
   .datetime({ error: "Input version must be an ISO timestamp" })
   .transform((value) => new Date(value))

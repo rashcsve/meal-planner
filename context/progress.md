@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.7 — selected days and copy-last-week.
+**Next step:** R05.7b — regenerate selected days.
 
 ## R04 — planner correctness and search quality
 
@@ -41,6 +41,8 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.5b | Candidates carry `consequences`: week cost + per-member dinner kcal, with deltas vs current (null if slot empty), integers | awaiting review |
 | R05.5c | Candidates paged (`limit` 1–50, default 20; `offset`) + `total`; top-three `suggestions` skip the current recipe | awaiting review |
 | R05.6 | Replace refreshes reasons on every filled slot (locked too; only reasons change); filling an empty slot pinned by test | awaiting review |
+| R05.7a | `POST /copy-last-week/preview`: last week's recipes as a no-write preview; target locks kept; ineligible → empty; accept via `/accept` | awaiting review |
+| R05.7b | Regenerate selected days; unselected days kept like locks | not started |
 
 ## Earlier milestones
 

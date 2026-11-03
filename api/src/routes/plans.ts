@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import {
   acceptPlanSchema,
+  copyLastWeekPreviewSchema,
   generatePlanSchema,
   generatePreviewSchema,
   replaceSlotSchema,
@@ -14,6 +15,7 @@ import {
   acceptPlan,
   generatePlan,
   previewPlan,
+  previewCopyLastWeek,
   getWeek,
   setSlotLocked,
   replaceSlot,
@@ -138,6 +140,25 @@ export const plansRoute = new Hono()
       const { weekStartDate, seed } = c.req.valid("json");
       try {
         const preview = await previewPlan(weekStartDate, seed);
+        return c.json(preview);
+      } catch (err) {
+        mapPlanError(err);
+      }
+    },
+  )
+  .post(
+    "/copy-last-week/preview",
+    zValidator("json", copyLastWeekPreviewSchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(422, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
+    async (c) => {
+      try {
+        const preview = await previewCopyLastWeek(c.req.valid("json").weekStartDate);
         return c.json(preview);
       } catch (err) {
         mapPlanError(err);

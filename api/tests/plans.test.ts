@@ -2087,3 +2087,157 @@ describe("swap confirmation (R05.6)", () => {
     expect(after.evaluation).toEqual({ status: "current", staleInputs: [] });
   });
 });
+
+describe("copy last week preview (R05.7a)", () => {
+  type Slot = {
+    day: number;
+    mealSlot: string;
+    recipeId: number | null;
+    locked: boolean;
+    memberServings: { memberId: number; servings: number }[];
+  };
+  type CopyPreview = {
+    weekStartDate: string;
+    sourceWeekStartDate: string;
+    seed: number;
+    baseRevision: number | null;
+    inputVersions: Record<string, string | null>;
+    slots: Slot[];
+    violations: { slot: { day: number; mealSlot: string } | null }[];
+  };
+
+  async function generateLastWeek() {
+    const res = await postJson("/api/plans/generate", { weekStartDate: "2025-12-29", seed: 1 });
+    return (await res.json()) as { seed: number; slots: Slot[] };
+  }
+
+  function copyPreview(weekStartDate = "2026-01-05") {
+    return postJson("/api/plans/copy-last-week/preview", { weekStartDate });
+  }
+
+  const recipeIds = (slots: Slot[]) =>
+    slots.map(({ day, mealSlot, recipeId }) => ({ day, mealSlot, recipeId }));
+
+  it("copies last week's recipes into a preview, writes nothing, and can be accepted", async () => {
+    await seedPlannableHousehold();
+    const lastWeek = await generateLastWeek();
+    const weeksBefore = await db.select().from(planWeeks);
+    const slotsBefore = await db.select().from(planSlots);
+
+    const res = await copyPreview();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as CopyPreview;
+    expect(body.weekStartDate).toBe("2026-01-05");
+    expect(body.sourceWeekStartDate).toBe("2025-12-29");
+    expect(body.baseRevision).toBeNull();
+    expect(recipeIds(body.slots)).toEqual(recipeIds(lastWeek.slots));
+    expect(await db.select().from(planWeeks)).toEqual(weeksBefore);
+    expect(await db.select().from(planSlots)).toEqual(slotsBefore);
+
+    const { weekStartDate, seed, baseRevision, inputVersions, slots } = body;
+    const acceptRes = await postJson("/api/plans/accept", {
+      weekStartDate,
+      seed,
+      baseRevision,
+      inputVersions,
+      slots,
+    });
+    expect(acceptRes.status).toBe(200);
+    const accepted = (await acceptRes.json()) as CopyPreview;
+    expect(recipeIds(accepted.slots)).toEqual(recipeIds(lastWeek.slots));
+    expect(accepted.violations).toEqual(body.violations);
+  });
+
+  it("keeps the target week's locked slot and its saved portions", async () => {
+    const { member, dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
+    const lastWeek = await generateLastWeek();
+    const sourceDay0 = lastWeek.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    const otherRecipeId =
+      sourceDay0.recipeId === dinnerRecipe.id ? dinnerRecipe2.id : dinnerRecipe.id;
+    const target = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 7 })
+    ).json()) as { revision: number };
+    await putJson("/api/plans/2026-01-05/slots/0/dinner", {
+      recipeId: otherRecipeId,
+      expectedRevision: target.revision,
+    });
+    const locked = (await (
+      await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
+        expectedRevision: target.revision + 1,
+      })
+    ).json()) as { revision: number };
+    const [targetWeek] = await db
+      .select()
+      .from(planWeeks)
+      .where(eq(planWeeks.weekStartDate, "2026-01-05"));
+    const [lockedRow] = await db
+      .select()
+      .from(planSlots)
+      .where(and(eq(planSlots.planWeekId, targetWeek!.id), eq(planSlots.day, 0)));
+    await db
+      .update(householdMembers)
+      .set({ dinnerCalorieTarget: 800, updatedAt: new Date() })
+      .where(eq(householdMembers.id, member.id));
+
+    const body = (await (await copyPreview()).json()) as CopyPreview;
+
+    expect(body.baseRevision).toBe(locked.revision);
+    expect(body.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")).toMatchObject({
+      recipeId: otherRecipeId,
+      locked: true,
+      memberServings: lockedRow!.memberServings,
+    });
+  });
+
+  it("recomputes portions of copied slots from current targets", async () => {
+    const { member } = await seedPlannableHousehold();
+    const lastWeek = await generateLastWeek();
+    await db
+      .update(householdMembers)
+      .set({ dinnerCalorieTarget: 800, updatedAt: new Date() })
+      .where(eq(householdMembers.id, member.id));
+
+    const body = (await (await copyPreview()).json()) as CopyPreview;
+
+    const sourceDay0 = lastWeek.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    const copiedDay0 = body.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    expect(copiedDay0.recipeId).toBe(sourceDay0.recipeId);
+    expect(copiedDay0.locked).toBe(false);
+    expect(copiedDay0.memberServings).not.toEqual(sourceDay0.memberServings);
+  });
+
+  it("leaves a slot empty when last week's recipe can no longer be planned", async () => {
+    await seedPlannableHousehold();
+    const lastWeek = await generateLastWeek();
+    const sourceDay0 = lastWeek.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
+    await archiveRecipe(sourceDay0.recipeId!);
+
+    const res = await copyPreview();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as CopyPreview;
+    expect(body.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")).toMatchObject({
+      recipeId: null,
+      memberServings: [],
+    });
+    expect(body.violations).toContainEqual(
+      expect.objectContaining({ slot: { day: 0, mealSlot: "dinner" } }),
+    );
+  });
+
+  it("returns 404 when there is no last week to copy", async () => {
+    await seedPlannableHousehold();
+
+    const res = await copyPreview();
+
+    expect(res.status).toBe(404);
+    expect(await db.select().from(planWeeks)).toEqual([]);
+  });
+
+  it("rejects a malformed week date with 422", async () => {
+    const res = await copyPreview("not-a-date");
+
+    expect(res.status).toBe(422);
+  });
+});

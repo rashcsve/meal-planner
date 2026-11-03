@@ -223,6 +223,84 @@ export async function previewPlan(weekStartDate: string, seed: number) {
   };
 }
 
+function previousWeekStart(weekStartDate: string): string {
+  const date = new Date(`${weekStartDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - DAYS_PER_WEEK);
+  return date.toISOString().slice(0, 10);
+}
+
+export async function previewCopyLastWeek(weekStartDate: string) {
+  const sourceWeekStartDate = previousWeekStart(weekStartDate);
+  const sourceWeek = await findPlanWeekByDate(sourceWeekStartDate);
+  if (!sourceWeek) throw new PlanWeekNotFoundError(sourceWeekStartDate);
+  const existingWeek = await findPlanWeekByDate(weekStartDate);
+  const sourceSlots = await findSlotsByWeekId(sourceWeek.id);
+  const targetSlots = existingWeek ? await findSlotsByWeekId(existingWeek.id) : [];
+  const inputVersions = await getCurrentInputVersions();
+  const inputs = await getPlanInputs(weekStartDate);
+  const ctx = buildPlannerContext(
+    inputs.recipes,
+    inputs.prices,
+    inputs.preferences,
+    inputs.targets,
+  );
+
+  const copied: EvaluatedSlot[] = [];
+  for (let day = 0; day < DAYS_PER_WEEK; day++) {
+    for (const mealSlot of PLANNED_MEAL_SLOTS) {
+      const matches = (row: { day: number; mealSlot: string }) =>
+        row.day === day && row.mealSlot === mealSlot;
+      const target = targetSlots.find(matches);
+      if (target?.locked && target.recipeId !== null) {
+        const { recipeId, memberServings } = target;
+        copied.push({ day, mealSlot, recipeId, locked: true, memberServings });
+        continue;
+      }
+      const recipeId = sourceSlots.find(matches)?.recipeId ?? null;
+      const recipe = recipeId === null ? undefined : ctx.recipesById.get(recipeId);
+      const memberTargets = inputs.targets.memberTargets;
+      copied.push(
+        recipe && !checkSlotEligibility(recipe, mealSlot, ctx.neverIngredientIds, memberTargets)
+          ? {
+              day,
+              mealSlot,
+              recipeId,
+              locked: false,
+              memberServings: computeMemberServings(recipe, memberTargets),
+            }
+          : { day, mealSlot, recipeId: null, locked: false, memberServings: [] },
+      );
+    }
+  }
+
+  const { assigned } = toSlotMaps(copied);
+  const slots = copied.map((slot) => ({
+    ...slot,
+    reasons:
+      slot.recipeId === null
+        ? []
+        : collectReasons(
+            slot.day,
+            slot.mealSlot as MealSlot,
+            slot.recipeId,
+            inputs.recipes,
+            inputs.prices,
+            inputs.pantry,
+            assigned,
+          ),
+  }));
+  return {
+    weekStartDate,
+    sourceWeekStartDate,
+    seed: sourceWeek.seed,
+    plannerVersion: PLANNER_VERSION,
+    baseRevision: existingWeek?.revision ?? null,
+    inputVersions,
+    slots,
+    violations: evaluateSlots(slots, inputs.pantry, ctx),
+  };
+}
+
 function buildAcceptedSlots(
   sent: { day: number; mealSlot: MealSlot; recipeId: number | null }[],
   savedSlots: Awaited<ReturnType<typeof findSlotsByWeekId>>,
