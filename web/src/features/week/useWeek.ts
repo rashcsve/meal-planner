@@ -63,6 +63,7 @@ async function fetchSlotCandidates(
     ":mealSlot"
   ].candidates.$get({
     param: { weekStartDate, day: String(day), mealSlot },
+    query: {},
   });
   return unwrapResponse(res);
 }

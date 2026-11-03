@@ -19,3 +19,8 @@ export const slotParamSchema = z.object({
   day: z.coerce.number().int().min(0).max(6),
   mealSlot: z.enum(MEAL_SLOTS),
 });
+
+export const candidatesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+});

@@ -466,7 +466,12 @@ function buildOtherSlotsAssigned(
   return assigned;
 }
 
-export async function getSlotCandidates(weekStartDate: string, day: number, mealSlot: MealSlot) {
+export async function getSlotCandidates(
+  weekStartDate: string,
+  day: number,
+  mealSlot: MealSlot,
+  page: { limit: number; offset: number },
+) {
   const week = await findWeekOrThrow(weekStartDate);
   const slots = await findSlotsByWeekId(week.id);
   const targetSlot = slots.find((slot) => slot.day === day && slot.mealSlot === mealSlot);
@@ -492,7 +497,7 @@ export async function getSlotCandidates(weekStartDate: string, day: number, meal
       : [],
   );
 
-  const candidates = eligibleRecipes(mealSlot, ctx)
+  const ranked = eligibleRecipes(mealSlot, ctx)
     .map((recipe) => {
       const memberServings = computeMemberServings(recipe, inputs.targets.memberTargets);
       const candidateSlots = slots.map((slot) =>
@@ -533,7 +538,11 @@ export async function getSlotCandidates(weekStartDate: string, day: number, meal
     .sort(compareCandidates)
     .map(({ calorieGap: _calorieGap, ...candidate }) => candidate);
 
-  return { candidates };
+  return {
+    total: ranked.length,
+    candidates: ranked.slice(page.offset, page.offset + page.limit),
+    suggestions: ranked.filter((c) => c.recipeId !== targetSlot.recipeId).slice(0, 3),
+  };
 }
 
 const SEVERITY_EPSILON = 1e-9;

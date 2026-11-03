@@ -9,7 +9,7 @@ import {
   replaceSlotSchema,
   setSlotLockedSchema,
 } from "shared";
-import { weekParamSchema, slotParamSchema } from "../lib/params.js";
+import { weekParamSchema, slotParamSchema, candidatesQuerySchema } from "../lib/params.js";
 import {
   acceptPlan,
   generatePlan,
@@ -251,10 +251,19 @@ export const plansRoute = new Hono()
         });
       }
     }),
+    zValidator("query", candidatesQuerySchema, (result) => {
+      if (!result.success) {
+        throw new HTTPException(400, {
+          message: "Validation failed",
+          cause: z.treeifyError(result.error),
+        });
+      }
+    }),
     async (c) => {
       const { weekStartDate, day, mealSlot } = c.req.valid("param");
+      const page = c.req.valid("query");
       try {
-        const result = await getSlotCandidates(weekStartDate, day, mealSlot);
+        const result = await getSlotCandidates(weekStartDate, day, mealSlot, page);
         return c.json(result);
       } catch (err) {
         mapPlanError(err);

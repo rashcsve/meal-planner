@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.5c — candidate paging (`limit`/`offset` + `total`) and top-three `suggestions`.
+**Next step:** R05.6 — swap confirmation (empty slots; revalidate week, refresh neighbours).
 
 ## R04 — planner correctness and search quality
 
@@ -39,6 +39,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.4b | Week rows and rail read `recipeSnapshot`, live recipe when NULL | complete 11-03 |
 | R05.5a | Candidates carry whole-week `violations`; order: violation count → severity → score → calorie gap → recipe id | awaiting review |
 | R05.5b | Candidates carry `consequences`: week cost + per-member dinner kcal, with deltas vs current (null if slot empty), integers | awaiting review |
+| R05.5c | Candidates paged (`limit` 1–50, default 20; `offset`) + `total`; top-three `suggestions` skip the current recipe | awaiting review |
 
 ## Earlier milestones
 

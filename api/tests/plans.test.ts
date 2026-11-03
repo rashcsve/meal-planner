@@ -1341,6 +1341,70 @@ describe("slot candidates", () => {
       expect.objectContaining({ dinnerKcal: 500, dinnerKcalDelta: null }),
     ]);
   });
+
+  type PagedBody = {
+    total: number;
+    candidates: { recipeId: number }[];
+    suggestions: { recipeId: number; violations: unknown[]; consequences: unknown }[];
+  };
+  const candidatesUrl = "/api/plans/2026-01-05/slots/0/dinner/candidates";
+
+  it("pages candidates with limit/offset over the full order and reports total (R05.5c)", async () => {
+    await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    for (const kcal of [420, 1000, 1800]) await addDinnerRecipe(`R${kcal}`, kcal);
+
+    const all = (await (await app.request(candidatesUrl)).json()) as PagedBody;
+    const res = await app.request(`${candidatesUrl}?limit=2&offset=1`);
+    expect(res.status).toBe(200);
+    const page = (await res.json()) as PagedBody;
+
+    expect(all.total).toBe(5);
+    expect(page.total).toBe(5);
+    expect(page.candidates).toEqual(all.candidates.slice(1, 3));
+    const past = (await (await app.request(`${candidatesUrl}?offset=10`)).json()) as PagedBody;
+    expect(past).toMatchObject({ total: 5, candidates: [] });
+  });
+
+  it("returns 20 candidates by default and accepts up to limit=50 (R05.5c)", async () => {
+    await seedPlannableHousehold();
+    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    for (let i = 0; i < 21; i++) await addDinnerRecipe(`Extra ${i}`, 500 + i);
+
+    const page = (await (await app.request(candidatesUrl)).json()) as PagedBody;
+    expect(page.total).toBe(23);
+    expect(page.candidates).toHaveLength(20);
+    const max = (await (await app.request(`${candidatesUrl}?limit=50`)).json()) as PagedBody;
+    expect(max.candidates).toHaveLength(23);
+  });
+
+  it.each(["limit=0", "limit=51", "limit=abc", "limit=1.5", "offset=-1"])(
+    "400s for %s (R05.5c)",
+    async (query) => {
+      await seedPlannableHousehold();
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+      const res = await app.request(`${candidatesUrl}?${query}`);
+      expect(res.status).toBe(400);
+    },
+  );
+
+  it("suggests the top three non-current candidates, whatever the page (R05.5c)", async () => {
+    await seedPlannableHousehold();
+    const generated = (await (
+      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+    ).json()) as GeneratedWeek;
+    const currentId = generated.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!.recipeId;
+    for (const kcal of [420, 1000, 1800]) await addDinnerRecipe(`R${kcal}`, kcal);
+
+    const all = (await (await app.request(`${candidatesUrl}?limit=50`)).json()) as PagedBody;
+    const page = (await (
+      await app.request(`${candidatesUrl}?limit=1&offset=4`)
+    ).json()) as PagedBody;
+
+    const expected = all.candidates.filter((c) => c.recipeId !== currentId).slice(0, 3);
+    expect(page.suggestions).toEqual(expected);
+    expect(all.suggestions).toEqual(expected);
+  });
 });
 
 describe("generation preview (R05.2)", () => {

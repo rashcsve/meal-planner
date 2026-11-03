@@ -634,7 +634,9 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    per-member `dinnerKcal`, each with a delta vs the current recipe at its saved servings;
    deltas null when the slot is empty or its recipe is missing from the inputs; a member's kcal
    delta is null when the slot has no saved serving for them; all values rounded to integers.
-   **R05.5c** — `limit`/`offset` + `total`, top-three `suggestions`.
+   **R05.5c** (done) — `limit` (1–50, default 20) / `offset` (≥ 0, default 0), bad values → 400;
+   `total` counts all candidates; `suggestions` are the top three of the full order, excluding
+   the slot's current recipe, same on every page.
 6. **R05.6 — Swap confirmation.** Handles empty slots; revalidates the whole week and
    updates neighboring reasons/summaries.
 7. **R05.7 — Selected days and copy-last-week.** Copy assignments into a new draft, then
