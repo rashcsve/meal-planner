@@ -33,7 +33,9 @@ export function MealDetailRail({
   onClose,
 }: MealDetailRailProps) {
   const mealSlot = "dinner" as const;
-  const recipeQuery = useRecipeDetail(slot.recipeId ?? undefined);
+  const recipeQuery = useRecipeDetail(
+    slot.recipeSnapshot ? undefined : (slot.recipeId ?? undefined),
+  );
   const candidatesQuery = useSlotCandidates(weekStartDate, slot.locked ? null : slot.day, mealSlot);
   const replaceSlot = useReplaceSlot();
   const setSlotLocked = useSetSlotLocked();

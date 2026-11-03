@@ -36,7 +36,9 @@ export function deriveWeekRows(
   return slots
     .filter((slot) => slot.mealSlot === "dinner")
     .map((slot) => {
-      const recipe = slot.recipeId != null ? recipes.find((r) => r.id === slot.recipeId) : null;
+      const recipe =
+        slot.recipeSnapshot ??
+        (slot.recipeId != null ? recipes.find((r) => r.id === slot.recipeId) : null);
       const totalServings = slot.memberServings.reduce((sum, m) => sum + m.servings, 0);
       const cost =
         recipe?.cost != null && recipe.servings

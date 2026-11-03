@@ -56,7 +56,10 @@ function membersFromServings(
 }
 
 function ingredientRow(
-  line: RecipeIngredient,
+  line: Pick<
+    RecipeIngredient,
+    "id" | "ingredientName" | "displayAmount" | "displayUnit" | "amountBase"
+  >,
   baseServings: number | null,
   totalServings: number,
 ): MealDetailIngredientRow {
@@ -87,21 +90,23 @@ export function deriveMealDetail(
   recipe: RecipeWithIngredients | undefined,
   members: HouseholdMemberEntry[],
 ): MealDetail | null {
-  if (!recipe) return null;
+  const source = slot.recipeSnapshot ?? recipe;
+  if (!source) return null;
 
   const totalServings = slot.memberServings.reduce((sum, m) => sum + m.servings, 0);
+  const lines = slot.recipeSnapshot
+    ? slot.recipeSnapshot.ingredients.map((line) => ({ ...line, ingredientName: line.name }))
+    : (recipe?.ingredients ?? []);
 
   return {
-    title: recipe.title,
-    meta: recipeMeta(recipe),
-    tags: [recipe.cuisine, recipe.proteinSource, recipe.diet].filter((tag): tag is string =>
+    title: source.title,
+    meta: recipeMeta(source),
+    tags: [source.cuisine, source.proteinSource, source.diet].filter((tag): tag is string =>
       Boolean(tag),
     ),
-    members: membersFromServings(slot.memberServings, members, recipe.kcalPerServing),
+    members: membersFromServings(slot.memberServings, members, source.kcalPerServing),
     reasonTags: categorizeReasons(slot.reasons),
-    ingredients: recipe.ingredients.map((line) =>
-      ingredientRow(line, recipe.servings, totalServings),
-    ),
+    ingredients: lines.map((line) => ingredientRow(line, source.servings, totalServings)),
   };
 }
 
