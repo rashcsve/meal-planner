@@ -673,6 +673,11 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    **R05.8c** (done) — direct-write `/generate` removed (route, `generatePlan`,
    `EXPECTED_REVISION_REQUIRED`); tests create weeks through preview → accept.
 9. **R05.9 — Swap picker** at `/plan/:week/swap/:slotId`; back/cancel does not mutate the week.
+   Split 2026-11-03: route is `/week/:week/swap/:day/:mealSlot` (API addresses slots by day +
+   meal slot; R06 moves it under `/plan`). **R05.9a** (done) — picker page: paged candidates with
+   week cost, per-member kcal (deltas vs current) and violations; choosing replaces the slot and
+   returns to the week; Cancel returns with no writes; empty slots open it too.
+   **R05.9b** — rail shows the top three `suggestions` plus a link to the picker.
 10. **R05.10 — Optimistic lock/unlock.** onMutate/onError/onSettled, cancelQueries, rollback,
     conflict recovery; delayed responses do not overwrite newer revisions.
 

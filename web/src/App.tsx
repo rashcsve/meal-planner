@@ -3,6 +3,7 @@ import { AppShell } from "./app/AppShell";
 import { RecipesPage } from "./features/recipes/RecipesPage";
 import { PantryPage } from "./features/pantry/PantryPage";
 import { WeekPage } from "./features/week/WeekPage";
+import { SwapPicker } from "./features/week/SwapPicker";
 import { HouseholdPage } from "./features/household/HouseholdPage";
 import { Button } from "./shared/ui/Button";
 import { EmptyState } from "./shared/ui/EmptyState";
@@ -27,6 +28,7 @@ function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/week" element={<WeekPage />} />
+        <Route path="/week/:week/swap/:day/:mealSlot" element={<SwapPicker />} />
         <Route path="/shopping" element={<ComingSoon label="Shopping" />} />
         <Route path="/recipes" element={<RecipesPage />} />
         <Route path="/recipes/:id" element={<RecipesPage />} />

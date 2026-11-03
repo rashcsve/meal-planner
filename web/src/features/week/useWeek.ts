@@ -89,21 +89,29 @@ async function fetchSlotCandidates(
   weekStartDate: string,
   day: number,
   mealSlot: MealSlot,
+  offset: number,
 ): Promise<SlotCandidates> {
   const res = await apiClient.api.plans[":weekStartDate"].slots[":day"][
     ":mealSlot"
   ].candidates.$get({
     param: { weekStartDate, day: String(day), mealSlot },
-    query: {},
+    query: { offset: String(offset) },
   });
   return unwrapResponse(res);
 }
 
-export function useSlotCandidates(weekStartDate: string, day: number | null, mealSlot: MealSlot) {
+export function useSlotCandidates(
+  weekStartDate: string,
+  day: number | null,
+  mealSlot: MealSlot,
+  offset = 0,
+) {
   return useQuery({
     queryKey:
-      day !== null ? weekKeys.candidates(weekStartDate, day, mealSlot) : ["plans", "no-selection"],
-    queryFn: () => fetchSlotCandidates(weekStartDate, day!, mealSlot),
+      day !== null
+        ? [...weekKeys.candidates(weekStartDate, day, mealSlot), offset]
+        : ["plans", "no-selection"],
+    queryFn: () => fetchSlotCandidates(weekStartDate, day!, mealSlot, offset),
     enabled: day !== null,
   });
 }

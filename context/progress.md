@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.9 — swap picker at `/plan/:week/swap/:slotId`.
+**Next step:** R05.9b — rail suggestions + link to the swap picker.
 
 ## R04 — planner correctness and search quality
 
@@ -46,6 +46,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.8a | `PreviewBar` component + stories | complete 11-03 |
 | R05.8b | Week page: Generate → preview → Accept / Try again / Discard; stale preview → "Preview again" | complete 11-03 |
 | R05.8c | Direct-write `/generate` retired; weeks saved only via `/accept` | complete 11-03 |
+| R05.9a | Swap picker at `/week/:week/swap/:day/:mealSlot`: paged candidates + consequences; Cancel writes nothing | complete 11-03 |
 
 ## Earlier milestones
 
