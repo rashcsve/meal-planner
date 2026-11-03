@@ -51,15 +51,6 @@ export class StaleRevisionError extends Error {
   }
 }
 
-export class ExpectedRevisionRequiredError extends Error {
-  constructor(weekStartDate: string) {
-    super(
-      `expectedRevision is required to regenerate the existing plan for week ${weekStartDate}; fetch the plan first to get its current revision`,
-    );
-    this.name = "ExpectedRevisionRequiredError";
-  }
-}
-
 export class PlanWeekNotFoundError extends Error {
   constructor(weekStartDate: string) {
     super(`No plan exists for the week of ${weekStartDate}`);

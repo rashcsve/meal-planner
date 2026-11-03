@@ -5,7 +5,6 @@ import { z } from "zod";
 import {
   acceptPlanSchema,
   copyLastWeekPreviewSchema,
-  generatePlanSchema,
   generatePreviewSchema,
   replaceSlotSchema,
   setSlotLockedSchema,
@@ -13,7 +12,6 @@ import {
 import { weekParamSchema, slotParamSchema, candidatesQuerySchema } from "../lib/params.js";
 import {
   acceptPlan,
-  generatePlan,
   previewPlan,
   previewCopyLastWeek,
   getWeek,
@@ -32,7 +30,6 @@ import {
   NoHouseholdMembersError,
   HouseholdMemberMissingDinnerTargetError,
   StaleRevisionError,
-  ExpectedRevisionRequiredError,
   StalePreviewError,
   AcceptedSlotsMismatchError,
   SlotEmptyError,
@@ -72,12 +69,6 @@ function mapPlanError(err: unknown): never {
       cause: { code: "SLOT_LOCKED" },
     });
   }
-  if (err instanceof ExpectedRevisionRequiredError) {
-    throw new HTTPException(400, {
-      message: err.message,
-      cause: { code: "EXPECTED_REVISION_REQUIRED" },
-    });
-  }
   if (
     err instanceof PlanWeekNotFoundError ||
     err instanceof PlanSlotNotFoundError ||
@@ -100,32 +91,6 @@ function mapPlanError(err: unknown): never {
 }
 
 export const plansRoute = new Hono()
-  .post(
-    "/generate",
-    zValidator("json", generatePlanSchema, (result) => {
-      if (!result.success) {
-        // A malformed expectedRevision (not a whole number >= 1) is reported
-        // as its own 400, distinct from the generic 422 used for other
-        // fields and from the 409 a genuinely stale revision gets.
-        const onlyExpectedRevisionInvalid = result.error.issues.every(
-          (issue) => issue.path[0] === "expectedRevision",
-        );
-        throw new HTTPException(onlyExpectedRevisionInvalid ? 400 : 422, {
-          message: "Validation failed",
-          cause: z.treeifyError(result.error),
-        });
-      }
-    }),
-    async (c) => {
-      const { weekStartDate, seed, expectedRevision } = c.req.valid("json");
-      try {
-        const week = await generatePlan(weekStartDate, seed, expectedRevision);
-        return c.json(week);
-      } catch (err) {
-        mapPlanError(err);
-      }
-    },
-  )
   .post(
     "/generate/preview",
     zValidator("json", generatePreviewSchema, (result) => {

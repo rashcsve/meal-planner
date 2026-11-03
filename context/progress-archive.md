@@ -2427,3 +2427,21 @@ all 4 failed before on the unmocked `/generate`). `bash scripts/verify.sh` clean
 2 pre-existing web warnings.
 
 **Next:** R05.8c — retire direct-write `/generate` in the api.
+
+## R05.8c — Retire direct-write `/generate` — `complete` (2026-11-03)
+
+**Outcome:** `POST /api/plans/generate` removed with `generatePlan`, `ExpectedRevisionRequiredError`
+(`EXPECTED_REVISION_REQUIRED`) and `generatePlanSchema`. Weeks are saved only through
+`/generate/preview` → `/accept`; `POST /generate` now 404s.
+
+**Decisions:**
+- Tests create weeks via a `createWeek` helper (preview → accept) instead of `/generate`.
+- Tests that only covered `/generate` were dropped where an accept test already covers the
+  behaviour (concurrent new week, stale revision after lock, locked snapshot kept).
+- Malformed `expectedRevision` (0, 1.5) is now tested on `PUT .../lock` (422), since the old
+  `/generate` test was the only one for `expectedRevisionSchema`.
+
+**Verified:** `npm run test -w api -- tests/plans.test.ts` → 91 tests pass. `bash scripts/verify.sh`
+clean; lint only the 2 pre-existing web warnings. Full `npm test` not run.
+
+**Next:** R05.9 — swap picker at `/plan/:week/swap/:slotId`.

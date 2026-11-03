@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.8c — retire direct-write `/generate` in the api.
+**Next step:** R05.9 — swap picker at `/plan/:week/swap/:slotId`.
 
 ## R04 — planner correctness and search quality
 
@@ -45,6 +45,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.7b | Optional `days` on `/generate/preview`; unselected days keep their recipe (`locked: false`), portions recomputed as accept saves them; new week → empty | complete 11-03 |
 | R05.8a | `PreviewBar` component + stories | complete 11-03 |
 | R05.8b | Week page: Generate → preview → Accept / Try again / Discard; stale preview → "Preview again" | complete 11-03 |
+| R05.8c | Direct-write `/generate` retired; weeks saved only via `/accept` | complete 11-03 |
 
 ## Earlier milestones
 
@@ -67,7 +68,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 - R04 — Expiry slots are still protected from search; unprotect once expiry coverage is in the comparator.
 - R04 — One systematic run beats 7–8 of 10 legacy seeds at 20/50 recipes, mid-pack at 5; only
   best-of-10 beats it (see R04.13). Multiple starts only if that gap is worth the extra work.
-- R05 — `search` summary is returned by `/generate` and `/generate/preview` only (not saved, not
+- R05 — `search` summary is returned by `/generate/preview` only (not saved, not
   on GET, unused by web). Revisit if the UI needs the stop reason after reload.
 - R05 — If the search runs over a saved week with gaps, decide whether it may fill empty
   slots (and whether an over-budget fill beats leaving it empty). See R04.12.

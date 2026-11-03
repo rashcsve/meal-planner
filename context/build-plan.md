@@ -670,7 +670,8 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    `PreviewBar`; Accept posts it to `/accept` (seed, `baseRevision`, `inputVersions`, slot
    recipe ids); 409 `STALE_PREVIEW` → stale bar with "Preview again"; other errors keep the
    preview. Day selection is off while previewing. Tested via a WeekPage story with a stubbed `fetch`.
-   **R05.8c** — retire direct-write `/generate` in the api.
+   **R05.8c** (done) — direct-write `/generate` removed (route, `generatePlan`,
+   `EXPECTED_REVISION_REQUIRED`); tests create weeks through preview → accept.
 9. **R05.9 — Swap picker** at `/plan/:week/swap/:slotId`; back/cancel does not mutate the week.
 10. **R05.10 — Optimistic lock/unlock.** onMutate/onError/onSettled, cancelQueries, rollback,
     conflict recovery; delayed responses do not overwrite newer revisions.

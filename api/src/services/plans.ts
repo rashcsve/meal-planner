@@ -57,7 +57,6 @@ import {
   SlotLockedError,
   RecipeNotEligibleError,
   StaleRevisionError,
-  ExpectedRevisionRequiredError,
   HouseholdSettingsNotConfiguredError,
   NoHouseholdMembersError,
   HouseholdMemberMissingDinnerTargetError,
@@ -459,52 +458,6 @@ export async function acceptPlan(input: AcceptPlanInput) {
     const savedRows = await upsertPlanSlots(week.id, slotsToSave, tx);
     const evaluation: PlanEvaluationStatus = { status: "current", staleInputs: [] };
     return { ...week, slots: savedRows, violations, evaluation };
-  });
-}
-
-export async function generatePlan(weekStartDate: string, seed: number, expectedRevision?: number) {
-  const existingWeek = await findPlanWeekByDate(weekStartDate);
-  if (existingWeek && expectedRevision === undefined) {
-    throw new ExpectedRevisionRequiredError(weekStartDate);
-  }
-
-  const { inputVersions, result } = await runPlanner(weekStartDate, seed, existingWeek);
-  const lockedRows = existingWeek ? await findLockedSlotsByWeekId(existingWeek.id) : [];
-  const slotsToSave = await withSnapshots(result.slots, lockedRows);
-
-  return db.transaction(async (tx) => {
-    let week;
-    if (existingWeek) {
-      week = await casIncrementRevision(
-        existingWeek.id,
-        expectedRevision!,
-        {
-          seed: result.seed,
-          plannerVersion: result.plannerVersion,
-          violations: result.violations,
-          ...inputVersions,
-        },
-        tx,
-      );
-      if (!week) {
-        throw new StaleRevisionError(weekStartDate, expectedRevision!);
-      }
-    } else {
-      week = await insertPlanWeek(
-        {
-          weekStartDate,
-          seed: result.seed,
-          plannerVersion: result.plannerVersion,
-          violations: result.violations,
-          ...inputVersions,
-        },
-        tx,
-      );
-    }
-
-    const slots = await upsertPlanSlots(week.id, slotsToSave, tx);
-    const evaluation: PlanEvaluationStatus = { status: "current", staleInputs: [] };
-    return { ...week, slots, violations: result.violations, evaluation, search: result.search };
   });
 }
 

@@ -95,7 +95,7 @@ into the browser build.
   nullable jsonb copy of the recipe as saved: title, time, cost, meal, cuisine,
   proteinSource, diet, servings, kcalPerServing and ingredient lines (id, ingredientId,
   name, displayAmount, displayUnit, amountBase, baseUnit, isOptional). Shape is `recipeSnapshotSchema` in `shared/src/plans.ts`;
-  built by `buildRecipeSnapshot` (`services/recipes.ts`). Accept, `/generate` and replace
+  built by `buildRecipeSnapshot` (`services/recipes.ts`). Accept and replace
   write it, building each distinct recipe once per write; a locked slot keeps its saved
   snapshot while it points at the same recipe, even after that recipe is edited.
   It is display/history only — rule checks still read live recipes. NULL means a
@@ -139,7 +139,7 @@ into the browser build.
   ineligible recipes empty.
 - `POST /accept` saves a preview: it re-validates the slots and checks revision and
   input versions in one transaction (see Database).
-- `POST /generate` still writes directly; no web caller is left. Retiring it is R05.8c.
+- There is no direct-write `POST /generate`: weeks are saved only through `/accept` (retired in R05.8c).
 - `GET /:weekStartDate` returns the saved week with stored violations and staleness.
 - Lock (`PUT .../lock`), unlock (`DELETE .../lock`) and replace (`PUT .../:mealSlot`) re-evaluate stored violations and advance watermarks.
   Replace refreshes reasons on every filled slot.

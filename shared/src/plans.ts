@@ -33,16 +33,9 @@ const expectedRevisionSchema = z
   .int("Expected revision must be a whole number")
   .positive("Expected revision must be at least 1");
 
-export const generatePlanSchema = z.object({
+export const generatePreviewSchema = z.object({
   weekStartDate: z.iso.date({ error: "Week start date must be YYYY-MM-DD" }),
   seed: z.number({ error: "Seed must be a number" }).int("Seed must be a whole number"),
-  // Omitted only for a week's very first generation, before it has a revision.
-  expectedRevision: expectedRevisionSchema.optional(),
-});
-
-export type GeneratePlanInput = z.infer<typeof generatePlanSchema>;
-
-export const generatePreviewSchema = generatePlanSchema.omit({ expectedRevision: true }).extend({
   days: z
     .array(
       z
@@ -58,7 +51,7 @@ export const generatePreviewSchema = generatePlanSchema.omit({ expectedRevision:
 
 export type GeneratePreviewInput = z.infer<typeof generatePreviewSchema>;
 
-export const copyLastWeekPreviewSchema = generatePlanSchema.pick({ weekStartDate: true });
+export const copyLastWeekPreviewSchema = generatePreviewSchema.pick({ weekStartDate: true });
 
 export type CopyLastWeekPreviewInput = z.infer<typeof copyLastWeekPreviewSchema>;
 

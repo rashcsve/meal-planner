@@ -33,7 +33,7 @@ afterEach(async () => {
   await db.delete(ingredients);
 });
 
-// Just enough for generatePlan to succeed; planner.test.ts covers feasibility and scoring.
+// Just enough for preview and accept to succeed; planner.test.ts covers feasibility and scoring.
 // Two dinner recipes exist so replaceSlot/candidates tests can swap between
 // them: dinnerRecipe (400 kcal/serving, no promo) and dinnerRecipe2 (800
 // kcal/serving, its ingredient on promo) give distinct, hand-checkable
@@ -202,6 +202,14 @@ function deleteJson(url: string, body: unknown) {
   });
 }
 
+async function createWeek(body: { weekStartDate: string; seed: number }) {
+  const previewRes = await postJson("/api/plans/generate/preview", body);
+  if (previewRes.status !== 200) return previewRes;
+  const { weekStartDate, seed, baseRevision, inputVersions, slots } =
+    (await previewRes.json()) as Record<string, unknown>;
+  return postJson("/api/plans/accept", { weekStartDate, seed, baseRevision, inputVersions, slots });
+}
+
 describe("revision contract", () => {
   it("requires expectedRevision to lock, unlock or replace a slot", async () => {
     const week = await seedPlanWeek();
@@ -219,49 +227,18 @@ describe("revision contract", () => {
     expect(replaceRes.status).toBe(422);
   });
 
-  it("rejects a regenerate against an existing plan with no expectedRevision", async () => {
-    await seedPlannableHousehold();
-    const week = await seedPlanWeek();
-    const res = await postJson("/api/plans/generate", {
-      weekStartDate: week.weekStartDate,
-      seed: 2,
-    });
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { message: string; details?: { code?: string } } };
-    expect(body.error.details?.code).toBe("EXPECTED_REVISION_REQUIRED");
-    expect(body.error.message).toContain("expectedRevision");
-    expect(body.error.message).not.toContain("-1");
-
-    const getRes = await app.request(`/api/plans/${week.weekStartDate}`);
-    const getBody = (await getRes.json()) as { revision: number; seed: number };
-    expect(getBody.revision).toBe(1);
-    expect(getBody.seed).toBe(1);
-  });
-
   it("rejects a malformed expectedRevision as a validation error, not a conflict", async () => {
-    await seedPlannableHousehold();
-    const week = await seedPlanWeek();
+    const week = await seedPlanWeek({ revision: 1 });
+    const recipe = await seedRecipe();
+    await seedPlanSlot(week.id, { day: 0, mealSlot: "lunch", recipeId: recipe.id });
+    const lockUrl = `/api/plans/${week.weekStartDate}/slots/0/lunch/lock`;
 
-    const zero = await postJson("/api/plans/generate", {
-      weekStartDate: week.weekStartDate,
-      seed: 2,
-      expectedRevision: 0,
-    });
-    expect(zero.status).toBe(400);
-
-    const notInteger = await postJson("/api/plans/generate", {
-      weekStartDate: week.weekStartDate,
-      seed: 2,
-      expectedRevision: 1.5,
-    });
-    expect(notInteger.status).toBe(400);
-    const body = (await notInteger.json()) as { error: { message: string } };
-    expect(body.error.message).toBe("Validation failed");
+    expect((await putJson(lockUrl, { expectedRevision: 0 })).status).toBe(422);
+    expect((await putJson(lockUrl, { expectedRevision: 1.5 })).status).toBe(422);
 
     const getRes = await app.request(`/api/plans/${week.weekStartDate}`);
-    const getBody = (await getRes.json()) as { revision: number; seed: number };
+    const getBody = (await getRes.json()) as { revision: number };
     expect(getBody.revision).toBe(1);
-    expect(getBody.seed).toBe(1);
   });
 
   it("returns the new revision from a successful lock", async () => {
@@ -312,51 +289,6 @@ describe("stale mutations", () => {
     // The FK failure on the slot write must roll back the CAS too, not just fail to report it.
     expect(getBody.revision).toBe(1);
   });
-
-  it("does not let a regeneration overwrite a lock made after its snapshot", async () => {
-    await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
-      weekStartDate: "2026-01-05",
-      seed: 1,
-    });
-    expect(generateRes.status).toBe(200);
-    const generated = (await generateRes.json()) as {
-      revision: number;
-      slots: { day: number; mealSlot: string; recipeId: number | null }[];
-    };
-    expect(generated.revision).toBe(1);
-    // Either seeded dinner recipe is a valid pick; lock preservation is what
-    // this test checks, not which one the planner scored higher.
-    const assignedRecipeId = generated.slots.find(
-      (s) => s.day === 0 && s.mealSlot === "dinner",
-    )!.recipeId;
-
-    const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
-      expectedRevision: 1,
-    });
-    expect(lockRes.status).toBe(200);
-
-    // Simulates a client regenerating from revision 1, taken before the lock above.
-    const staleRegenRes = await postJson("/api/plans/generate", {
-      weekStartDate: "2026-01-05",
-      seed: 2,
-      expectedRevision: 1,
-    });
-    expect(staleRegenRes.status).toBe(409);
-    const staleBody = (await staleRegenRes.json()) as { error: { details?: { code?: string } } };
-    expect(staleBody.error.details?.code).toBe("STALE_PLAN_REVISION");
-
-    const getRes = await app.request("/api/plans/2026-01-05");
-    const getBody = (await getRes.json()) as {
-      revision: number;
-      seed: number;
-      slots: { day: number; mealSlot: string; locked: boolean; recipeId: number | null }[];
-    };
-    expect(getBody.revision).toBe(2);
-    expect(getBody.seed).toBe(1);
-    const lockedSlot = getBody.slots.find((s) => s.day === 0 && s.mealSlot === "dinner");
-    expect(lockedSlot).toMatchObject({ locked: true, recipeId: assignedRecipeId });
-  });
 });
 
 describe("concurrent mutations", () => {
@@ -386,22 +318,18 @@ describe("concurrent mutations", () => {
     expect(lockedSlots).toHaveLength(1);
   });
 
-  it("never silently loses a lock raced against a regeneration", async () => {
+  it("never silently loses a lock raced against an accept", async () => {
     await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
-      weekStartDate: "2026-01-05",
-      seed: 1,
-    });
+    const generateRes = await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const generated = (await generateRes.json()) as { revision: number };
     expect(generated.revision).toBe(1);
+    const { weekStartDate, seed, baseRevision, inputVersions, slots } = (await (
+      await postJson("/api/plans/generate/preview", { weekStartDate: "2026-01-05", seed: 2 })
+    ).json()) as Record<string, unknown>;
 
     const [lockRes, regenRes] = await Promise.all([
       putJson("/api/plans/2026-01-05/slots/0/dinner/lock", { expectedRevision: 1 }),
-      postJson("/api/plans/generate", {
-        weekStartDate: "2026-01-05",
-        seed: 2,
-        expectedRevision: 1,
-      }),
+      postJson("/api/plans/accept", { weekStartDate, seed, baseRevision, inputVersions, slots }),
     ]);
 
     const statuses = [lockRes.status, regenRes.status].sort();
@@ -426,24 +354,9 @@ describe("concurrent mutations", () => {
 });
 
 describe("existing behaviour preserved", () => {
-  it("still rejects concurrent initial creation of the same week via the unique constraint", async () => {
+  it("still preserves a locked slot across an accepted regeneration", async () => {
     await seedPlannableHousehold();
-
-    const [resA, resB] = await Promise.all([
-      postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 }),
-      postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 2 }),
-    ]);
-
-    const statuses = [resA.status, resB.status].sort();
-    expect(statuses).toEqual([200, 409]);
-  });
-
-  it("still preserves a locked slot across regeneration with a valid revision", async () => {
-    await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
-      weekStartDate: "2026-01-05",
-      seed: 1,
-    });
+    const generateRes = await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const generated = (await generateRes.json()) as {
       revision: number;
       slots: { day: number; mealSlot: string; recipeId: number | null }[];
@@ -455,13 +368,9 @@ describe("existing behaviour preserved", () => {
     const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
       expectedRevision: generated.revision,
     });
-    const locked = (await lockRes.json()) as { revision: number };
+    expect(lockRes.status).toBe(200);
 
-    const regenRes = await postJson("/api/plans/generate", {
-      weekStartDate: "2026-01-05",
-      seed: 3,
-      expectedRevision: locked.revision,
-    });
+    const regenRes = await createWeek({ weekStartDate: "2026-01-05", seed: 3 });
     expect(regenRes.status).toBe(200);
 
     const getRes = await app.request("/api/plans/2026-01-05");
@@ -476,10 +385,7 @@ describe("existing behaviour preserved", () => {
 describe("locked slots (R04.7)", () => {
   it("keeps a lock on an archived recipe and reports it as a conflict on regenerate", async () => {
     await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
-      weekStartDate: "2026-01-05",
-      seed: 1,
-    });
+    const generateRes = await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const generated = (await generateRes.json()) as {
       revision: number;
       slots: { day: number; mealSlot: string; recipeId: number | null }[];
@@ -491,14 +397,10 @@ describe("locked slots (R04.7)", () => {
     const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
       expectedRevision: generated.revision,
     });
-    const locked = (await lockRes.json()) as { revision: number };
+    expect(lockRes.status).toBe(200);
     await archiveRecipe(lockedRecipeId);
 
-    const regenRes = await postJson("/api/plans/generate", {
-      weekStartDate: "2026-01-05",
-      seed: 3,
-      expectedRevision: locked.revision,
-    });
+    const regenRes = await createWeek({ weekStartDate: "2026-01-05", seed: 3 });
     expect(regenRes.status).toBe(200);
     const regenBody = (await regenRes.json()) as {
       slots: { day: number; mealSlot: string; locked: boolean; recipeId: number | null }[];
@@ -519,7 +421,7 @@ describe("locked slots (R04.7)", () => {
 describe("re-evaluation after lock (R05.1)", () => {
   it("stores a locked_slot_conflict when locking a recipe archived since generation", async () => {
     await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -579,7 +481,7 @@ describe("re-evaluation after lock (R05.1)", () => {
 describe("re-evaluation after unlock (R05.1)", () => {
   it("stores an ineligible_slot when unlocking a slot whose recipe was archived", async () => {
     await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -615,7 +517,7 @@ describe("re-evaluation after unlock (R05.1)", () => {
 describe("re-evaluation against saved portions (R05.1)", () => {
   it("flags dinner calories from saved servings after the member's target doubles", async () => {
     const { member } = await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -645,7 +547,7 @@ describe("re-evaluation against saved portions (R05.1)", () => {
 describe("re-evaluation after replace (R05.1)", () => {
   it("stores a weekly_budget violation once a replace runs against a lowered budget", async () => {
     const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -682,7 +584,7 @@ describe("persisted evaluation (R04.8b)", () => {
   it("persists violations and input-version watermarks, surviving a reload", async () => {
     await seedPlannableHousehold();
 
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -712,7 +614,7 @@ describe("persisted evaluation (R04.8b)", () => {
 
   it("advances the recipes watermark on regeneration after an ingredient line changes", async () => {
     const { dinnerRecipe } = await seedPlannableHousehold();
-    const firstRes = await postJson("/api/plans/generate", {
+    const firstRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -726,10 +628,9 @@ describe("persisted evaluation (R04.8b)", () => {
       .set({ displayAmount: 999, updatedAt: new Date(Date.now() + 1000) })
       .where(eq(recipeIngredients.recipeId, dinnerRecipe.id));
 
-    const secondRes = await postJson("/api/plans/generate", {
+    const secondRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 2,
-      expectedRevision: first.revision,
     });
     const second = (await secondRes.json()) as { recipesVersionAt: string };
     expect(new Date(second.recipesVersionAt).getTime()).toBeGreaterThan(
@@ -741,7 +642,7 @@ describe("persisted evaluation (R04.8b)", () => {
 describe("evaluation staleness on read (R04.8c)", () => {
   it("reports current right after generation, then stale recipes after an ingredient line edit", async () => {
     const { dinnerRecipe } = await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
 
     const freshRes = await app.request("/api/plans/2026-01-05");
     const fresh = (await freshRes.json()) as { evaluation: unknown };
@@ -757,16 +658,19 @@ describe("evaluation staleness on read (R04.8c)", () => {
     expect(stale.evaluation).toEqual({ status: "stale", staleInputs: ["recipes"] });
   });
 
-  it("returns evaluation on generate, matching the GET shape", async () => {
+  it("returns evaluation on accept, matching the GET shape", async () => {
     await seedPlannableHousehold();
-    const res = await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const res = await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const body = (await res.json()) as { evaluation: unknown };
     expect(body.evaluation).toEqual({ status: "current", staleInputs: [] });
   });
 
-  it("returns why the search stopped on generate", async () => {
+  it("returns why the search stopped on preview", async () => {
     await seedPlannableHousehold();
-    const res = await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    const res = await postJson("/api/plans/generate/preview", {
+      weekStartDate: "2026-01-05",
+      seed: 1,
+    });
     const body = (await res.json()) as { search: { stopReason: string; evaluations: number } };
     expect(body.search.stopReason).toBe("no_single_swap_improvement");
     expect(body.search.evaluations).toBeGreaterThan(0);
@@ -787,7 +691,7 @@ describe("household configuration", () => {
   it("rejects generation with 422 when a household member has no dinner calorie target", async () => {
     await seedPlannableHousehold(null);
 
-    const res = await postJson("/api/plans/generate", {
+    const res = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -816,7 +720,7 @@ describe("recipe eligibility", () => {
       isOptional: false,
     });
 
-    const res = await postJson("/api/plans/generate", {
+    const res = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -858,7 +762,7 @@ describe("pantry expiry across weeks", () => {
       expiresOn,
     });
 
-    const thisWeekRes = await postJson("/api/plans/generate", {
+    const thisWeekRes = await createWeek({
       weekStartDate: weekStartDateThisWeek,
       seed: 1,
     });
@@ -866,7 +770,7 @@ describe("pantry expiry across weeks", () => {
     const thisWeekBody = (await thisWeekRes.json()) as { violations: { constraint: string }[] };
     expect(thisWeekBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(true);
 
-    const futureWeekRes = await postJson("/api/plans/generate", {
+    const futureWeekRes = await createWeek({
       weekStartDate: weekStartDateFarFuture,
       seed: 1,
     });
@@ -895,7 +799,7 @@ describe("pantry expiry across weeks", () => {
       expiresOn,
     });
 
-    const includedRes = await postJson("/api/plans/generate", {
+    const includedRes = await createWeek({
       weekStartDate: weekStartDateIncluded,
       seed: 1,
     });
@@ -908,7 +812,7 @@ describe("pantry expiry across weeks", () => {
       .map((v) => v.detail);
     expect(expiryDetails).toEqual([`ingredient ${strayIngredient!.id} already expired, unused`]);
 
-    const excludedRes = await postJson("/api/plans/generate", {
+    const excludedRes = await createWeek({
       weekStartDate: weekStartDateExcluded,
       seed: 1,
     });
@@ -937,7 +841,7 @@ describe("pantry expiry in the household timezone", () => {
       expiresOn: "2026-10-13",
     });
 
-    const pragueWeekRes = await postJson("/api/plans/generate", {
+    const pragueWeekRes = await createWeek({
       weekStartDate: "2026-10-12",
       seed: 1,
     });
@@ -946,7 +850,7 @@ describe("pantry expiry in the household timezone", () => {
     };
     expect(pragueWeekBody.violations.some((v) => v.constraint === "pantry_expiry")).toBe(true);
 
-    const utcWeekRes = await postJson("/api/plans/generate", {
+    const utcWeekRes = await createWeek({
       weekStartDate: "2026-10-05",
       seed: 1,
     });
@@ -958,7 +862,7 @@ describe("pantry expiry in the household timezone", () => {
 describe("member servings persistence", () => {
   it("persists each member's servings and returns them from generate and a subsequent GET", async () => {
     const { dinnerRecipe, member } = await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -996,7 +900,7 @@ describe("member servings persistence", () => {
 
   it("recomputes memberServings and reasons for the newly assigned recipe, not the old one", async () => {
     const { dinnerRecipe, dinnerRecipe2, member } = await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1043,7 +947,7 @@ describe("member servings persistence", () => {
 describe("slot replacement validation", () => {
   it("rejects replacing a locked slot, requiring an explicit unlock first", async () => {
     const { dinnerRecipe2 } = await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1070,7 +974,7 @@ describe("slot replacement validation", () => {
 
   it("rejects replacing a dinner slot with a recipe of the wrong meal type", async () => {
     const { lunchRecipe } = await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1090,7 +994,7 @@ describe("slot replacement validation", () => {
 
   it("rejects a replace with a stale revision without writing anything", async () => {
     const { dinnerRecipe2 } = await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1113,7 +1017,7 @@ describe("slot replacement validation", () => {
 describe("slot candidates", () => {
   it("returns only recipes eligible for the slot, best-scoring first", async () => {
     const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
 
     const res = await app.request("/api/plans/2026-01-05/slots/0/dinner/candidates");
     expect(res.status).toBe(200);
@@ -1169,7 +1073,7 @@ describe("slot candidates", () => {
 
   it("orders by violations, severity, score, calorie closeness, then recipe id (R05.5)", async () => {
     const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const far = await addDinnerRecipe("Far", 1000);
     const close = await addDinnerRecipe("Close", 420);
     const twin = await addDinnerRecipe("Twin", 400);
@@ -1191,7 +1095,7 @@ describe("slot candidates", () => {
 
   it("lists the week's violations with each candidate in the slot (R05.5)", async () => {
     const { dinnerRecipe } = await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const far = await addDinnerRecipe("Far", 1000);
 
     const res = await app.request("/api/plans/2026-01-05/slots/0/dinner/candidates");
@@ -1232,7 +1136,7 @@ describe("slot candidates", () => {
 
   it("reports week cost and member dinner kcal per candidate, with deltas vs the current recipe (R05.5b)", async () => {
     const { dinnerRecipe } = await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1263,7 +1167,7 @@ describe("slot candidates", () => {
 
   it("candidate consequences match the committed week after replacing with it (R05.5b)", async () => {
     await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1291,7 +1195,7 @@ describe("slot candidates", () => {
 
   it("rounds a fractional week cost to an integer (R05.5b)", async () => {
     await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1312,7 +1216,7 @@ describe("slot candidates", () => {
 
   it("reports a null kcal delta for a member with no saved serving (R05.5b)", async () => {
     const { member } = await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const [newcomer] = await db
       .insert(householdMembers)
       .values({ name: "Newcomer", dailyCalorieTarget: 900, dinnerCalorieTarget: 400 })
@@ -1327,7 +1231,7 @@ describe("slot candidates", () => {
 
   it("reports null deltas when the slot is empty (R05.5b)", async () => {
     await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     await db
       .update(planSlots)
       .set({ recipeId: null, memberServings: [] })
@@ -1351,7 +1255,7 @@ describe("slot candidates", () => {
 
   it("pages candidates with limit/offset over the full order and reports total (R05.5c)", async () => {
     await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     for (const kcal of [420, 1000, 1800]) await addDinnerRecipe(`R${kcal}`, kcal);
 
     const all = (await (await app.request(candidatesUrl)).json()) as PagedBody;
@@ -1368,7 +1272,7 @@ describe("slot candidates", () => {
 
   it("returns 20 candidates by default and accepts up to limit=50 (R05.5c)", async () => {
     await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     for (let i = 0; i < 21; i++) await addDinnerRecipe(`Extra ${i}`, 500 + i);
 
     const page = (await (await app.request(candidatesUrl)).json()) as PagedBody;
@@ -1382,7 +1286,7 @@ describe("slot candidates", () => {
     "400s for %s (R05.5c)",
     async (query) => {
       await seedPlannableHousehold();
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
       const res = await app.request(`${candidatesUrl}?${query}`);
       expect(res.status).toBe(400);
     },
@@ -1391,7 +1295,7 @@ describe("slot candidates", () => {
   it("suggests the top three non-current candidates, whatever the page (R05.5c)", async () => {
     await seedPlannableHousehold();
     const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 })
     ).json()) as GeneratedWeek;
     const currentId = generated.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!.recipeId;
     for (const kcal of [420, 1000, 1800]) await addDinnerRecipe(`R${kcal}`, kcal);
@@ -1431,7 +1335,7 @@ describe("generation preview (R05.2)", () => {
     expect(await db.select().from(planWeeks)).toEqual([]);
     expect(await db.select().from(planSlots)).toEqual([]);
 
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1447,7 +1351,7 @@ describe("generation preview (R05.2)", () => {
 
   it("keeps locks and leaves a saved week untouched", async () => {
     await seedPlannableHousehold();
-    const generateRes = await postJson("/api/plans/generate", {
+    const generateRes = await createWeek({
       weekStartDate: "2026-01-05",
       seed: 1,
     });
@@ -1542,7 +1446,7 @@ describe("accept (R05.3)", () => {
   it("keeps a locked slot's saved portions in both preview and accept", async () => {
     const { member } = await seedPlannableHousehold();
     const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 })
     ).json()) as { revision: number };
     await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
       expectedRevision: generated.revision,
@@ -1571,7 +1475,7 @@ describe("accept (R05.3)", () => {
 
   async function generateAndLockDay0() {
     const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 })
     ).json()) as { revision: number };
     await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
       expectedRevision: generated.revision,
@@ -1580,7 +1484,7 @@ describe("accept (R05.3)", () => {
 
   it("rejects a preview whose plan revision moved on", async () => {
     await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const previewed = await preview(7);
     await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
       expectedRevision: previewed.baseRevision,
@@ -1625,7 +1529,7 @@ describe("accept (R05.3)", () => {
   it("rejects a new-week preview once someone else created the week", async () => {
     await seedPlannableHousehold();
     const previewed = await preview();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
 
     const res = await accept(previewed);
 
@@ -1637,7 +1541,7 @@ describe("accept (R05.3)", () => {
 
   it("rejects a preview whose slot was locked to another recipe after it", async () => {
     const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const previewed = await preview(7);
     const day0 = previewed.slots.find((s) => s.day === 0)!;
     await putJson("/api/plans/2026-01-05/slots/0/dinner", {
@@ -1656,7 +1560,7 @@ describe("accept (R05.3)", () => {
 
   it("lets only one of two same-revision accepts succeed", async () => {
     await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     const [first, second] = [await preview(7), await preview(8)];
 
     const results = await Promise.all([accept(first), accept(second)]);
@@ -1782,7 +1686,7 @@ describe("accept (R05.3)", () => {
 
   it("treats an already locked empty slot as unlocked in preview and accept", async () => {
     await seedPlannableHousehold();
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     await db
       .update(planSlots)
       .set({ recipeId: null, locked: true, memberServings: [] })
@@ -1858,7 +1762,7 @@ describe("recipe snapshots (R05.4)", () => {
   it("stores the new recipe's snapshot on replace", async () => {
     const { dinnerRecipe, dinnerRecipe2 } = await seedPlannableHousehold();
     const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 })
     ).json()) as WeekBody;
     const current = await getDay0Dinner();
     const other = current.recipeId === dinnerRecipe.id ? dinnerRecipe2 : dinnerRecipe;
@@ -1871,31 +1775,10 @@ describe("recipe snapshots (R05.4)", () => {
     expect((await getDay0Dinner()).recipeSnapshot).toMatchObject({ title: other.title });
   });
 
-  it("keeps a locked slot's saved snapshot when the week is regenerated", async () => {
-    await seedPlannableHousehold();
-    const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
-    ).json()) as WeekBody;
-    const lockRes = await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
-      expectedRevision: generated.revision,
-    });
-    const { revision } = (await lockRes.json()) as { revision: number };
-    const before = await getDay0Dinner();
-    await renameRecipe(before.recipeId!);
-
-    await postJson("/api/plans/generate", {
-      weekStartDate: "2026-01-05",
-      seed: 2,
-      expectedRevision: revision,
-    });
-
-    expect((await getDay0Dinner()).recipeSnapshot).toEqual(before.recipeSnapshot);
-  });
-
   it("keeps a locked slot's saved snapshot when a new preview is accepted", async () => {
     await seedPlannableHousehold();
     const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 })
     ).json()) as WeekBody;
     await putJson("/api/plans/2026-01-05/slots/0/dinner/lock", {
       expectedRevision: generated.revision,
@@ -1976,7 +1859,7 @@ describe("swap confirmation (R05.6)", () => {
       .update(recipes)
       .set({ proteinSource: "beef" })
       .where(eq(recipes.id, seeded.dinnerRecipe2.id));
-    await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    await createWeek({ weekStartDate: "2026-01-05", seed: 1 });
     await db
       .update(planSlots)
       .set({
@@ -2056,7 +1939,7 @@ describe("swap confirmation (R05.6)", () => {
   it("fills an empty slot and clears its empty_slot violation", async () => {
     const { dinnerRecipe2, member } = await seedPlannableHousehold();
     const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 })
     ).json()) as { revision: number };
     await db
       .update(planSlots)
@@ -2107,7 +1990,7 @@ describe("copy last week preview (R05.7a)", () => {
   };
 
   async function generateLastWeek() {
-    const res = await postJson("/api/plans/generate", { weekStartDate: "2025-12-29", seed: 1 });
+    const res = await createWeek({ weekStartDate: "2025-12-29", seed: 1 });
     return (await res.json()) as { seed: number; slots: Slot[] };
   }
 
@@ -2155,9 +2038,9 @@ describe("copy last week preview (R05.7a)", () => {
     const sourceDay0 = lastWeek.slots.find((s) => s.day === 0 && s.mealSlot === "dinner")!;
     const otherRecipeId =
       sourceDay0.recipeId === dinnerRecipe.id ? dinnerRecipe2.id : dinnerRecipe.id;
-    const target = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 7 })
-    ).json()) as { revision: number };
+    const target = (await (await createWeek({ weekStartDate: "2026-01-05", seed: 7 })).json()) as {
+      revision: number;
+    };
     await putJson("/api/plans/2026-01-05/slots/0/dinner", {
       recipeId: otherRecipeId,
       expectedRevision: target.revision,
@@ -2264,7 +2147,7 @@ describe("regenerate selected days (R05.7b)", () => {
   it("keeps unselected days' recipes, not as locks, with portions accept will save", async () => {
     const { member } = await seedPlannableHousehold();
     const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 })
     ).json()) as { slots: Slot[] };
     await db
       .update(householdMembers)
@@ -2319,7 +2202,7 @@ describe("regenerate selected days (R05.7b)", () => {
   it("keeps a locked slot on a selected day, and can be accepted", async () => {
     await seedPlannableHousehold();
     const generated = (await (
-      await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 })
+      await createWeek({ weekStartDate: "2026-01-05", seed: 1 })
     ).json()) as { revision: number; slots: Slot[] };
     await putJson("/api/plans/2026-01-05/slots/1/dinner/lock", {
       expectedRevision: generated.revision,
@@ -2352,5 +2235,16 @@ describe("regenerate selected days (R05.7b)", () => {
     expect(res.status).toBe(422);
     const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toBe("Validation failed");
+  });
+});
+
+describe("direct-write generate retired (R05.8c)", () => {
+  it("returns 404 for POST /generate and writes no week", async () => {
+    await seedPlannableHousehold();
+    const res = await postJson("/api/plans/generate", { weekStartDate: "2026-01-05", seed: 1 });
+    expect(res.status).toBe(404);
+
+    const getRes = await app.request("/api/plans/2026-01-05");
+    expect(getRes.status).toBe(404);
   });
 });
