@@ -677,7 +677,7 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
    meal slot; R06 moves it under `/plan`). **R05.9a** (done) — picker page: paged candidates with
    week cost, per-member kcal (deltas vs current) and violations; choosing replaces the slot and
    returns to the week; Cancel returns with no writes; empty slots open it too.
-   **R05.9b** — rail shows the top three `suggestions` plus a link to the picker.
+   **R05.9b** (done) — rail shows the top three `suggestions` plus a link to the picker.
 10. **R05.10 — Optimistic lock/unlock.** onMutate/onError/onSettled, cancelQueries, rollback,
     conflict recovery; delayed responses do not overwrite newer revisions.
 

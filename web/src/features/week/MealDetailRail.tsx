@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { DetailRail } from "../../shared/layout/DetailRail";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
@@ -42,7 +43,7 @@ export function MealDetailRail({
 
   const detail = deriveMealDetail(slot, recipeQuery.data, members);
   const candidateRows = deriveCandidateRows(
-    candidatesQuery.data?.candidates ?? [],
+    candidatesQuery.data?.suggestions ?? [],
     recipes,
     members,
   );
@@ -146,7 +147,7 @@ export function MealDetailRail({
           </>
         )}
 
-        {slot.recipeId !== null && (
+        {(slot.recipeId !== null || !slot.locked) && (
           <div className="border-t border-hair pt-2.5">
             {slot.locked ? (
               <div className="flex items-center justify-between gap-2">
@@ -198,6 +199,12 @@ export function MealDetailRail({
                     </li>
                   ))}
                 </ul>
+                <Link
+                  to={`/week/${weekStartDate}/swap/${slot.day}/${mealSlot}`}
+                  className="mt-2 inline-block text-11 underline focus-visible:outline-thin focus-visible:outline-lock"
+                >
+                  See all options
+                </Link>
               </>
             )}
 

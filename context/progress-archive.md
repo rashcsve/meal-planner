@@ -2445,3 +2445,18 @@ all 4 failed before on the unmocked `/generate`). `bash scripts/verify.sh` clean
 clean; lint only the 2 pre-existing web warnings. Full `npm test` not run.
 
 **Next:** R05.9 — swap picker at `/plan/:week/swap/:slotId`.
+
+## R05.9b — Rail suggestions + picker link — `awaiting review` (2026-11-03)
+
+**Outcome:** the meal rail lists the API's top-three `suggestions` (was the whole first page of
+`candidates`) and links "See all options" to `/week/:week/swap/:day/dinner`.
+
+**Decisions:**
+- Empty slots get suggestions + link too (picker already supports them); locked slots get neither.
+- Rows keep title + meta; week cost and kcal deltas stay on the picker.
+
+**Verified:** `npm run test -w web` → 30 files / 91 tests pass (+3 in `MealDetailRail.stories.tsx`;
+filled and empty failed before, locked passed as a guard). Typecheck clean; lint only the 2
+pre-existing web warnings.
+
+**Next:** R05.10 — optimistic lock/unlock.
