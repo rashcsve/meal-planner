@@ -57,8 +57,7 @@ though dedicated per-person allergy management is deferred in the new UI.
 [build-plan.md](build-plan.md) owns the revised milestones R01–R14, acceptance criteria,
 source mapping and open decisions. [progress.md](progress.md) records actual delivery.
 [architecture.md](architecture.md) describes the current code. The historical numbered
-plan is [build-plan-v1.md](build-plan-v1.md).
+plan is [build-plan-v1.md](archive/build-plan-v1.md).
 
-The user requested planning before implementation. Review the revised plan first;
-resume code changes only when the user requests a build step. No implementation
+Code changes happen one plan step at a time, when the user requests that step. No
 milestone is complete merely because its requirements are documented.

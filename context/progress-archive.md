@@ -79,7 +79,7 @@ checked into the repo (supplied in an earlier conversation only), so its own
 step numbers aren't independently re-verifiable here; not treated as a gap,
 since `build-plan.md` already absorbed what it needed from it.
 
-Third slice (2026-09-21): wrote [r01-fixtures.md](r01-fixtures.md) — the
+Third slice (2026-09-21): wrote [r01-fixtures.md](archive/r01-fixtures.md) — the
 "specify representative examples... read existing tests before adding
 coverage" deliverable, covering portions, original yield, missing nutrition,
 pantry exclusions, locks, legacy plans and stale revisions. Read
@@ -118,7 +118,7 @@ scaling — one shared `scaleToServings` function replacing the two
 independent `totalServings / baseServings` implementations. All four are
 R02/R04 implementation work, not yet started; no application code changed.
 
-Fifth slice (2026-09-21): wrote [r04-search-quality.md](r04-search-quality.md)
+Fifth slice (2026-09-21): wrote [r04-search-quality.md](archive/r04-search-quality.md)
 — the "define the search-quality ordering and comparison fixtures before
 R04... specify the runtime/quality measurements used to choose a work limit;
 do not invent a new magic iteration count" deliverable. Read `isBetter`,
@@ -951,7 +951,7 @@ implemented and verified.
 **Next step:** user review, then R03 or R04.1 per the user's choice.
 
 The entries below retain their historical step numbers, statuses and evidence.
-They refer to [build-plan-v1.md](build-plan-v1.md). Historical “next step” notes
+They refer to [build-plan-v1.md](archive/build-plan-v1.md). Historical “next step” notes
 do not override the active roadmap above. In particular, old step 31 is the
 detail rail; step 31 in the supplied v2 means optimistic locking.
 
@@ -1725,7 +1725,7 @@ Verified: api 11 files/132 pass (unchanged count); typecheck/lint/prettier clean
 
 ## R04.2 — Fix pantry-exclusion bypass — `complete` (2026-09-22)
 
-Implemented [r01-fixtures.md §4](r01-fixtures.md)'s fix exactly: `plan()` (`planner.ts`)
+Implemented [r01-fixtures.md §4](archive/r01-fixtures.md)'s fix exactly: `plan()` (`planner.ts`)
 called `resolveExpiryConstraints(pantry, recipes)` against the raw recipe list, so an
 excluded ingredient expiring soon could force-place its recipe with no violation. Now
 called with `PLANNED_MEAL_SLOTS.flatMap((mealSlot) => ctx.eligibleRecipesBySlot.get(mealSlot)
@@ -2086,7 +2086,7 @@ hid the missing field. Doc comment says `current` = inputs unchanged (lock/swap 
 ## R04.9 — `severity` on `PlanViolation` — `complete` (2026-10-13)
 
 `PlanViolation` (`shared/src/planner.ts`) gains `severity?: number`: how far past the
-limit, as a fraction of the limit, per [r04-search-quality.md](r04-search-quality.md).
+limit, as a fraction of the limit, per [r04-search-quality.md](archive/r04-search-quality.md).
 Set in `api/src/services/planner.ts`:
 - `validateWeeklyBudget`: `(total - budget) / budget`.
 - `validateMemberDinnerCalories`: `(|actual - target| - target * CALORIE_TOLERANCE) / target`,
@@ -2120,7 +2120,7 @@ skipped at the user's request.
 ## R04.10 — Three-tier comparator in `isBetter` — `complete` (2026-10-14)
 
 `isBetter` (`api/src/services/planner.ts`) now compares violation count → total severity →
-score, per [r04-search-quality.md](r04-search-quality.md). `PlanQuality` gains
+score, per [r04-search-quality.md](archive/r04-search-quality.md). `PlanQuality` gains
 `severitySum`; `evaluatePlan` sums calorie + budget violation severities (missing = 0).
 Exact tie on all three still keeps the current assignment. `PlanQuality`, `evaluatePlan`
 and `isBetter` are now exported for direct tests.

@@ -1,7 +1,7 @@
 # Meal Planner — master build plan
 
 > Historical roadmap, archived 2026-09-21. Retained for the existing progress
-> entries and step references. Use [build-plan.md](build-plan.md) for new work;
+> entries and step references. Use [build-plan.md](../build-plan.md) for new work;
 > do not follow this file's old next-step ordering as the active roadmap.
 
 ## Project

@@ -64,7 +64,6 @@ Short status only. Full entries (decisions, tests, verification) live in
 
 - R07 — Accept's version check runs at READ COMMITTED: an input edit committed after the check
   but before accept commits isn't caught. Same gap as lock/replace.
-- R05.8c — Retire direct-write `/generate` now that the web uses preview → accept.
 - R04 — Decide if budget enforcement can be optional before checkout pricing exists.
 - R04.8 — Staleness ignores pantry changes and the date, so expiry violations go stale unnoticed.
 - R04 — Expiry slots are still protected from search; unprotect once expiry coverage is in the comparator.

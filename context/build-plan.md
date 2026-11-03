@@ -7,7 +7,7 @@ agreed in conversation. The user explicitly wants the repository plan updated an
 reviewed before code changes begin. Do not treat this document as an instruction to
 execute all steps now. Implementation resumes only when the user asks for a build step.
 
-The previous numbered plan is preserved in [build-plan-v1.md](build-plan-v1.md).
+The previous numbered plan is preserved in [build-plan-v1.md](archive/build-plan-v1.md).
 Existing progress entries and commits retain their old step numbers. New work uses
 `R01`–`R14`, so historical step 31 is not confused with step 31 in the supplied v2.
 Each R step is a milestone to break into small, explained implementation slices;
@@ -22,12 +22,12 @@ it is not a request for one large diff or an automatic commit.
    copy and flows; its look is replaced by design system v1 (`.claude/rules/web.md`,
    Design system — v1) and the "Old pages, style A design system" boards.
    Mobile boards supply layout only: ignore their older lunches/macros content.
-5. [planner-logic-review.md](planner-logic-review.md): findings to verify against code,
+5. [planner-logic-review.md](archive/planner-logic-review.md): findings to verify against code,
    not a claim that proposed repairs have already been made.
-6. [r01-fixtures.md](r01-fixtures.md): representative examples and test impact for R02's
+6. [r01-fixtures.md](archive/r01-fixtures.md): representative examples and test impact for R02's
    portions/yield/nutrition work and R04's exclusion/lock consistency work, each checked
    directly against current code, not assumed from the review above.
-7. [r04-search-quality.md](r04-search-quality.md): the proposed severity-aware search
+7. [r04-search-quality.md](archive/r04-search-quality.md): the proposed severity-aware search
    ordering, required comparison fixtures and work-limit measurement methodology for R04,
    grounded directly in the current `localSearch`/`isBetter`/`scorePlan` implementation.
 
@@ -296,7 +296,7 @@ R04: this milestone bundles distinct pieces of work and CLAUDE.md caps a step at
 
 1. **R02.1 — Nutrition status: complete/partial/unknown, and unit-compatible
    computability.** Implemented. `summarizeKcal` now returns `{ kcalTotal, status }` per
-   [r01-fixtures.md §3](r01-fixtures.md); a line only counts if it is gram-based
+   [r01-fixtures.md §3](archive/r01-fixtures.md); a line only counts if it is gram-based
    (`ingredients.baseUnit === "g"`), fixing a confirmed bug found while implementing this
    slice — `kcalPer100g` is defined per 100g, but `amountBase` can be `g`/`ml`/`pcs`
    (`shared/src/recipes.ts` `BASE_UNITS`), and the prior code silently treated `ml`/`pcs`
@@ -304,7 +304,7 @@ R04: this milestone bundles distinct pieces of work and CLAUDE.md caps a step at
    `status === "complete"`; recipe display (`recipes.ts`) nulls `kcalPerServing` only for
    `"unknown"`, still showing a labelled partial number.
 2. **R02.2 — Centralize yield/servings scaling.** Add the shared `scaleToServings` function
-   per [r01-fixtures.md §2](r01-fixtures.md); replace `validateWeeklyBudget`'s inline ratio
+   per [r01-fixtures.md §2](archive/r01-fixtures.md); replace `validateWeeklyBudget`'s inline ratio
    (`planner.ts`) and `deriveMealDetail.ts`'s ingredient-scaling ratio with calls to it. No
    behavior change intended — a reuse fix, not a calculation change.
 3. **R02.3 — Ingredient-line writing and editing.** Add/edit/remove ingredient lines on a
@@ -444,7 +444,7 @@ rules separate. Replay needs the ordered inputs/version, not only a seed.
 Written 2026-09-21 as R01's last deliverable ("break the R04 work into small rule, search
 and measurement slices"). Each slice below targets one bounded diff, independently
 verifiable, per `CLAUDE.md`'s one-small-step rule. Slices citing
-[r01-fixtures.md](r01-fixtures.md) or [r04-search-quality.md](r04-search-quality.md) already
+[r01-fixtures.md](archive/r01-fixtures.md) or [r04-search-quality.md](archive/r04-search-quality.md) already
 have a concrete design to implement against; slices marked **needs a decision first** still
 have an open row in this document's "Decisions to finish" table that R01 did not resolve
 (only four rows were in R01's scope) — resolve that row at the start of the slice, the same
@@ -460,12 +460,12 @@ way R01 resolved its own four, not by guessing during implementation.
    The real not-configured cases (`NoHouseholdMembersError`,
    `HouseholdMemberMissingDinnerTargetError`, `HouseholdSettingsNotConfiguredError`) live in
    `plan-inputs.ts` and still block generation.
-2. **R04.2 — Fix pantry-exclusion bypass.** **Resolved 2026-09-22.** Implements [r01-fixtures.md §4](r01-fixtures.md)'s
+2. **R04.2 — Fix pantry-exclusion bypass.** **Resolved 2026-09-22.** Implements [r01-fixtures.md §4](archive/r01-fixtures.md)'s
    proposed fix exactly: filter `resolveExpiryConstraints`'s candidate recipes through
    `ctx.eligibleRecipesBySlot` instead of the raw recipe list.
 3. **R04.3 — Fix locked-slot-already-covers-expiry false violation.** **Resolved
    2026-09-22** (deadline-day check added in d033a1e). Implements
-   [r01-fixtures.md §5](r01-fixtures.md)'s proposed fix: precompute `lockedIngredientIds`
+   [r01-fixtures.md §5](archive/r01-fixtures.md)'s proposed fix: precompute `lockedIngredientIds`
    from `locked` only, skip already-covered constraints before searching for a placement.
 4. **R04.4 — Generalize "existing coverage" beyond locked slots.** **Resolved
    2026-09-22** — `PlannerPantryItem` has no lot/row identity (only `ingredientId` +
@@ -515,7 +515,7 @@ way R01 resolved its own four, not by guessing during implementation.
 
 9. **R04.9 — Add `severity` to `PlanViolation`.** Populate it in
    `validateMemberDinnerCalories`/`validateWeeklyBudget` using
-   [r04-search-quality.md](r04-search-quality.md)'s formulas. Purely additive — violation
+   [r04-search-quality.md](archive/r04-search-quality.md)'s formulas. Purely additive — violation
    _counts_ and existing test expectations for counts/messages are unaffected. Exception
    (approved during the slice): migration 0023 tightens the budget check to `> 0`, so a
    budget of 0 now gets a 422 instead of being saved.
