@@ -756,7 +756,9 @@ against `context/design/v1/style-guide.png`.
 **R06.1a2** — story tests load Tailwind (`@tailwindcss/vite` in `web/vitest.config.ts`) so the
 a11y checks see real colours; `faint` aliases `muted` because v1 `subtle` #A8A29E (~2.5:1) fails
 AA as text.
-**R06.1b** — Inter replaces Archivo; 14px base; type roles; sentence-case labels.
+**R06.1b1** — Inter replaces Archivo; 14px base; type-role utilities; old `type-*` utilities
+sentence case. Old `text-9…34` sizes stay until the screens move to roles (R06.6+). (done)
+**R06.1b2** — remove raw `uppercase` / `tracking-*` classes from markup.
 **R06.1c** — primitives (Button, Input, Select, FlagTag, ReasonTag): 44px targets,
 primary/secondary/destructive, visible focus, v1 radii; one story per variant.
 **R06.2** — top menu (Today, Plan, Shopping, Fridge, Recipes, Import) + Household access.

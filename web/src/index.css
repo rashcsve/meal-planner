@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Archivo", sans-serif;
+  --font-sans: "Inter", sans-serif;
 
   --spacing: 4px;
 
@@ -62,7 +62,7 @@
 }
 
 html {
-  font-size: 12px;
+  font-size: 14px;
   line-height: normal;
 }
 
@@ -78,22 +78,44 @@ body {
   color: var(--color-ink);
 }
 
-@utility type-num {
-  font-stretch: 78%;
-  font-weight: 800;
+@utility type-page-title {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+@utility type-stat {
+  font-size: 28px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+}
+
+@utility type-section {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+@utility type-body {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+@utility type-small {
+  font-size: 13px;
+  font-weight: 400;
 }
 
 @utility type-label {
-  font-stretch: 88%;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+@utility type-num {
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-variant-numeric: tabular-nums;
 }
 
 @utility type-name {
-  font-stretch: 94%;
   font-weight: 600;
 }
 
