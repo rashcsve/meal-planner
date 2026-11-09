@@ -123,7 +123,7 @@ export const PreviewThenAccept: Story = {
   parameters: { acceptRoute: { method: "POST", path: ACCEPT, body: acceptedWeek } },
   play: async ({ canvasElement }) => {
     const canvas = await openPreview(canvasElement);
-    await expect(canvas.getByText("Lentil soup")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /Lentil soup/ })).toBeInTheDocument();
     await expect(canvas.queryByText(/no plan generated/i)).not.toBeInTheDocument();
     await expect(api.requestsTo("POST", ACCEPT)).toHaveLength(0);
 
@@ -131,7 +131,7 @@ export const PreviewThenAccept: Story = {
     await waitFor(() =>
       expect(canvas.queryByText(/nothing is saved until you accept/i)).not.toBeInTheDocument(),
     );
-    await expect(canvas.getByText("Lentil soup")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /Lentil soup/ })).toBeInTheDocument();
     await expect(api.requestsTo("POST", ACCEPT).map((r) => r.body)).toEqual([
       {
         weekStartDate: WEEK,
@@ -196,7 +196,7 @@ export const AcceptFails: Story = {
     const canvas = await openPreview(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Accept" }));
     await expect(await canvas.findByText("Couldn't save the plan")).toBeInTheDocument();
-    await expect(canvas.getByText("Lentil soup")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /Lentil soup/ })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Accept" })).toBeEnabled();
   },
 };
@@ -244,7 +244,7 @@ export const SavedWeek: Story = {
   parameters: { routes: [{ method: "GET", path: WEEK_GET, body: acceptedWeek }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByText("Lentil soup");
+    await canvas.findByRole("button", { name: /Lentil soup/ });
     await expectFrame(canvas);
     await expectNoCaps(canvasElement);
   },

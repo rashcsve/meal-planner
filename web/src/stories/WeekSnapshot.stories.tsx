@@ -83,7 +83,7 @@ export const RowUsesSnapshot: Story = {
   args: { withSnapshot: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("Snapshot curry")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /Snapshot curry/ })).toBeInTheDocument();
     await expect(canvas.queryByText("Live curry")).not.toBeInTheDocument();
     const [row] = deriveWeekRows(weekStartDate, [slot(snapshot)], [liveRecipe], members);
     await expect(row?.timeMinutes).toBe(40);
@@ -96,7 +96,7 @@ export const RowFallsBackToLive: Story = {
   args: { withSnapshot: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("Live curry")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /Live curry/ })).toBeInTheDocument();
   },
 };
 

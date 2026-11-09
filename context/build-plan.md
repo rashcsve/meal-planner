@@ -783,6 +783,10 @@ via a "Sort by" select (decided 2026-11-09). (done) **R06.7c** — "Add a recipe
 **R06.8b** — Household "Who eats" card: v1 card + h2, rows with initial avatar, name, "about N kcal at dinner" (or "No dinner target yet"), kcal input + Save. Restyle only; portion stepper and "Add someone" wait for data. (done)
 **R06.8c** — Household "Rules for the week" card: v1 card + h2, labels above inputs, weekly budget with "Kč for seven dinners", week starts, timezone, calorie tolerance "±10 %", one primary "Save rules". Restyle only; "Calories per portion", "Weeknight cooking" and "Never plan these" wait for data. (done)
 **R06.9a** — Plan frame: "Seven dinners" + week-range h1 (no year; start month shown when the week spans two) with ← / → icon buttons, on page background in every state; `role=status` loading. Restyle only; cards, stats, Regenerate, calories chart and swap rail are later slices. (done)
+**R06.9b** — Plan day cards: v1 card (8px radius, divider border), DishPhoto tile with a "Mon 21" day badge
+and a "Locked" badge, title, "N kcal a portion · M min" (time only when kcal unknown), "X portions" tag,
+reason tags; empty day keeps "No recipe assigned". Per-member rows and cost leave the card (rail has them).
+Restyle only (decided 2026-11-09): the card stays one select button; on-card Swap / Lock wait for R06.9c. (done)
 
 ### R07 — Recipe detail
 
