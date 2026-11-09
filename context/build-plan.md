@@ -778,6 +778,8 @@ states. Restyle only; Used/bin, "In a dinner" and side cards wait for R08/R09. (
 via a "Sort by" select (decided 2026-11-09). (done) **R06.7c** — "Add a recipe" tile (first grid item, always, incl. empty/no-match; replaces the toolbar button). (done) **R06.7d** — v1 filter chips. Changed 2026-11-09: restyle only; the 9 existing chips and multi-select kept. (done)
 "Planned for …", "Uses …" and "dinner-sized" wait for plan/fridge data (R08/R09).
 **R06.7+** — remaining screens, one per slice, each with loading/error/empty states.
+**R06.8a** — Household frame: "Everything the planner reads before it runs" + page title in every state,
+`role=status` loading, "No one in the household yet." when there are no members. Restyle only. (done)
 
 ### R07 — Recipe detail
 
