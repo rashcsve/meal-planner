@@ -224,12 +224,6 @@ export function RecipesPage() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search…"
             />
-            <Filters
-              options={FILTER_OPTIONS}
-              value={filters}
-              onChange={handleFilterChange}
-              multiple
-            />
             <label className="type-label flex items-center gap-2">
               Sort by
               <Select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
@@ -241,6 +235,13 @@ export function RecipesPage() {
               </Select>
             </label>
           </div>
+          <Filters
+            aria-label="Filter recipes"
+            options={FILTER_OPTIONS}
+            value={filters}
+            onChange={handleFilterChange}
+            multiple
+          />
           {showForm && (
             <RecipeForm onSaved={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
           )}

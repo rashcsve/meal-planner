@@ -35,12 +35,14 @@ export function Filters<T extends string>(props: FiltersProps<T>) {
       props.onChange(value);
       return;
     }
-    const next = props.value.includes(value) ? props.value.filter((v) => v !== value) : [...props.value, value];
+    const next = props.value.includes(value)
+      ? props.value.filter((v) => v !== value)
+      : [...props.value, value];
     props.onChange(next);
   }
 
   return (
-    <div role="group" aria-label={props["aria-label"]} className="flex gap-0.75">
+    <div role="group" aria-label={props["aria-label"]} className="flex flex-wrap gap-2">
       {options.map((option) => {
         const active = isActive(option.value);
         return (
@@ -50,9 +52,11 @@ export function Filters<T extends string>(props: FiltersProps<T>) {
             aria-pressed={active}
             onClick={() => toggle(option.value)}
             className={cx(
-              "cursor-pointer rounded border px-1.75 py-0.75 text-10 font-semibold font-stretch-88%",
-              "focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
-              active ? "border-ink bg-ink text-paper" : "border-line bg-transparent text-muted",
+              "type-body inline-flex h-11 cursor-pointer items-center rounded-control border px-4 font-medium",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lock",
+              active
+                ? "border-ink bg-ink text-surface"
+                : "border-border bg-surface text-ink hover:border-ink",
             )}
           >
             {option.label}
