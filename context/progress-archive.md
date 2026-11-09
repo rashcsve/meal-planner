@@ -2460,3 +2460,21 @@ filled and empty failed before, locked passed as a guard). Typecheck clean; lint
 pre-existing web warnings.
 
 **Next:** R05.10 — optimistic lock/unlock.
+
+## R06.1b1 — Inter, 14px base, type roles — `awaiting review` (2026-11-09)
+
+**Outcome:** Inter (Google Fonts, `index.html` + Storybook `preview-head.html`) replaces Archivo;
+`html` is 14px; `index.css` adds `type-page-title/stat/section/body/small/label` per the v1 table.
+`type-label` is 12/500 muted with no uppercase or tracking; `type-num` is 600 + tabular; `type-name` is 600.
+
+**Decisions:**
+- R06.1b split: markup cleanup (`uppercase`, `tracking-*`) moves to R06.1b2.
+- Old `text-9/10/11…` sizes kept; screens move to roles in R06.6+.
+- Existing `type-label text-9 text-faint` sites keep size and colour: `.type-label` is emitted before
+  `.text-*` in the built CSS (checked in `vite build` output).
+- Tests check declared CSS only (font family/size, role size/weight), not that Inter loaded.
+
+**Verified:** `npm run test -w web` → 33 files / 101 tests pass (`Typography.stories.tsx`: Base and
+Roles failed before). Typecheck clean; lint 0 errors, 3 warnings in untouched files.
+
+**Next:** R06.1b2.
