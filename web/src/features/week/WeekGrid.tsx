@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { cx } from "../../shared/lib/cx";
 import { isClickOutside } from "../../shared/lib/clickOutside";
+import { DishPhoto } from "../../shared/ui/DishPhoto";
 import { ReasonTag } from "../../shared/ui/ReasonTag";
 import type { WeekDayRow } from "./deriveWeekRows";
 
@@ -36,58 +37,55 @@ export function WeekGrid({ rows, selectedDay, onSelectDay, onDeselect }: WeekGri
           aria-pressed={selectedDay === row.day}
           onClick={() => onSelectDay(row.day)}
           className={cx(
-            "flex cursor-pointer flex-col gap-1.5 rounded border bg-card p-2 text-left",
-            "focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
+            "flex cursor-pointer flex-col overflow-hidden rounded-card border bg-surface text-left",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lock",
             selectedDay === row.day
               ? "border-ink outline-2 -outline-offset-2 outline-ink"
-              : "border-line",
+              : "border-divider",
           )}
         >
-          <div className="flex items-center justify-between">
-            <span className="type-label text-9 text-faint">{row.dayLabel}</span>
+          <div className="relative h-24 bg-fill">
+            {row.recipeTitle && (
+              <div aria-hidden="true" className="size-full">
+                <DishPhoto name={row.recipeTitle} />
+              </div>
+            )}
+            <span className="absolute top-2 left-2 rounded-tag bg-surface px-1.5 py-0.5 type-label text-ink">
+              {row.dayLabel}
+            </span>
             {row.locked && (
-              <span className="flex items-center gap-0.5 text-9 font-bold text-lock">
-                <span aria-hidden="true">🔒</span>
+              <span className="absolute top-2 right-2 rounded-tag bg-lock-tint px-1.5 py-0.5 text-xs font-semibold text-lock">
                 Locked
               </span>
             )}
           </div>
 
-          {row.recipeTitle ? (
-            <span className="type-name text-11 leading-snug">{row.recipeTitle}</span>
-          ) : (
-            <span className="text-11 text-faint">No recipe assigned</span>
-          )}
+          <div className="flex flex-col gap-2 p-3">
+            {row.recipeTitle ? (
+              <>
+                <span className="type-section text-ink">{row.recipeTitle}</span>
+                <span className="type-small text-muted">
+                  {row.kcalPerPortion != null ? `${row.kcalPerPortion} kcal a portion · ` : ""}
+                  {row.timeMinutes} min
+                </span>
+                <span className="self-start rounded-tag bg-fill px-1.5 py-0.5 text-xs font-semibold text-ink">
+                  {row.portions} {row.portions === 1 ? "portion" : "portions"}
+                </span>
+              </>
+            ) : (
+              <span className="type-small text-muted">No recipe assigned</span>
+            )}
 
-          {row.recipeTitle && (
-            <div className="flex flex-wrap gap-x-2 text-10 text-muted">
-              <span>{row.timeMinutes != null ? `${row.timeMinutes} min` : "time unknown"}</span>
-              <span>{row.cost != null ? `${row.cost} Kč` : "cost unknown"}</span>
-            </div>
-          )}
-
-          {row.members.length > 0 && (
-            <ul className="flex flex-col gap-0.5">
-              {row.members.map((m) => (
-                <li key={m.memberId} className="flex justify-between text-10 text-muted">
-                  <span>{m.memberName}</span>
-                  <span className="type-num">
-                    {m.servings}x · {m.calories != null ? `${m.calories} kcal` : "kcal unknown"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {row.reasonTags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {row.reasonTags.map((tag) => (
-                <ReasonTag key={tag.variant} variant={tag.variant} title={tag.detail}>
-                  {tag.label}
-                </ReasonTag>
-              ))}
-            </div>
-          )}
+            {row.reasonTags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {row.reasonTags.map((tag) => (
+                  <ReasonTag key={tag.variant} variant={tag.variant} title={tag.detail}>
+                    {tag.label}
+                  </ReasonTag>
+                ))}
+              </div>
+            )}
+          </div>
         </button>
       ))}
     </div>

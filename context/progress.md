@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** next Plan slice (day cards) or next screen.
+**Next step:** R06.9c (on-card Swap / Lock) or next Plan slice.
 
 ## R04 — planner correctness and search quality
 
@@ -85,6 +85,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R06.8b | Household "Who eats" card: h2 section, initial avatar, "about N kcal at dinner" / "No dinner target yet", kcal input + Save | complete 11-09 |
 | R06.8c | Household "Rules for the week" card: h2 section, labels above inputs, "Kč for seven dinners", "±10 %" tolerance, one "Save rules"; `FormField` left for RecipeForm | complete 11-09 |
 | R06.9a | Plan frame: "Seven dinners" + week h1 (no year, both months across a month boundary), ← / → icon buttons, every state; loading `role=status`; rail title h3 → h2 | complete 11-09 |
+| R06.9b | Plan day cards: v1 card, DishPhoto tile (hidden from screen readers) + day / "Locked" badges, "N kcal a portion · M min", "X portions" tag; member rows + cost leave the card | complete 11-09 |
 | R06.7+ | Remaining screens | in progress |
 
 ## Earlier milestones

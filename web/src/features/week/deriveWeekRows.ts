@@ -18,6 +18,8 @@ export interface WeekDayRow {
   locked: boolean;
   recipeTitle: string | null;
   timeMinutes: number | null;
+  kcalPerPortion: number | null;
+  portions: number;
   cost: number | null;
   members: MemberServingRow[];
   reasonTags: ReasonTagInfo[];
@@ -58,6 +60,8 @@ export function deriveWeekRows(
         locked: slot.locked,
         recipeTitle: recipe?.title ?? null,
         timeMinutes: recipe?.time ?? null,
+        kcalPerPortion: recipe?.kcalPerServing != null ? Math.round(recipe.kcalPerServing) : null,
+        portions: totalServings,
         cost,
         members: slot.memberServings.map((m) => ({
           memberId: m.memberId,
