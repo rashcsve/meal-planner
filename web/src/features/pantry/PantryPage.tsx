@@ -4,6 +4,7 @@ import { ErrorState } from "../../shared/ui/ErrorState";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { CloseButton } from "../../shared/ui/CloseButton";
 import { daysUntil, expiryRowState, formatExpiry } from "../../shared/lib/expiry";
+import type { ReactNode } from "react";
 import { usePantryItems, useRemovePantryItem, type PantryItem } from "./usePantry";
 
 function formatAmount(item: PantryItem): string {
@@ -18,10 +19,33 @@ function rowState(item: PantryItem): RowState {
   return expiryRowState(daysUntil(item.expiresOn));
 }
 
+const expiryTone: Record<RowState, string> = {
+  none: "",
+  check: "text-warning",
+  promo: "text-danger",
+  expiring: "text-danger",
+};
+
 function urgencyLabel(state: RowState): string | null {
   if (state === "promo") return "expires very soon";
   if (state === "check") return "expiring soon";
   return null;
+}
+
+function FridgeCard({ count, children }: { count?: number; children: ReactNode }) {
+  return (
+    <div className="h-full overflow-auto bg-page p-8">
+      <section className="flex flex-col gap-4 rounded-card border border-divider bg-surface p-6">
+        <header>
+          {count != null && (
+            <p className="type-label">{count === 1 ? "1 item" : `${count} items`}</p>
+          )}
+          <h1 className="type-page-title text-ink">Fridge</h1>
+        </header>
+        {children}
+      </section>
+    </div>
+  );
 }
 
 export function PantryPage() {
@@ -29,17 +53,20 @@ export function PantryPage() {
   const removeItem = useRemovePantryItem();
 
   const columns: ColumnDef<PantryItem>[] = [
-    { key: "ingredientName", header: "Ingredient", primary: true, render: (i) => i.ingredientName },
+    { key: "ingredientName", header: "Item", primary: true, render: (i) => i.ingredientName },
     { key: "amount", header: "Amount", align: "right", width: "100px", render: formatAmount },
     {
       key: "expiresOn",
       header: "Expires",
-      width: "100px",
+      width: "120px",
       render: (i) => {
-        const label = urgencyLabel(rowState(i));
+        const state = rowState(i);
+        const label = urgencyLabel(state);
         return (
           <>
-            {i.expiresOn ? formatExpiry(i.expiresOn) : "—"}
+            <span className={expiryTone[state]}>
+              {i.expiresOn ? formatExpiry(i.expiresOn) : "—"}
+            </span>
             {label && <span className="sr-only"> — {label}</span>}
           </>
         );
@@ -47,8 +74,9 @@ export function PantryPage() {
     },
     {
       key: "remove",
-      header: "",
-      width: "40px",
+      header: "Take it out",
+      width: "100px",
+      align: "right",
       render: (i) => (
         <CloseButton
           aria-label={`Remove ${i.ingredientName}`}
@@ -60,40 +88,35 @@ export function PantryPage() {
 
   if (isLoading) {
     return (
-      <div className="h-full overflow-auto p-3.5">
-        <div className="flex flex-col gap-1.5">
+      <FridgeCard>
+        <div role="status" aria-label="Loading fridge" className="flex flex-col gap-1.5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-8" />
+            <Skeleton key={i} className="h-11" />
           ))}
         </div>
-      </div>
+      </FridgeCard>
     );
   }
 
   if (error) {
     return (
-      <div className="h-full overflow-auto p-3.5">
-        <ErrorState title="Couldn't load pantry" message={error.message} />
-      </div>
+      <FridgeCard>
+        <ErrorState title="Couldn't load fridge" message={error.message} />
+      </FridgeCard>
     );
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-full overflow-auto p-3.5">
-        <EmptyState message="No items in your pantry yet." action={null} />
-      </div>
+      <FridgeCard count={0}>
+        <EmptyState message="Your fridge is empty." action={null} />
+      </FridgeCard>
     );
   }
 
   return (
-    <div className="h-full overflow-auto p-3.5">
-      <Table
-        rows={data}
-        columns={columns}
-        rowId={(i) => i.id}
-        getRowState={rowState}
-      />
-    </div>
+    <FridgeCard count={data.length}>
+      <Table rows={data} columns={columns} rowId={(i) => i.id} getRowState={rowState} />
+    </FridgeCard>
   );
 }

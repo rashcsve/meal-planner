@@ -769,7 +769,10 @@ sidebar removed; keys 1–6 follow menu order, 7 Household; `/today` is a coming
 **R06.3** — `/week` → `/plan`, `/pantry` → `/fridge`. Changed 2026-11-09: rename only, no redirects (no old links in use). (done)
 **R06.4** — shortcut hints move to a `?` sheet. (done)
 **R06.5** — DishPhoto: recipe photo or a fill tile with the dish name. UI primitive only; recipes have no photo field yet. (done)
-**R06.6+** — one screen per slice, each with loading/error/empty states.
+**R06.6** — Fridge: v1 card, count label + page title, 3px expiry bar, toned expiry date, fridge copy in all
+states. Restyle only; Used/bin, "In a dinner" and side cards wait for R08/R09. (done)
+**R06.6b** — Fridge add form ("Add to the fridge").
+**R06.7+** — one screen per slice, each with loading/error/empty states.
 
 ### R07 — Recipe detail
 
