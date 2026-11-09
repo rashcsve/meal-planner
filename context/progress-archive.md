@@ -2514,3 +2514,20 @@ Default/Focused failed before: height 23/25px, outline 1px). `bash scripts/verif
 0 errors, 3 warnings in untouched files.
 
 **Next:** R06.1c3.
+
+## R06.1c3 — FlagTag + ReasonTag — `awaiting review` (2026-11-09)
+
+**Outcome:** both tags are `text-12 font-semibold` (12/600), `rounded-tag` (4px), on the tone's
+tint. `font-stretch-88%` (Archivo leftover) removed. Padding unchanged.
+
+**Decisions:**
+- ReasonTag `save` is now ok (green), not danger: v1 says money saved = ok, danger = over budget.
+  Approved by owner. `promo` tokens are now unused by ReasonTag but kept (token clean-up is not
+  this slice).
+- Shared story helper `stories/expectTagShape.ts` (size, weight, radius, tone text + tint).
+
+**Verified:** `npm run test -w web` → 33 files / 104 tests pass (FlagTag Default and ReasonTag
+Save/Pantry/Fast failed before: 9px). `bash scripts/verify.sh` clean; lint 0 errors, 3 warnings
+in untouched files.
+
+**Next:** R06.2.

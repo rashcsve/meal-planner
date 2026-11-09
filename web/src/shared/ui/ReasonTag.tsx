@@ -9,7 +9,7 @@ interface ReasonTagProps {
 }
 
 const variantClasses: Record<ReasonTagVariant, string> = {
-  save: "bg-promo-tint text-promo",
+  save: "bg-ok-tint text-ok",
   pantry: "bg-ok-tint text-ok",
   fast: "bg-lock-tint text-lock",
 };
@@ -18,7 +18,7 @@ export function ReasonTag({ variant, children, title }: ReasonTagProps) {
   return (
     <span
       title={title}
-      className={`inline-flex items-center rounded px-1 py-px text-9 font-bold font-stretch-88% ${variantClasses[variant]}`}
+      className={`inline-flex items-center rounded-tag px-1 py-px text-12 font-semibold ${variantClasses[variant]}`}
     >
       {children}
     </span>
