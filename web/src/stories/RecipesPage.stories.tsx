@@ -255,3 +255,45 @@ export const FilterChipsRow: Story = {
     );
   },
 };
+
+const unevenRecipes = [
+  { ...recipe(5, "Soup", 20, 300, 50), cuisine: null, diet: null },
+  {
+    ...recipe(
+      6,
+      "Slow-roasted tomato and white bean stew with garlic bread and herbs",
+      60,
+      610,
+      140,
+    ),
+    cuisine: "italian",
+    proteinSource: "fish",
+  },
+  { ...recipe(7, "Chicken paprikash", 35, 540, 110), proteinSource: "chicken" },
+];
+
+function gridItemHeights(root: HTMLElement) {
+  const tile = within(root).getByRole("button", { name: /^Add a recipe/ });
+  return [...(tile.parentElement?.children ?? [])].map((el) => el.getBoundingClientRect().height);
+}
+
+export const EqualCardHeights: Story = {
+  parameters: { recipesRoute: { method: "GET", path: RECIPES, body: unevenRecipes } },
+  render: () => (
+    <div style={{ width: 600 }}>
+      <RecipesPage />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("link", { name: /Chicken paprikash/ });
+    const before = gridItemHeights(canvasElement);
+    await expect(before).toHaveLength(4);
+    await expect(new Set(before).size).toBe(1);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Fish" }));
+    const after = gridItemHeights(canvasElement);
+    await expect(after).toHaveLength(2);
+    await expect(after).toEqual([before[0], before[0]]);
+  },
+};
