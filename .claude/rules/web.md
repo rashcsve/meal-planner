@@ -68,7 +68,8 @@ system". When the design changes, replace the PNGs in the same commit.
 ### Tokens
 
 surfaces page #FAFAF9 · surface #FFFFFF · fill #F5F5F4 · dark card #18181B
-text ink #18181B · muted #57534E · subtle #A8A29E
+text ink #18181B · muted #57534E
+non-text subtle #A8A29E — icons and disabled states only; fails AA as text (~2.5:1)
 borders border #D6D3D1 (controls) · divider #E7E5E4 (cards, rows)
 semantic ok #2D6A4F · warning #B54708 · danger #B42318 · lock #1F3F8F
 tints ok #ECFDF3 · warning #FFFAEB · danger #FEF3F2 · lock #E7E9EE
