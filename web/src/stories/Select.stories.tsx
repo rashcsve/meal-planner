@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { within } from "storybook/test";
 import { Select } from "../shared/ui/Select";
+import { expectFieldShape, expectLockFocusRing } from "./expectFieldShape";
 
 const meta: Meta<typeof Select> = {
   title: "shared/ui/Select",
@@ -33,17 +35,21 @@ function DefaultStory() {
 
 export const Default: Story = {
   render: () => <DefaultStory />,
+  play: async ({ canvasElement }) => {
+    await expectFieldShape(within(canvasElement).getByRole("combobox", { name: "Meal" }));
+  },
+};
+
+export const Focused: Story = {
+  render: () => <DefaultStory />,
+  play: async ({ canvasElement }) => {
+    await expectLockFocusRing(within(canvasElement).getByRole("combobox", { name: "Meal" }));
+  },
 };
 
 export const Disabled: Story = {
   render: () => (
-    <Select
-      aria-label="Meal"
-      value="lunch"
-      disabled
-      onChange={() => {}}
-      style={{ width: 170 }}
-    >
+    <Select aria-label="Meal" value="lunch" disabled onChange={() => {}} style={{ width: 170 }}>
       <option value="lunch">lunch</option>
     </Select>
   ),

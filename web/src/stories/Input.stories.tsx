@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { within } from "storybook/test";
 import { Input } from "../shared/ui/Input";
+import { expectFieldShape, expectLockFocusRing } from "./expectFieldShape";
 
 const meta: Meta<typeof Input> = {
   title: "shared/ui/Input",
@@ -25,6 +27,16 @@ function TextStory() {
 
 export const Text: Story = {
   render: () => <TextStory />,
+  play: async ({ canvasElement }) => {
+    await expectFieldShape(within(canvasElement).getByRole("textbox", { name: "Search" }));
+  },
+};
+
+export const Focused: Story = {
+  render: () => <TextStory />,
+  play: async ({ canvasElement }) => {
+    await expectLockFocusRing(within(canvasElement).getByRole("textbox", { name: "Search" }));
+  },
 };
 
 function NumericStory() {

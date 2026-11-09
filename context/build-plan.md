@@ -761,7 +761,7 @@ sentence case. Old `text-9…34` sizes stay until the screens move to roles (R06
 **R06.1b2** — remove raw `uppercase` / `tracking-*` classes from markup. (done)
 **R06.1c1** — Button: 44px, 6px radius, 14/500; primary/secondary/destructive (`ghost` → `secondary`,
 `danger` → `destructive` at every call site); focus 2px lock outline. (done)
-**R06.1c2** — Input + Select: 44px, 6px radius, v1 border, same focus ring.
+**R06.1c2** — Input + Select: 44px, 6px radius, v1 border, same focus ring. (done)
 **R06.1c3** — FlagTag + ReasonTag: status tags 12/600 on the tone's tint, 4px radius.
 **R06.2** — top menu (Today, Plan, Shopping, Fridge, Recipes, Import) + Household access.
 **R06.3** — redirect `/week` → `/plan`, `/pantry` → `/fridge`, deep-link parameters kept.

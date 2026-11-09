@@ -9,8 +9,8 @@ export function Select({
   return (
     <select
       className={cx(
-        "rounded border border-line bg-card px-2 py-1 text-11 text-ink",
-        "focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
+        "type-body h-11 rounded-control border border-border bg-surface px-3 text-ink",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lock",
         "disabled:cursor-default disabled:opacity-35",
         className,
       )}
