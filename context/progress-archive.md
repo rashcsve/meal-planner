@@ -2496,3 +2496,21 @@ Secondary, Destructive, Focused failed before). `bash scripts/verify.sh` clean; 
 3 warnings in untouched files.
 
 **Next:** R06.1c2.
+
+## R06.1c2 — Input + Select primitives — `awaiting review` (2026-11-09)
+
+**Outcome:** Input and Select are 44px (`h-11`), `rounded-control` (6px), `type-body` (14/400),
+1px `border` line on `surface`, `px-3`. Focus: same as Button — 2px solid lock outline, 2px offset.
+`SearchInput` follows because it wraps `Input`.
+
+**Decisions:**
+- Textarea not changed — not in this slice's scope.
+- Call sites only pass widths; no markup changes. Narrow numeric fields (`w-14`/`w-16`) are left
+  for the screen slices (R06.6+).
+- Shared story helper `stories/expectFieldShape.ts` (shape + focus checks) used by both stories.
+
+**Verified:** `npm run test -w web` → 33 files / 104 tests pass (`Input` Text/Focused, `Select`
+Default/Focused failed before: height 23/25px, outline 1px). `bash scripts/verify.sh` clean; lint
+0 errors, 3 warnings in untouched files.
+
+**Next:** R06.1c3.
