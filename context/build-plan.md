@@ -701,7 +701,7 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
     **R05.11b** (done) — preview → accept; adds the shared fixture that truncates tables before each
     journey and seeds through the public API; asserts the saved week via GET. Exception: the
     household member is inserted by SQL (no create-member endpoint exists).
-    **R05.11c** — cancel swap: Cancel from the picker; revision and slots unchanged via GET.
+    **R05.11c** (done) — cancel swap: Cancel from the picker; revision and slots unchanged via GET.
     **R05.11d** — stale preview: the test changes an input via the API before Accept; "Preview
     again" appears and a second Accept saves.
     **R05.11e** — empty-slot replacement: open the picker on an empty slot, choose; slot saved.
