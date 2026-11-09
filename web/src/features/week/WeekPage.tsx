@@ -219,6 +219,7 @@ export function WeekPage() {
               onSelectDay={preview ? () => {} : setSelectedDay}
               onDeselect={() => setSelectedDay(null)}
               onSetLocked={!preview && weekQuery.data ? handleCardLock : undefined}
+              isLockPending={setSlotLocked.isPending}
               lockError={
                 setSlotLocked.isError && setSlotLocked.variables
                   ? { day: setSlotLocked.variables.day, locked: setSlotLocked.variables.locked }
