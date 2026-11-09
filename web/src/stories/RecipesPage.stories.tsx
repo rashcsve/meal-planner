@@ -238,3 +238,20 @@ export const NoMatchHasAddTile: Story = {
     await expect(canvas.getByRole("button", { name: /^Add a recipe/ })).toBeInTheDocument();
   },
 };
+
+export const FilterChipsRow: Story = {
+  parameters: { recipesRoute: { method: "GET", path: RECIPES, body: recipes } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("link", { name: /Spinach omelette/ });
+    const group = canvas.getByRole("group", { name: "Filter recipes" });
+    const search = canvas.getByPlaceholderText("Search…");
+    await expect(group.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      search.getBoundingClientRect().bottom,
+    );
+    await expect(within(group).getByRole("button", { name: "All" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  },
+};
