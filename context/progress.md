@@ -83,6 +83,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R06.7d | Filter chips restyled (44px, 6px, 14/500, white + border / ink when pressed, lock focus, wrap); own row, group "Filter recipes"; same 9 chips | complete 11-09 |
 | R06.8a | Household: label + h1 on page background in every state; loading `role=status`; "No one in the household yet."; first page stories | complete 11-09 |
 | R06.8b | Household "Who eats" card: h2 section, initial avatar, "about N kcal at dinner" / "No dinner target yet", kcal input + Save | complete 11-09 |
+| R06.8c | Household "Rules for the week" card: h2 section, labels above inputs, "Kč for seven dinners", "±10 %" tolerance, one "Save rules"; `FormField` left for RecipeForm | complete 11-09 |
 | R06.7+ | Remaining screens | in progress |
 
 ## Earlier milestones
