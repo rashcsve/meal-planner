@@ -705,8 +705,9 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
     **R05.11d** (done) — stale preview: the test changes an input via the API before Accept; "Preview
     again" appears and a second Accept saves.
     **R05.11e** (done) — empty-slot replacement: open the picker on an empty slot, choose; slot saved.
-    **R05.11f** — run against the production build (`vite build` + `vite preview`) instead of the
-    dev server.
+    **R05.11f** (done) — run against the production build: global setup runs `vite build` (API URL
+    baked in) into a temp dir, serves it with `vite preview`, deletes it on teardown; a smoke test
+    asserts the page is the built bundle.
     **R05.11g** — CI job for `npm run test:e2e` (`.github/` is red zone: ask first; CI needs
     `npx playwright install chromium`).
 

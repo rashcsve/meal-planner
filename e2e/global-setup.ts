@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
@@ -33,6 +35,33 @@ function assertPortFree(port: number) {
   });
 }
 
+function run(
+  command: string,
+  args: string[],
+  options: { cwd: string; env: NodeJS.ProcessEnv },
+  children: ChildProcess[],
+  timeoutMs = 300_000,
+) {
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, { ...options, stdio: "inherit" });
+    children.push(child);
+    const timer = setTimeout(() => {
+      reject(new Error(`${command} timed out after ${timeoutMs / 1000}s`));
+      child.kill("SIGKILL");
+    }, timeoutMs);
+    child
+      .once("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      })
+      .once("exit", (code) => {
+        clearTimeout(timer);
+        if (code === 0) resolve();
+        else reject(new Error(`${command} exited with ${code}`));
+      });
+  });
+}
+
 function stop(child: ChildProcess) {
   if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
   const exited = new Promise((resolve) => child.once("exit", resolve));
@@ -46,13 +75,16 @@ export default async function globalSetup() {
   await assertPortFree(5174);
 
   const children: ChildProcess[] = [];
+  let webDist: string | undefined;
   const container = await new PostgreSqlContainer("postgres:17").start();
   const teardown = async () => {
     await Promise.all(children.map(stop));
     await container.stop();
+    if (webDist) await rm(webDist, { recursive: true, force: true });
   };
 
   try {
+    webDist = await mkdtemp(path.join(tmpdir(), "meal-planner-e2e-web-"));
     const databaseUrl = container.getConnectionUri();
     process.env.E2E_DATABASE_URL = databaseUrl;
 
@@ -72,14 +104,34 @@ export default async function globalSetup() {
       stdio: "inherit",
     });
     children.push(api);
-    const web = spawn(bin("vite"), ["--port", "5174", "--strictPort"], {
-      cwd: path.join(root, "web"),
-      env: { ...process.env, VITE_API_URL: "http://localhost:3100" },
-      stdio: "inherit",
-    });
-    children.push(web);
+    const webDir = path.join(root, "web");
+    const webEnv = {
+      ...process.env,
+      NODE_ENV: "production",
+      VITE_API_URL: "http://localhost:3100",
+    };
+    const buildWeb = async (outDir: string) => {
+      await run(
+        path.join(webDir, "node_modules/.bin/tsc"),
+        ["-b"],
+        { cwd: webDir, env: webEnv },
+        children,
+      );
+      await run(
+        bin("vite"),
+        ["build", "--outDir", outDir, "--emptyOutDir"],
+        { cwd: webDir, env: webEnv },
+        children,
+      );
+    };
+    await Promise.all([waitFor("http://localhost:3100/health", api), buildWeb(webDist)]);
 
-    await waitFor("http://localhost:3100/health", api);
+    const web = spawn(
+      bin("vite"),
+      ["preview", "--outDir", webDist, "--port", "5174", "--strictPort"],
+      { cwd: webDir, env: webEnv, stdio: "inherit" },
+    );
+    children.push(web);
     await waitFor("http://localhost:5174/", web);
   } catch (error) {
     await teardown();
