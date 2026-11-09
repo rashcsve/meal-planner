@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.11d — Browser journey: stale preview.
+**Next step:** R05.11e — Browser journey: empty-slot replacement.
 
 ## R04 — planner correctness and search quality
 
@@ -54,6 +54,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.11a2 | Harness hardening: free-port check, teardown on failed setup, kill timeout, e2e in typecheck + lint | complete 11-09 |
 | R05.11b | Preview → accept journey; shared fixture truncates tables and seeds via API (member via SQL) | complete 11-09 |
 | R05.11c | Cancel-swap journey: picker opened from the rail, Cancel writes nothing (revision + slots via GET) | complete 11-09 |
+| R05.11d | Stale-preview journey: budget changed via API before Accept → "Preview again" → second Accept saves | complete 11-09 |
 
 ## Earlier milestones
 

@@ -702,7 +702,7 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
     journey and seeds through the public API; asserts the saved week via GET. Exception: the
     household member is inserted by SQL (no create-member endpoint exists).
     **R05.11c** (done) — cancel swap: Cancel from the picker; revision and slots unchanged via GET.
-    **R05.11d** — stale preview: the test changes an input via the API before Accept; "Preview
+    **R05.11d** (done) — stale preview: the test changes an input via the API before Accept; "Preview
     again" appears and a second Accept saves.
     **R05.11e** — empty-slot replacement: open the picker on an empty slot, choose; slot saved.
     **R05.11f** — run against the production build (`vite build` + `vite preview`) instead of the
