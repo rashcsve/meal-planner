@@ -100,10 +100,10 @@ export function WeekPage() {
     weekQuery.isLoading
   ) {
     return (
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden bg-page">
         {nav}
         <div className="flex-1 overflow-auto p-3.5">
-          <div className="grid grid-cols-7 gap-1.5">
+          <div role="status" aria-label="Loading the plan" className="grid grid-cols-7 gap-1.5">
             {Array.from({ length: 7 }).map((_, i) => (
               <Skeleton key={i} className="h-32" />
             ))}
@@ -118,7 +118,7 @@ export function WeekPage() {
 
   if (loadError) {
     return (
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden bg-page">
         {nav}
         <div className="flex-1 overflow-auto p-3.5">
           <ErrorState title="Couldn't load the week" message={loadError.message} />
@@ -129,7 +129,7 @@ export function WeekPage() {
 
   if (!weekQuery.data && !preview) {
     return (
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden bg-page">
         {nav}
         <div className="flex-1 overflow-auto p-3.5">
           <EmptyState
@@ -160,7 +160,7 @@ export function WeekPage() {
       : undefined;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden bg-page">
       {nav}
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         <div className="flex-1 overflow-auto p-3.5">

@@ -88,7 +88,7 @@ export function MealDetailRail({
         {detail && (
           <>
             <div>
-              <h3 className="type-name text-15">{detail.title}</h3>
+              <h2 className="type-name text-15">{detail.title}</h2>
               <p className="mt-1 text-11 text-muted">{detail.meta}</p>
             </div>
 
