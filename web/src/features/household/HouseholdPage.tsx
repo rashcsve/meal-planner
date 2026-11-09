@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { UpdateHouseholdSettingsInput } from "shared";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
@@ -18,6 +19,20 @@ const DEFAULT_SETTINGS: Partial<UpdateHouseholdSettingsInput> = {
   timezone: "Europe/Prague",
 };
 
+function HouseholdFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="h-full overflow-auto bg-page p-8">
+      <div className="flex flex-col gap-4">
+        <header>
+          <p className="type-label">Everything the planner reads before it runs</p>
+          <h1 className="type-page-title text-ink">Household</h1>
+        </header>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function HouseholdPage() {
   const settingsQuery = useHouseholdSettings();
   const membersQuery = useHouseholdMembers();
@@ -28,24 +43,24 @@ export function HouseholdPage() {
 
   if (settingsQuery.isLoading || membersQuery.isLoading) {
     return (
-      <div className="h-full overflow-auto p-3.5">
-        <div className="flex flex-col gap-1.5">
+      <HouseholdFrame>
+        <div role="status" aria-label="Loading household" className="flex flex-col gap-1.5">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-8" />
           ))}
         </div>
-      </div>
+      </HouseholdFrame>
     );
   }
 
   if (settingsQuery.error || membersQuery.error) {
     return (
-      <div className="h-full overflow-auto p-3.5">
+      <HouseholdFrame>
         <ErrorState
           title="Couldn't load household settings"
           message={(settingsQuery.error ?? membersQuery.error)!.message}
         />
-      </div>
+      </HouseholdFrame>
     );
   }
 
@@ -58,7 +73,7 @@ export function HouseholdPage() {
     : DEFAULT_SETTINGS;
 
   return (
-    <div className="h-full overflow-auto p-3.5">
+    <HouseholdFrame>
       <div className="flex flex-col gap-3">
         <HouseholdSettingsForm
           defaultValues={defaultValues}
@@ -71,6 +86,9 @@ export function HouseholdPage() {
           <div className="border-b border-line px-2.5 py-1.75">
             <span className="type-label text-9 text-faint">Dinner calorie targets</span>
           </div>
+          {membersQuery.data?.length === 0 && (
+            <p className="px-2.5 py-1.75 text-muted">No one in the household yet.</p>
+          )}
           {(membersQuery.data ?? []).map((member) => (
             <MemberTargetRow
               key={member.id}
@@ -102,6 +120,6 @@ export function HouseholdPage() {
           confirmError={confirmShares.error?.message}
         />
       </div>
-    </div>
+    </HouseholdFrame>
   );
 }
