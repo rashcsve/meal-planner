@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { RecipesPage } from "../features/recipes/RecipesPage";
@@ -9,7 +9,13 @@ import { expectNoCaps } from "./expectNoCaps";
 
 const RECIPES = /\/api\/recipes$/;
 
-function recipe(id: number, title: string, time: number, kcalPerServing: number) {
+function recipe(
+  id: number,
+  title: string,
+  time: number,
+  kcalPerServing: number | null,
+  cost: number,
+) {
   return {
     id,
     title,
@@ -20,17 +26,23 @@ function recipe(id: number, title: string, time: number, kcalPerServing: number)
     diet: "vegetarian",
     source: null,
     time,
-    cost: 90,
+    cost,
     servings: 4,
     kcalPerServing,
   };
 }
 
 const recipes = [
-  recipe(1, "Spinach omelette", 12, 480),
-  recipe(2, "Lentil soup", 25, 520),
-  recipe(3, "Potato pancakes", 40, 540),
+  recipe(1, "Spinach omelette", 12, 480, 90),
+  recipe(2, "Lentil soup", 25, 520, 40),
+  recipe(3, "Potato pancakes", 40, 450, 120),
 ];
+
+function cardTitles(root: HTMLElement) {
+  return within(root)
+    .getAllByRole("heading", { level: 2 })
+    .map((h) => h.textContent);
+}
 
 let api: ReturnType<typeof mockApi>;
 
@@ -72,10 +84,70 @@ export const Loaded: Story = {
   parameters: { recipesRoute: { method: "GET", path: RECIPES, body: recipes } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByText("Spinach omelette");
+    await canvas.findByRole("link", { name: /Spinach omelette/ });
     await expect(canvas.getByRole("heading", { level: 1, name: "Recipes" })).toBeInTheDocument();
     await expect(canvas.getByText("3 recipes")).toBeInTheDocument();
+    await expect(canvas.queryByRole("table")).not.toBeInTheDocument();
+    await expect(cardTitles(canvasElement)).toEqual([
+      "Lentil soup",
+      "Potato pancakes",
+      "Spinach omelette",
+    ]);
+    const card = canvas.getByRole("link", { name: /Spinach omelette/ });
+    await expect(card).toHaveAttribute("href", "/recipes/1");
+    const inCard = within(card);
+    await expect(inCard.getByText("480 kcal a portion · 12 min")).toBeInTheDocument();
+    await expect(inCard.getByText("Czech")).toBeInTheDocument();
+    await expect(inCard.getByText("Vegetarian")).toBeInTheDocument();
     await expectNoCaps(canvasElement);
+  },
+};
+
+export const SortBy: Story = {
+  parameters: { recipesRoute: { method: "GET", path: RECIPES, body: recipes } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("link", { name: /Spinach omelette/ });
+    const select = canvas.getByRole("combobox", { name: "Sort by" });
+    await expect(
+      within(select)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["Name A–Z", "Quickest first", "Fewest kcal first", "Cheapest first"]);
+    await userEvent.selectOptions(select, "Quickest first");
+    await expect(cardTitles(canvasElement)).toEqual([
+      "Spinach omelette",
+      "Lentil soup",
+      "Potato pancakes",
+    ]);
+    await userEvent.selectOptions(select, "Fewest kcal first");
+    await expect(cardTitles(canvasElement)).toEqual([
+      "Potato pancakes",
+      "Spinach omelette",
+      "Lentil soup",
+    ]);
+    await userEvent.selectOptions(select, "Cheapest first");
+    await expect(cardTitles(canvasElement)).toEqual([
+      "Lentil soup",
+      "Spinach omelette",
+      "Potato pancakes",
+    ]);
+  },
+};
+
+export const UnknownKcal: Story = {
+  parameters: {
+    recipesRoute: {
+      method: "GET",
+      path: RECIPES,
+      body: [recipe(4, "Bean stew", 25, null, 60)],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await canvas.findByRole("link", { name: /Bean stew/ });
+    await expect(within(card).getByText("25 min")).toBeInTheDocument();
+    await expect(card).not.toHaveTextContent(/kcal/);
   },
 };
 

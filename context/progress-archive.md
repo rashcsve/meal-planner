@@ -2613,3 +2613,20 @@ pre-existing unhandled `showPicker()` "requires a user gesture" error (Expires `
 AddItem; present before this change). `bash scripts/verify.sh` passes; 2 lint warnings in untouched files.
 
 **Next:** R06.7.
+
+## R06.7b — Recipes card grid — `awaiting review` (2026-11-09)
+
+**Outcome:** the recipes table is replaced by a grid of cards
+(`repeat(auto-fill, minmax(240px, 1fr))`). Each card is a link to `/recipes/:id` (or back to
+`/recipes` when that recipe is already open). It shows a DishPhoto tile (aria-hidden), an h2 title,
+"N kcal a portion · M min" (time only when kcal is unknown), and cuisine/protein/diet tags in sentence
+case on a neutral fill (v1 green is reserved for meaning). A "Sort by" select offers Name A–Z
+(default), Quickest first, Fewest kcal first and Cheapest first, all ascending with unknowns last.
+Sorting by meal or source and the reverse direction were dropped (decided 2026-11-09).
+
+**Verified:** stories Loaded / SortBy / UnknownKcal failed before (table present, no select, no
+links) and pass after. The Loaded/SortBy waits were changed from `findByText` to `findByRole("link")`
+with approval, because the tile repeats the name. `npm run test -w web` → 36 files / 135 tests
+pass; typecheck clean; lint 0 errors, 2 warnings in untouched files.
+
+**Next:** R06.7c.

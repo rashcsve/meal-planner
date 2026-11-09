@@ -1,16 +1,15 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Table, type ColumnDef, type SortDirection } from "../../shared/ui/Table";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
 import { EmptyState } from "../../shared/ui/EmptyState";
-import { Pill } from "../../shared/ui/Pill";
+import { DishPhoto } from "../../shared/ui/DishPhoto";
+import { Select } from "../../shared/ui/Select";
 import { SearchInput } from "../../shared/ui/SearchInput";
 import { Filters } from "../../shared/ui/Filters";
 import { Button } from "../../shared/ui/Button";
 import { compareValues } from "../../shared/lib/compareValues";
 import { normalizeForSearch } from "../../shared/lib/normalizeText";
-import { formatTime } from "../../shared/lib/formatTime";
 import { useRecipes, type Recipe } from "./useRecipes";
 import { RecipeForm } from "./RecipeForm";
 import { RecipeDetail } from "./RecipeDetail";
@@ -83,67 +82,52 @@ function matchesSearch(recipe: Recipe, query: string): boolean {
   return haystack.includes(query);
 }
 
-const columns: ColumnDef<Recipe>[] = [
-  {
-    key: "title",
-    header: "Recipe",
-    sortable: true,
-    primary: true,
-    render: (r) => r.title,
-  },
-  {
-    key: "meal",
-    header: "Meal",
-    width: "70px",
-    sortable: true,
-    render: (r) => r.meal ?? "—",
-  },
-  {
-    key: "tags",
-    header: "Tags",
-    width: "180px",
-    render: (r) => (
-      <div className="flex flex-wrap gap-1">
-        {[r.cuisine, r.proteinSource, r.diet]
-          .filter((tag): tag is string => Boolean(tag))
-          .map((tag) => (
-            <Pill key={tag}>{tag}</Pill>
-          ))}
-      </div>
-    ),
-  },
-  {
-    key: "time",
-    header: "Time",
-    align: "right",
-    width: "70px",
-    sortable: true,
-    render: (r) => formatTime(r.time),
-  },
-  {
-    key: "kcalPerServing",
-    header: "Kcal/serving",
-    align: "right",
-    width: "92px",
-    sortable: true,
-    render: (r) => (r.kcalPerServing != null ? Math.round(r.kcalPerServing) : "—"),
-  },
-  {
-    key: "cost",
-    header: "Cost",
-    align: "right",
-    width: "70px",
-    sortable: true,
-    render: (r) => (r.cost != null ? `${r.cost},-` : "—"),
-  },
-  {
-    key: "source",
-    header: "Source",
-    width: "120px",
-    sortable: true,
-    render: (r) => r.source ?? "—",
-  },
+type SortKey = "title" | "time" | "kcalPerServing" | "cost";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "title", label: "Name A–Z" },
+  { value: "time", label: "Quickest first" },
+  { value: "kcalPerServing", label: "Fewest kcal first" },
+  { value: "cost", label: "Cheapest first" },
 ];
+
+function sentenceCase(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function RecipeCard({ recipe, href }: { recipe: Recipe; href: string }) {
+  const kcal =
+    recipe.kcalPerServing != null ? `${Math.round(recipe.kcalPerServing)} kcal a portion · ` : "";
+  const tags = [recipe.cuisine, recipe.proteinSource, recipe.diet].filter((tag): tag is string =>
+    Boolean(tag),
+  );
+  return (
+    <Link
+      to={href}
+      className="flex flex-col overflow-hidden rounded-card border border-divider bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lock"
+    >
+      <div aria-hidden className="h-36">
+        <DishPhoto name={recipe.title} />
+      </div>
+      <div className="flex flex-col gap-2 p-4">
+        <h2 className="type-section text-ink">{recipe.title}</h2>
+        <p className="type-small text-muted">{`${kcal}${recipe.time} min`}</p>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-tag bg-fill px-1.5 py-px text-12 font-semibold text-ink"
+              >
+                {sentenceCase(tag)}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+}
 
 function RecipesHeader({ count }: { count?: number }) {
   return (
@@ -164,8 +148,7 @@ export function RecipesPage() {
   const { data, isLoading, error } = useRecipes();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterValue[]>(["all"]);
-  const [sortKey, setSortKey] = useState("title");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortKey, setSortKey] = useState<SortKey>("title");
   const [showForm, setShowForm] = useState(false);
 
   function handleFilterChange(next: FilterValue[]) {
@@ -185,17 +168,9 @@ export function RecipesPage() {
 
   const sorted = useMemo(() => {
     const rows = [...filtered];
-    rows.sort((a, b) => {
-      const cmp = compareValues(a[sortKey as keyof Recipe], b[sortKey as keyof Recipe]);
-      return sortDirection === "asc" ? cmp : -cmp;
-    });
+    rows.sort((a, b) => compareValues(a[sortKey], b[sortKey]));
     return rows;
-  }, [filtered, sortKey, sortDirection]);
-
-  function handleSortChange(key: string, direction: SortDirection) {
-    setSortKey(key);
-    setSortDirection(direction);
-  }
+  }, [filtered, sortKey]);
 
   if (isLoading) {
     return (
@@ -236,6 +211,16 @@ export function RecipesPage() {
               onChange={handleFilterChange}
               multiple
             />
+            <label className="type-label flex items-center gap-2">
+              Sort by
+              <Select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
             <div className="ml-auto">
               <Button
                 variant={showForm ? "secondary" : "primary"}
@@ -258,15 +243,15 @@ export function RecipesPage() {
                 action={null}
               />
             ) : (
-              <Table
-                rows={sorted}
-                columns={columns}
-                rowId={(r) => r.id}
-                sortKey={sortKey}
-                sortDirection={sortDirection}
-                onSortChange={handleSortChange}
-                onRowClick={(r) => navigate(r.id === recipeId ? "/recipes" : `/recipes/${r.id}`)}
-              />
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                {sorted.map((r) => (
+                  <RecipeCard
+                    key={r.id}
+                    recipe={r}
+                    href={r.id === recipeId ? "/recipes" : `/recipes/${r.id}`}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>
