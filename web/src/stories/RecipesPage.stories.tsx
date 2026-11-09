@@ -188,3 +188,53 @@ export const Empty: Story = {
     await expect(canvas.queryByText(/\d+ recipes?$/)).not.toBeInTheDocument();
   },
 };
+
+export const AddTile: Story = {
+  parameters: { recipesRoute: { method: "GET", path: RECIPES, body: recipes } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const firstCard = await canvas.findByRole("link", { name: /Lentil soup/ });
+    const tile = canvas.getByRole("button", { name: /^Add a recipe/ });
+    await expect(tile).toHaveTextContent("Name, ingredients, minutes");
+    await expect(tile.parentElement).toBe(firstCard.parentElement);
+    await expect(tile.parentElement?.firstElementChild).toBe(tile);
+    await expect(canvas.queryByRole("button", { name: "Add recipe" })).not.toBeInTheDocument();
+    await expect(cardTitles(canvasElement)).toEqual([
+      "Lentil soup",
+      "Potato pancakes",
+      "Spinach omelette",
+    ]);
+
+    await expect(tile).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(tile);
+    await expect(tile).toHaveAttribute("aria-expanded", "true");
+    await expect(canvas.getByRole("textbox", { name: "Title" })).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Cancel" }));
+    await expect(canvas.queryByRole("textbox", { name: "Title" })).not.toBeInTheDocument();
+    await expect(tile).toHaveAttribute("aria-expanded", "false");
+    await expectNoCaps(canvasElement);
+  },
+};
+
+export const EmptyHasAddTile: Story = {
+  parameters: { recipesRoute: { method: "GET", path: RECIPES, body: [] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("No recipes yet.");
+    const tile = canvas.getByRole("button", { name: /^Add a recipe/ });
+    await userEvent.click(tile);
+    await expect(canvas.getByRole("textbox", { name: "Title" })).toBeInTheDocument();
+  },
+};
+
+export const NoMatchHasAddTile: Story = {
+  parameters: { recipesRoute: { method: "GET", path: RECIPES, body: recipes } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("link", { name: /Spinach omelette/ });
+    await userEvent.type(canvas.getByRole("searchbox", { name: "Search" }), "zzz");
+    await canvas.findByText("No recipes match your search.");
+    await expect(canvas.getByRole("button", { name: /^Add a recipe/ })).toBeInTheDocument();
+  },
+};

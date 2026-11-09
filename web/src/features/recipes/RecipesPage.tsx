@@ -7,7 +7,6 @@ import { DishPhoto } from "../../shared/ui/DishPhoto";
 import { Select } from "../../shared/ui/Select";
 import { SearchInput } from "../../shared/ui/SearchInput";
 import { Filters } from "../../shared/ui/Filters";
-import { Button } from "../../shared/ui/Button";
 import { compareValues } from "../../shared/lib/compareValues";
 import { normalizeForSearch } from "../../shared/lib/normalizeText";
 import { useRecipes, type Recipe } from "./useRecipes";
@@ -129,6 +128,26 @@ function RecipeCard({ recipe, href }: { recipe: Recipe; href: string }) {
   );
 }
 
+function AddRecipeTile({ expanded, onClick }: { expanded: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-expanded={expanded}
+      onClick={onClick}
+      className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-border bg-page p-4 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lock"
+    >
+      <span
+        aria-hidden
+        className="mb-1 flex size-11 items-center justify-center rounded-control bg-surface text-18 text-ink"
+      >
+        +
+      </span>
+      <span className="type-section text-ink">Add a recipe</span>
+      <span className="type-small text-muted">Name, ingredients, minutes</span>
+    </button>
+  );
+}
+
 function RecipesHeader({ count }: { count?: number }) {
   return (
     <header>
@@ -221,38 +240,29 @@ export function RecipesPage() {
                 ))}
               </Select>
             </label>
-            <div className="ml-auto">
-              <Button
-                variant={showForm ? "secondary" : "primary"}
-                aria-expanded={showForm}
-                onClick={() => setShowForm((v) => !v)}
-              >
-                {showForm ? "Cancel" : "Add recipe"}
-              </Button>
-            </div>
           </div>
           {showForm && (
             <RecipeForm onSaved={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
           )}
-          <div data-detail-rail-ignore>
-            {sorted.length === 0 ? (
+          <div data-detail-rail-ignore className="flex flex-col gap-4">
+            {sorted.length === 0 && (
               <EmptyState
                 message={
                   data && data.length > 0 ? "No recipes match your search." : "No recipes yet."
                 }
                 action={null}
               />
-            ) : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-                {sorted.map((r) => (
-                  <RecipeCard
-                    key={r.id}
-                    recipe={r}
-                    href={r.id === recipeId ? "/recipes" : `/recipes/${r.id}`}
-                  />
-                ))}
-              </div>
             )}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+              <AddRecipeTile expanded={showForm} onClick={() => setShowForm((v) => !v)} />
+              {sorted.map((r) => (
+                <RecipeCard
+                  key={r.id}
+                  recipe={r}
+                  href={r.id === recipeId ? "/recipes" : `/recipes/${r.id}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R06.7c.
+**Next step:** R06.7d.
 
 ## R04 — planner correctness and search quality
 
@@ -79,7 +79,8 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R06.6c | Fridge item suggestions: keyboard — ↑/↓ highlight (no wrap, `aria-activedescendant`), Enter picks without submitting, Esc closes keeping text | complete 11-09 |
 | R06.7a | Recipes: "N recipes" + h1 on page background in every state; loading `role=status`; table kept; first stories | complete 11-09 |
 | R06.7b | Recipes card grid (DishPhoto, title, "kcal a portion · min", sentence-case tags) replaces the table; "Sort by" select: name, quickest, fewest kcal, cheapest | complete 11-09 |
-| R06.7+ | "Add a recipe" tile (c), v1 filter chips (d); then remaining screens | not started |
+| R06.7c | "Add a recipe" tile: first grid item in every loaded state (incl. empty / no match), opens the inline form; toolbar "Add recipe" button removed | complete 11-09 |
+| R06.7+ | v1 filter chips (d); then remaining screens | not started |
 
 ## Earlier milestones
 
