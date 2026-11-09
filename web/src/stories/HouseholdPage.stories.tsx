@@ -94,6 +94,11 @@ export const Loaded: Story = {
     await expectFrame(canvas);
     await expect(canvas.getByLabelText("Weekly budget")).toHaveValue(700);
     await expect(canvas.getByLabelText("Dinner calorie target for Svetlana")).toHaveValue(600);
+    const whoEats = canvas.getByRole("region", { name: "Who eats" });
+    await expect(
+      within(whoEats).getByRole("heading", { level: 2, name: "Who eats" }),
+    ).toBeInTheDocument();
+    await expect(within(whoEats).getByText("about 800 kcal at dinner")).toBeInTheDocument();
     await expectNoCaps(canvasElement);
   },
 };
@@ -142,6 +147,8 @@ export const NoMembers: Story = {
     const canvas = within(canvasElement);
     await canvas.findByText("No one in the household yet.");
     await expectFrame(canvas);
+    const whoEats = canvas.getByRole("region", { name: "Who eats" });
+    await expect(within(whoEats).getByText("No one in the household yet.")).toBeInTheDocument();
     await expect(canvas.getByLabelText("Weekly budget")).toBeInTheDocument();
   },
 };

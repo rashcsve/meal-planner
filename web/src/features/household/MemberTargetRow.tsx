@@ -28,9 +28,22 @@ export function MemberTargetRow({ member, onSave, isSaving, error }: MemberTarge
   return (
     <form
       onSubmit={handleSubmit((data) => onSave(data.dinnerCalorieTarget))}
-      className="flex flex-wrap items-center gap-2 border-b border-hair px-2.5 py-1.75 last:border-b-0"
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-divider bg-surface p-4"
     >
-      <span className="type-name flex-1 text-11">{member.name}</span>
+      <span
+        aria-hidden="true"
+        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-fill type-section text-ink"
+      >
+        {member.name.charAt(0).toUpperCase()}
+      </span>
+      <div className="flex flex-1 flex-col">
+        <span className="type-body font-semibold text-ink">{member.name}</span>
+        <span className="type-small text-muted">
+          {member.dinnerCalorieTarget != null
+            ? `about ${member.dinnerCalorieTarget} kcal at dinner`
+            : "No dinner target yet"}
+        </span>
+      </div>
       <label className="sr-only" htmlFor={fieldId}>
         Dinner calorie target for {member.name}
       </label>
@@ -42,12 +55,12 @@ export function MemberTargetRow({ member, onSave, isSaving, error }: MemberTarge
         aria-describedby={errorId}
         {...register("dinnerCalorieTarget", { valueAsNumber: true })}
       />
-      <span className="type-label text-9 text-faint">kcal / dinner</span>
+      <span className="type-small text-muted">kcal</span>
       <Button type="submit" variant="secondary" disabled={isSaving}>
         Save
       </Button>
       {message && (
-        <p id={errorId} className="w-full text-10 text-promo">
+        <p id={errorId} className="w-full type-small text-danger">
           {message}
         </p>
       )}

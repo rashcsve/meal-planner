@@ -82,12 +82,18 @@ export function HouseholdPage() {
           error={updateSettings.error?.message}
         />
 
-        <div className="rounded border border-line bg-card">
-          <div className="border-b border-line px-2.5 py-1.75">
-            <span className="type-label text-9 text-faint">Dinner calorie targets</span>
-          </div>
+        <section
+          aria-labelledby="who-eats-heading"
+          className="flex flex-col gap-3 rounded-lg border border-divider bg-surface p-6"
+        >
+          <header className="flex flex-wrap items-baseline gap-x-3">
+            <h2 id="who-eats-heading" className="type-section text-ink">
+              Who eats
+            </h2>
+            <p className="type-small text-muted">Dinner calorie target for each person</p>
+          </header>
           {membersQuery.data?.length === 0 && (
-            <p className="px-2.5 py-1.75 text-muted">No one in the household yet.</p>
+            <p className="type-body text-muted">No one in the household yet.</p>
           )}
           {(membersQuery.data ?? []).map((member) => (
             <MemberTargetRow
@@ -106,7 +112,7 @@ export function HouseholdPage() {
               }
             />
           ))}
-        </div>
+        </section>
 
         <ShareProposal
           proposal={proposalQuery.data}
