@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R06.4.
+**Next step:** R06.5.
 
 ## R04 — planner correctness and search quality
 
@@ -72,7 +72,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R06.1c3 | FlagTag + ReasonTag: 12/600 on tint, 4px radius; `save` tag danger → ok | complete 11-09 |
 | R06.2 | 56px top menu replaces sidebar (Plan → `/week`, Fridge → `/pantry` until R06.3); Household link; keys 1–7 by menu order; `/today` coming soon | complete 11-09 |
 | R06.3 | `/week` → `/plan`, `/pantry` → `/fridge`; rename only, no redirects (no old links in use) | complete 11-09 |
-| R06.4 | Shortcut hints in a `?` sheet | not started |
+| R06.4 | `?` toggles a native `<dialog>` listing keys 1–7 + `?` (labels from `navItems`); Kbd restyled to v1 (12/500, 4px) | complete 11-09 |
 | R06.5 | DishPhoto | not started |
 | R06.6+ | Screens, one per step, with loading/error/empty states | not started |
 
