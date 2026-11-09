@@ -258,6 +258,79 @@ export const AddWithoutDiacritics: Story = {
   },
 };
 
+async function expectActive(canvasElement: HTMLElement, name: string) {
+  const canvas = within(canvasElement);
+  const option = canvas.getByRole("option", { name });
+  await expect(option).toHaveAttribute("aria-selected", "true");
+  await expect(canvas.getByRole("combobox", { name: "Item" })).toHaveAttribute(
+    "aria-activedescendant",
+    option.id,
+  );
+}
+
+export const KeyboardMovesThroughSuggestions: Story = {
+  parameters: { pantryRoute: emptyFridge, extraRoutes: [postOk] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const item = await canvas.findByRole("combobox", { name: "Item" });
+    await userEvent.type(item, "e");
+    await canvas.findByRole("option", { name: "Eggs" });
+    await expect(item).not.toHaveAttribute("aria-activedescendant");
+
+    await userEvent.keyboard("{ArrowDown}");
+    await expectActive(canvasElement, "Feta");
+    await userEvent.keyboard("{ArrowUp}");
+    await expectActive(canvasElement, "Feta");
+    await userEvent.keyboard("{ArrowDown}");
+    await expectActive(canvasElement, "Eggs");
+    await expect(canvas.getByRole("option", { name: "Feta" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+    await userEvent.keyboard("{ArrowDown}");
+    await expectActive(canvasElement, "Eggs");
+    await userEvent.keyboard("{ArrowUp}");
+    await expectActive(canvasElement, "Feta");
+  },
+};
+
+export const KeyboardEnterPicks: Story = {
+  parameters: { pantryRoute: emptyFridge, extraRoutes: [postOk] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const item = await canvas.findByRole("combobox", { name: "Item" });
+    await userEvent.type(item, "e");
+    await canvas.findByRole("option", { name: "Eggs" });
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+
+    await expect(item).toHaveValue("Eggs");
+    await expect(canvas.queryByRole("listbox")).not.toBeInTheDocument();
+    await expect(item).toHaveAttribute("aria-expanded", "false");
+    await expect(canvas.getByText("pcs")).toBeInTheDocument();
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await expect(api.requestsTo("POST", PANTRY)).toHaveLength(0);
+  },
+};
+
+export const KeyboardEscapeCloses: Story = {
+  parameters: { pantryRoute: emptyFridge, extraRoutes: [postOk] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const item = await canvas.findByRole("combobox", { name: "Item" });
+    await userEvent.type(item, "Fe");
+    await canvas.findByRole("option", { name: "Feta" });
+    await userEvent.keyboard("{ArrowDown}{Escape}");
+
+    await expect(canvas.queryByRole("listbox")).not.toBeInTheDocument();
+    await expect(item).toHaveValue("Fe");
+    await expect(item).not.toHaveAttribute("aria-activedescendant");
+    await expect(item).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await expectActive(canvasElement, "Feta");
+  },
+};
+
 export const SuggestionsAboveTable: Story = {
   parameters: { pantryRoute: { method: "GET", path: PANTRY, body: items } },
   play: async ({ canvasElement }) => {

@@ -2597,3 +2597,19 @@ AddWithoutExpiry / AddNeedsAmount / AddUnknownItem / AddWithoutDiacritics / AddF
 lint 0 errors, 2 warnings in untouched files.
 
 **Next:** R06.7.
+
+## R06.6c — Fridge item suggestions keyboard — `awaiting review` (2026-11-09)
+
+**Outcome:** `AddToFridgeForm` Item combobox handles keys. ↓ opens the list if closed and moves
+the highlight down; ↑ moves it up; both stop at the ends (no wrap). The input's
+`aria-activedescendant` points at the highlighted option (`fridge-item-option-<id>`), which has
+`aria-selected="true"` and the fill background. Enter on a highlighted option picks it and does not
+submit; Enter with nothing highlighted submits as before. Esc closes the list, keeps the typed text.
+Typing or closing resets the highlight.
+
+**Verified:** stories KeyboardMovesThroughSuggestions / KeyboardEnterPicks / KeyboardEscapeCloses
+failed before, pass after. `npm run test -w web` → 35 files / 129 tests pass, but exit 1 from a
+pre-existing unhandled `showPicker()` "requires a user gesture" error (Expires `onClick`, hit in
+AddItem; present before this change). `bash scripts/verify.sh` passes; 2 lint warnings in untouched files.
+
+**Next:** R06.7.
