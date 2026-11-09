@@ -15,7 +15,13 @@ import {
   useHouseholdMembersCatalog,
   useHouseholdSettingsCatalog,
 } from "../../shared/api/household";
-import { useWeek, useGeneratePreview, useAcceptPlan, StalePreviewError } from "./useWeek";
+import {
+  useWeek,
+  useGeneratePreview,
+  useAcceptPlan,
+  useSetSlotLocked,
+  StalePreviewError,
+} from "./useWeek";
 import { deriveWeekRows } from "./deriveWeekRows";
 import { WeekNav } from "./WeekNav";
 import { WeekGrid } from "./WeekGrid";
@@ -52,6 +58,7 @@ export function WeekPage() {
   const weekQuery = useWeek(weekStartDate);
   const generatePreview = useGeneratePreview();
   const acceptPlan = useAcceptPlan();
+  const setSlotLocked = useSetSlotLocked();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const preview = generatePreview.data;
 
@@ -69,6 +76,17 @@ export function WeekPage() {
   function handleGenerate() {
     acceptPlan.reset();
     generatePreview.mutate({ weekStartDate, seed: Math.floor(Math.random() * 1_000_000) });
+  }
+
+  function handleCardLock(day: number, locked: boolean) {
+    if (!weekQuery.data) return;
+    setSlotLocked.mutate({
+      weekStartDate,
+      day,
+      mealSlot: "dinner",
+      locked,
+      expectedRevision: weekQuery.data.revision,
+    });
   }
 
   function handleAccept() {
@@ -200,6 +218,12 @@ export function WeekPage() {
               selectedDay={preview ? null : selectedDay}
               onSelectDay={preview ? () => {} : setSelectedDay}
               onDeselect={() => setSelectedDay(null)}
+              onSetLocked={!preview && weekQuery.data ? handleCardLock : undefined}
+              lockError={
+                setSlotLocked.isError && setSlotLocked.variables
+                  ? { day: setSlotLocked.variables.day, locked: setSlotLocked.variables.locked }
+                  : null
+              }
             />
           </div>
         </div>

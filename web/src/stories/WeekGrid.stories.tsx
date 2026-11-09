@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { WeekGrid } from "../features/week/WeekGrid";
 import type { WeekDayRow } from "../features/week/deriveWeekRows";
 import { expectNoCaps } from "./expectNoCaps";
@@ -69,8 +69,12 @@ function InteractiveWeekGrid() {
   );
 }
 
-function card(root: HTMLElement, text: string | RegExp) {
-  return within(root).getByRole("button", { name: text });
+function card(root: HTMLElement, day: RegExp) {
+  return within(root).getByRole("button", { name: new RegExp(`^${day.source}`) });
+}
+
+function dayCard(root: HTMLElement, day: RegExp) {
+  return card(root, day).closest<HTMLElement>("[data-day-card]")!;
 }
 
 const meta: Meta<typeof InteractiveWeekGrid> = {
@@ -97,7 +101,7 @@ export const NoneSelected: Story = {
     await expect(filled.querySelector("[data-dish-tile]")).toHaveTextContent(
       "Chicken and rice bowl",
     );
-    await expect(getComputedStyle(filled).borderRadius).toBe("8px");
+    await expect(getComputedStyle(dayCard(canvasElement, /Mon 14/)).borderRadius).toBe("8px");
     await expect(filled).not.toHaveTextContent(/Svetlana|Kč/);
     await expectNoCaps(canvasElement);
   },
@@ -143,5 +147,116 @@ export const DaySelected: Story = {
   play: async ({ canvasElement }) => {
     await expect(card(canvasElement, /Tue 15/)).toHaveAttribute("aria-pressed", "true");
     await expect(card(canvasElement, /Mon 14/)).toHaveAttribute("aria-pressed", "false");
+  },
+};
+
+export const CardActions: Story = {
+  render: () => (
+    <WeekGrid
+      rows={rows}
+      selectedDay={null}
+      onSelectDay={() => {}}
+      onDeselect={() => {}}
+      onSetLocked={() => {}}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const mon = within(dayCard(canvasElement, /Mon 14/));
+    await expect(mon.getByRole("button", { name: "Swap Mon 14" })).toBeInTheDocument();
+    const unlock = mon.getByRole("button", { name: "Unlock Mon 14" });
+    await expect(unlock).toHaveAttribute("aria-pressed", "true");
+    await expect(unlock.getBoundingClientRect().height).toBe(44);
+    await expect(unlock.getBoundingClientRect().width).toBe(44);
+
+    const tue = within(dayCard(canvasElement, /Tue 15/));
+    await expect(tue.getByRole("button", { name: "Lock Tue 15" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    await expect(
+      tue.getByRole("button", { name: "Swap Tue 15" }).getBoundingClientRect().height,
+    ).toBe(44);
+
+    const wed = within(dayCard(canvasElement, /Wed 16/));
+    await expect(wed.getByRole("button", { name: "Swap Wed 16" })).toBeInTheDocument();
+    await expect(wed.queryByRole("button", { name: /Lock|Unlock/ })).toBeNull();
+    await expect(canvas.queryByRole("alert")).toBeNull();
+  },
+};
+
+let selectDay = fn();
+let setLocked = fn();
+
+export const SwapSelectsDayLockDoesNot: Story = {
+  beforeEach: () => {
+    selectDay = fn();
+    setLocked = fn();
+  },
+  render: () => (
+    <WeekGrid
+      rows={rows}
+      selectedDay={null}
+      onSelectDay={selectDay}
+      onDeselect={() => {}}
+      onSetLocked={setLocked}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Lock Tue 15" }));
+    await expect(setLocked).toHaveBeenCalledWith(1, true);
+    await userEvent.click(canvas.getByRole("button", { name: "Unlock Mon 14" }));
+    await expect(setLocked).toHaveBeenCalledWith(0, false);
+    await expect(selectDay).not.toHaveBeenCalled();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Swap Wed 16" }));
+    await expect(selectDay).toHaveBeenCalledWith(2);
+  },
+};
+
+export const LockErrorOnCard: Story = {
+  render: () => (
+    <WeekGrid
+      rows={rows}
+      selectedDay={null}
+      onSelectDay={() => {}}
+      onDeselect={() => {}}
+      onSetLocked={() => {}}
+      lockError={{ day: 1, locked: true }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const tue = within(dayCard(canvasElement, /Tue 15/));
+    await expect(tue.getByRole("alert")).toHaveTextContent("Couldn't lock meal");
+    await expect(within(dayCard(canvasElement, /Mon 14/)).queryByRole("alert")).toBeNull();
+  },
+};
+
+export const UnlockErrorOnCard: Story = {
+  render: () => (
+    <WeekGrid
+      rows={rows}
+      selectedDay={null}
+      onSelectDay={() => {}}
+      onDeselect={() => {}}
+      onSetLocked={() => {}}
+      lockError={{ day: 0, locked: false }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const mon = within(dayCard(canvasElement, /Mon 14/));
+    await expect(mon.getByRole("alert")).toHaveTextContent("Couldn't unlock meal");
+  },
+};
+
+export const NoActionsWithoutLockHandler: Story = {
+  render: () => (
+    <WeekGrid rows={rows} selectedDay={null} onSelectDay={() => {}} onDeselect={() => {}} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("button", { name: /^(Swap|Lock|Unlock) / })).toBeNull();
   },
 };

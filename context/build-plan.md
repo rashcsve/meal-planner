@@ -787,6 +787,12 @@ via a "Sort by" select (decided 2026-11-09). (done) **R06.7c** — "Add a recipe
 and a "Locked" badge, title, "N kcal a portion · M min" (time only when kcal unknown), "X portions" tag,
 reason tags; empty day keeps "No recipe assigned". Per-member rows and cost leave the card (rail has them).
 Restyle only (decided 2026-11-09): the card stays one select button; on-card Swap / Lock wait for R06.9c. (done)
+**R06.9c** — On-card Swap / Lock (decided 2026-11-09). The card is no longer one button: the tile and
+text become the select button, and a row below holds "Swap" (selects the day, opening the existing rail
+with suggestions and "See all options") and a 44px lock icon button (`aria-pressed`, "Lock Mon 21" /
+"Unlock Mon 21") using the existing optimistic lock mutation, without selecting the day. Empty days get
+Swap only. A failed lock shows "Couldn't lock meal" / "Couldn't unlock meal" in that card (`role=alert`);
+no toast primitive yet. No actions during a preview. "Swapping …" rail title and "Choosing…" wait. (done)
 
 ### R07 — Recipe detail
 
