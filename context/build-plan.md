@@ -768,7 +768,7 @@ sentence case. Old `text-9…34` sizes stay until the screens move to roles (R06
 sidebar removed; keys 1–6 follow menu order, 7 Household; `/today` is a coming-soon page. (done)
 **R06.3** — `/week` → `/plan`, `/pantry` → `/fridge`. Changed 2026-11-09: rename only, no redirects (no old links in use). (done)
 **R06.4** — shortcut hints move to a `?` sheet. (done)
-**R06.5** — DishPhoto: recipe photo or a fill tile with the dish name.
+**R06.5** — DishPhoto: recipe photo or a fill tile with the dish name. UI primitive only; recipes have no photo field yet. (done)
 **R06.6+** — one screen per slice, each with loading/error/empty states.
 
 ### R07 — Recipe detail

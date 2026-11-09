@@ -2548,3 +2548,21 @@ QuestionMarkTogglesShortcutSheet / ShortcutSheetListsEveryNavKey and Kbd V1Shape
 no dialog; 9px). Typecheck clean; lint 0 errors, 2 warnings in untouched files.
 
 **Next:** R06.5.
+
+## R06.5 — DishPhoto — `awaiting review` (2026-11-09)
+
+**Outcome:** `shared/ui/DishPhoto.tsx` takes `name` + optional `photoUrl`. With a URL: `<img>`
+(alt = name, `object-cover`, `rounded-card` 8px). Without: a `bg-fill` tile with the name
+(`type-section`, ink, centred, wraps, clamped to 3 lines). Both fill the parent's box.
+
+**Decisions:**
+- UI primitive only (owner's choice): recipes have no photo column, schema or storage yet, so
+  every recipe gets the tile until a later step adds photo data.
+- Card radius only; no control-radius variant until a screen needs it.
+- A broken photo URL shows the browser's broken image, not the tile (not in scope).
+
+**Verified:** `npm run test -w web` → 34 files / 112 tests pass (DishPhoto WithPhoto / NoPhoto /
+NoPhotoLongName failed before: module missing). `bash scripts/verify.sh` clean; lint 0 errors,
+2 warnings in untouched files.
+
+**Next:** R06.6.
