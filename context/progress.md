@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R06 — Use It Up design refresh (not yet split into sub-steps).
+**Next step:** fix story tests to load Tailwind (vitest config), then R06.1b.
 
 ## R04 — planner correctness and search quality
 
@@ -58,6 +58,19 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.11e | Empty-slot journey: week saved with an empty dinner, filled from the picker; revision +1, snapshot matches choice | complete 11-09 |
 | R05.11f | E2E runs against `vite build` + `vite preview` (temp outDir, removed on teardown); smoke test asserts built bundle | complete 11-09 |
 | R05.11g | CI `e2e` job: installs Chromium, runs `npm run test:e2e`, uploads `e2e/test-results` on failure | complete 11-09 |
+
+## R06 — Use It Up design refresh
+
+| Step | What | Status |
+| --- | --- | --- |
+| R06.1a | v1 colour + radius tokens; old colour names alias v1 values | complete 11-09 |
+| R06.1b | Inter, 14px base, type roles, sentence case | not started |
+| R06.1c | Primitives: 44px targets, button variants, focus, v1 radii | not started |
+| R06.2 | Top menu + Household access | not started |
+| R06.3 | `/week` → `/plan`, `/pantry` → `/fridge` redirects, params kept | not started |
+| R06.4 | Shortcut hints in a `?` sheet | not started |
+| R06.5 | DishPhoto | not started |
+| R06.6+ | Screens, one per step, with loading/error/empty states | not started |
 
 ## Earlier milestones
 
