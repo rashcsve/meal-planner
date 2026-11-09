@@ -2531,3 +2531,20 @@ Save/Pantry/Fast failed before: 9px). `bash scripts/verify.sh` clean; lint 0 err
 in untouched files.
 
 **Next:** R06.2.
+
+## R06.4 — `?` shortcut sheet — `awaiting review` (2026-11-09)
+
+**Outcome:** `?` (outside inputs) toggles `app/ShortcutSheet.tsx`, a native `<dialog>` opened with
+`showModal()`, named "Keyboard shortcuts", listing keys 1–7 from `navItems.ts` plus `?`. `Kbd`
+restyled to v1: `type-label` (12/500 muted), `rounded-tag` (4px), `border-border`, Inter.
+
+**Decisions:**
+- Native `<dialog>`, no library: focus trap, inert background and `role="dialog"` come from the
+  browser. Esc also closes it (browser default); `onClose` keeps React state in sync.
+- No visible `?` button in the top menu (owner's choice); keyboard only.
+
+**Verified:** `npm run test -w web` → 33 files / 109 tests pass (AppShell
+QuestionMarkTogglesShortcutSheet / ShortcutSheetListsEveryNavKey and Kbd V1Shape failed before:
+no dialog; 9px). Typecheck clean; lint 0 errors, 2 warnings in untouched files.
+
+**Next:** R06.5.

@@ -90,3 +90,41 @@ export const NumberKeysFollowMenuOrder: Story = {
     );
   },
 };
+
+export const QuestionMarkTogglesShortcutSheet: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("dialog")).toBeNull();
+
+    await userEvent.keyboard("?");
+    const sheet = await canvas.findByRole("dialog", { name: "Keyboard shortcuts" });
+    await expect(sheet).toBeVisible();
+    await expectNoCaps(sheet);
+
+    await userEvent.keyboard("?");
+    await waitFor(() => expect(canvas.queryByRole("dialog")).toBeNull());
+    await expect(canvas.getByText("Page at /plan")).toBeVisible();
+  },
+};
+
+export const ShortcutSheetListsEveryNavKey: Story = {
+  play: async ({ canvasElement }) => {
+    await userEvent.keyboard("?");
+    const sheet = await within(canvasElement).findByRole("dialog", {
+      name: "Keyboard shortcuts",
+    });
+    const rows = within(sheet)
+      .getAllByRole("listitem")
+      .map((row) => [row.querySelector("kbd")?.textContent, row.textContent]);
+    await expect(rows).toEqual([
+      ["1", "1Today"],
+      ["2", "2Plan"],
+      ["3", "3Shopping"],
+      ["4", "4Fridge"],
+      ["5", "5Recipes"],
+      ["6", "6Import"],
+      ["7", "7Household"],
+      ["?", "?Show or hide shortcuts"],
+    ]);
+  },
+};
