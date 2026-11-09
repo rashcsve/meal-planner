@@ -203,3 +203,31 @@ export const CardUnlockConflictShowsErrorOnCard: Story = {
     );
   },
 };
+
+export const CardLocksWaitForPendingMutation: Story = {
+  parameters: { holdRefetch: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: "Unlock Mon 2" });
+    client.setQueryData(weekKeys.detail(WEEK), {
+      ...week(3, true),
+      slots: [slot(true), { ...slot(true), day: 1 }],
+    });
+    const tuesday = await canvas.findByRole("button", { name: "Unlock Tue 3" });
+    await userEvent.click(canvas.getByRole("button", { name: "Unlock Mon 2" }));
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Lock Mon 2" })).toBeDisabled());
+    await expect(tuesday).toBeDisabled();
+    await userEvent.click(tuesday);
+    await expect(api.requestsTo("DELETE", /\/lock$/)).toHaveLength(1);
+
+    unlock.resolve({ ...slot(false), revision: 4 });
+    await waitFor(() => expect(api.requestsTo("GET", WEEK_PATH)).toHaveLength(2));
+    await expect(tuesday).toBeDisabled();
+    refetch.resolve({
+      ...week(4, false),
+      slots: [slot(false), { ...slot(true), day: 1 }],
+    });
+    await waitFor(() => expect(tuesday).toBeEnabled());
+    await expect(canvas.getByRole("button", { name: "Lock Mon 2" })).toBeEnabled();
+  },
+};

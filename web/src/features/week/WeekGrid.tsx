@@ -14,6 +14,7 @@ interface WeekGridProps {
   onSelectDay: (day: number) => void;
   onDeselect: () => void;
   onSetLocked?: (day: number, locked: boolean) => void;
+  isLockPending?: boolean;
   lockError?: { day: number; locked: boolean } | null;
 }
 
@@ -41,6 +42,7 @@ export function WeekGrid({
   onSelectDay,
   onDeselect,
   onSetLocked,
+  isLockPending = false,
   lockError,
 }: WeekGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
@@ -138,6 +140,7 @@ export function WeekGrid({
                     aria-pressed={row.locked}
                     aria-label={`${row.locked ? "Unlock" : "Lock"} ${row.dayLabel}`}
                     className="w-11 shrink-0 px-0"
+                    disabled={isLockPending}
                     onClick={() => onSetLocked(row.day, !row.locked)}
                   >
                     <LockIcon />
