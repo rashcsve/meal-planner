@@ -764,7 +764,8 @@ sentence case. Old `text-9…34` sizes stay until the screens move to roles (R06
 **R06.1c2** — Input + Select: 44px, 6px radius, v1 border, same focus ring. (done)
 **R06.1c3** — FlagTag + ReasonTag: status tags 12/600 on the tone's tint, 4px radius;
 `save` moves from danger to ok (v1: money saved = ok). (done)
-**R06.2** — top menu (Today, Plan, Shopping, Fridge, Recipes, Import) + Household access.
+**R06.2** — top menu (Today, Plan, Shopping, Fridge, Recipes, Import) + Household access;
+sidebar removed; keys 1–6 follow menu order, 7 Household; `/today` is a coming-soon page. (done)
 **R06.3** — redirect `/week` → `/plan`, `/pantry` → `/fridge`, deep-link parameters kept.
 **R06.4** — shortcut hints move to a `?` sheet.
 **R06.5** — DishPhoto: recipe photo or a fill tile with the dish name.
