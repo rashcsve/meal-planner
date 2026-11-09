@@ -12,7 +12,7 @@ import { Input } from "../../shared/ui/Input";
 import { Select } from "../../shared/ui/Select";
 import { ErrorState } from "../../shared/ui/ErrorState";
 import { emptyToUndefined, emptyToUndefinedNumber } from "../../shared/lib/formValues";
-import type { Ingredient } from "./useIngredients";
+import type { Ingredient } from "../../shared/api/useIngredients";
 
 interface AddIngredientLineFormProps {
   ingredients: Ingredient[];

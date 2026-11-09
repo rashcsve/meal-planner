@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R06.6b (or the next screen).
+**Next step:** R06.6c (suggestion keyboard), then R06.7.
 
 ## R04 — planner correctness and search quality
 
@@ -75,7 +75,8 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R06.4 | `?` toggles a native `<dialog>` listing keys 1–7 + `?` (labels from `navItems`); Kbd restyled to v1 (12/500, 4px) | complete 11-09 |
 | R06.5 | DishPhoto primitive: `<img>` (cover, 8px) or fill tile with the name; no photo data yet, every recipe gets the tile | complete 11-09 |
 | R06.6 | Fridge restyled: v1 card, "N items" + h1, 3px expiry bar (Table-wide), toned expiry date, fridge copy; loading `role=status`; first stories | complete 11-09 |
-| R06.6b | Fridge "Add to the fridge" form (`useCreatePantryItem`, unused so far) | not started |
+| R06.6b | Fridge "Add to the fridge" form: typed item, own suggestion list (ignores case + diacritics), base-unit amount, optional expiry; loaded + empty states; `useIngredients` → `shared/api` | complete 11-09 |
+| R06.6c | Fridge item suggestions: keyboard (↑/↓, Enter, Esc) | not started |
 | R06.7+ | Remaining screens, one per step, with loading/error/empty states | not started |
 
 ## Earlier milestones

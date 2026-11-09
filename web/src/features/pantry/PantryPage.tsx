@@ -6,6 +6,7 @@ import { CloseButton } from "../../shared/ui/CloseButton";
 import { daysUntil, expiryRowState, formatExpiry } from "../../shared/lib/expiry";
 import type { ReactNode } from "react";
 import { usePantryItems, useRemovePantryItem, type PantryItem } from "./usePantry";
+import { AddToFridgeForm } from "./AddToFridgeForm";
 
 function formatAmount(item: PantryItem): string {
   if (item.displayAmount != null && item.displayUnit) {
@@ -109,6 +110,7 @@ export function PantryPage() {
   if (!data || data.length === 0) {
     return (
       <FridgeCard count={0}>
+        <AddToFridgeForm />
         <EmptyState message="Your fridge is empty." action={null} />
       </FridgeCard>
     );
@@ -116,6 +118,7 @@ export function PantryPage() {
 
   return (
     <FridgeCard count={data.length}>
+      <AddToFridgeForm />
       <Table rows={data} columns={columns} rowId={(i) => i.id} getRowState={rowState} />
     </FridgeCard>
   );

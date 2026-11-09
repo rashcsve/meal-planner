@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InferResponseType } from "hono/client";
 import type { CreateIngredientInput } from "shared";
 import { apiClient } from "../../app/apiClient";
-import { unwrapResponse } from "../../shared/api/unwrapResponse";
+import { unwrapResponse } from "./unwrapResponse";
 
 export const ingredientsKeys = {
   list: ["ingredients"] as const,
