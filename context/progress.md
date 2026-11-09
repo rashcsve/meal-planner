@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R06.1c.
+**Next step:** R06.1c2.
 
 ## R04 — planner correctness and search quality
 
@@ -67,7 +67,9 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R06.1a2 | Story tests load Tailwind (a11y contrast now real); `faint` aliases `muted` — v1 `subtle` #A8A29E fails AA as text | complete 11-09 |
 | R06.1b1 | Inter, 14px base, six v1 type-role utilities; `type-label/num/name` rewritten (no uppercase, tracking, stretch); old `text-9…34` kept | complete 11-09 |
 | R06.1b2 | Raw `uppercase` / `tracking-*` classes and `--tracking-flag` removed; stories assert no caps or letter-spacing | complete 11-09 |
-| R06.1c | Primitives: 44px targets, button variants, focus, v1 radii | not started |
+| R06.1c1 | Button: 44px, 6px radius, 14/500; primary/secondary/destructive (renamed at all call sites); 2px lock focus | complete 11-09 |
+| R06.1c2 | Input + Select: 44px, v1 radius, border, focus | not started |
+| R06.1c3 | FlagTag + ReasonTag: 12/600 on tint, 4px radius | not started |
 | R06.2 | Top menu + Household access | not started |
 | R06.3 | `/week` → `/plan`, `/pantry` → `/fridge` redirects, params kept | not started |
 | R06.4 | Shortcut hints in a `?` sheet | not started |

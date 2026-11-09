@@ -19,7 +19,7 @@ export function ArchiveRecipeControl({
 
   if (!confirming) {
     return (
-      <Button type="button" variant="ghost" onClick={() => setConfirming(true)}>
+      <Button type="button" variant="secondary" onClick={() => setConfirming(true)}>
         Archive recipe
       </Button>
     );
@@ -34,7 +34,7 @@ export function ArchiveRecipeControl({
       <div className="flex gap-1.5">
         <Button
           type="button"
-          variant="danger"
+          variant="destructive"
           disabled={isArchiving}
           aria-describedby={errorId}
           onClick={onArchive}
@@ -43,7 +43,7 @@ export function ArchiveRecipeControl({
         </Button>
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           disabled={isArchiving}
           onClick={() => {
             setConfirming(false);

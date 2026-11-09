@@ -47,7 +47,7 @@ export function SwapPicker() {
     <div className="flex h-full flex-col gap-3 overflow-auto p-3.5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="type-name text-15">Swap meal</h2>
-        <Button variant="ghost" onClick={backToWeek}>
+        <Button variant="secondary" onClick={backToWeek}>
           Cancel
         </Button>
       </div>
@@ -102,14 +102,14 @@ export function SwapPicker() {
 
       <div className="flex gap-2">
         <Button
-          variant="ghost"
+          variant="secondary"
           disabled={offset === 0}
           onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
         >
           Previous
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
           disabled={offset + PAGE_SIZE >= total}
           onClick={() => setOffset(offset + PAGE_SIZE)}
         >

@@ -194,7 +194,7 @@ export function RecipeForm({ onSaved, onCancel }: RecipeFormProps) {
         <Button type="submit" disabled={createRecipe.isPending}>
           Save recipe
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
       </div>

@@ -1,16 +1,16 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cx } from "../lib/cx";
 
-type ButtonVariant = "primary" | "ghost" | "danger";
+type ButtonVariant = "primary" | "secondary" | "destructive";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "border-ink bg-ink text-paper hover:bg-ink/90",
-  ghost: "border-line bg-transparent text-ink hover:border-ink",
-  danger: "border-promo bg-promo text-paper hover:bg-promo/90",
+  primary: "border-ink bg-ink text-surface hover:bg-ink/90",
+  secondary: "border-border bg-surface text-ink hover:border-ink",
+  destructive: "border-danger-tint bg-surface text-danger hover:border-danger",
 };
 
 export function Button({
@@ -24,8 +24,8 @@ export function Button({
     <button
       type={type}
       className={cx(
-        "inline-flex cursor-pointer items-center justify-center gap-1 rounded border px-2.5 py-1.25 text-11 font-bold font-stretch-88%",
-        "focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1",
+        "type-body inline-flex h-11 cursor-pointer items-center justify-center gap-1 rounded-control border px-4 font-medium",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lock",
         "disabled:cursor-default disabled:opacity-35",
         variantClasses[variant],
         className,

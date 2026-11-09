@@ -79,7 +79,7 @@ export function ShareProposal({
             </div>
           )}
           <div className="flex items-center gap-1.5 border-t border-line px-2.5 py-1.75">
-            <Button variant="ghost" onClick={() => onConfirm(proposal)} disabled={isConfirming}>
+            <Button variant="secondary" onClick={() => onConfirm(proposal)} disabled={isConfirming}>
               {isConfirmed ? "Re-confirm" : "Confirm"}
             </Button>
           </div>

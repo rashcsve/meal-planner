@@ -37,7 +37,7 @@ export function ServingsField({ servings, onSave, isSaving, error }: ServingsFie
           aria-describedby={errorId}
           {...register("servings", { valueAsNumber: true })}
         />
-        <Button type="submit" variant="ghost" disabled={isSaving}>
+        <Button type="submit" variant="secondary" disabled={isSaving}>
           Save
         </Button>
       </div>
