@@ -708,7 +708,7 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
     **R05.11f** (done) — run against the production build: global setup runs `vite build` (API URL
     baked in) into a temp dir, serves it with `vite preview`, deletes it on teardown; a smoke test
     asserts the page is the built bundle.
-    **R05.11g** — CI job for `npm run test:e2e` (`.github/` is red zone: ask first; CI needs
+    **R05.11g** (done) — CI job for `npm run test:e2e` (`.github/` is red zone: ask first; CI needs
     `npx playwright install chromium`).
 
 ### R06 — Use It Up design refresh

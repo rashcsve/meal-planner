@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.11g — CI job for `npm run test:e2e` (`.github/` is red zone: ask first).
+**Next step:** R06 — Use It Up design refresh (not yet split into sub-steps).
 
 ## R04 — planner correctness and search quality
 
@@ -57,6 +57,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.11d | Stale-preview journey: budget changed via API before Accept → "Preview again" → second Accept saves | complete 11-09 |
 | R05.11e | Empty-slot journey: week saved with an empty dinner, filled from the picker; revision +1, snapshot matches choice | complete 11-09 |
 | R05.11f | E2E runs against `vite build` + `vite preview` (temp outDir, removed on teardown); smoke test asserts built bundle | complete 11-09 |
+| R05.11g | CI `e2e` job: installs Chromium, runs `npm run test:e2e`, uploads `e2e/test-results` on failure | complete 11-09 |
 
 ## Earlier milestones
 
