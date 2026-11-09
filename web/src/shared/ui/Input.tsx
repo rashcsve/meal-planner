@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes } from "react";
 import { cx } from "../lib/cx";
 
-type InputType = "text" | "number" | "search";
+type InputType = "text" | "number" | "search" | "date";
 
 interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   type?: InputType;

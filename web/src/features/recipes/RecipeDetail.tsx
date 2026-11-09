@@ -8,7 +8,7 @@ import { IngredientLineRow } from "./IngredientLineRow";
 import { AddIngredientLineForm } from "./AddIngredientLineForm";
 import { ServingsField } from "./ServingsField";
 import { ArchiveRecipeControl } from "./ArchiveRecipeControl";
-import { useCreateIngredient, useIngredients } from "./useIngredients";
+import { useCreateIngredient, useIngredients } from "../../shared/api/useIngredients";
 import { firstMutationError, lineMutationError } from "./mutationError";
 import {
   useAddIngredientLine,

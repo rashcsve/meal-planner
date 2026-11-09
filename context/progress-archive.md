@@ -2566,3 +2566,34 @@ NoPhotoLongName failed before: module missing). `bash scripts/verify.sh` clean; 
 2 warnings in untouched files.
 
 **Next:** R06.6.
+
+## R06.6b — Fridge add form — `awaiting review` (2026-11-09)
+
+**Outcome:** `features/pantry/AddToFridgeForm.tsx` above the table (loaded) and above the empty
+message (empty); hidden while loading or on list error. Fields with visible labels: Item (text input
+(ARIA combobox) with our own suggestion list: existing ingredient names containing the typed text,
+ignoring case and diacritics (`normalizeForSearch`); click picks; exact typed name also matches; unknown name →
+"Pick an item from the list"), Amount (number in the ingredient's base unit, unit shown
+beside it), Expires (optional date). react-hook-form + `createPantryItemSchema`; posts via
+`useCreatePantryItem`, list refetches, form resets. Validation and server errors show in an
+`ErrorState` "Couldn't add to the fridge"; input is kept on failure.
+
+**Decisions:**
+- Typed item, not a select (owner's choice). First tried a native `<datalist>`: Chrome filters its
+  popup accent-sensitively ("ces" didn't show "Česnek"), so replaced by our own list (no library;
+  rules exclude component libraries). Kept in `features/pantry` until a second screen needs it.
+- The text lives in `useState`; `setValue` stores the matched id (`undefined` when none), so the
+  shared schema and POST body are unchanged.
+- Keyboard (↑/↓, Enter, Esc) is the next slice, R06.6c.
+- Existing ingredients only (owner's choice): the API needs `ingredientId` + `amountBase` and has no
+  name lookup or unit conversion for the fridge. Free text ("e.g. natural yoghurt", "400 g") and
+  creating ingredients from the fridge wait for a later step.
+- Visible labels instead of the board's placeholders (v1 rule: inputs always have a visible label).
+- `useIngredients` moved `features/recipes` → `shared/api` (features never import each other).
+- `Input` accepts `type="date"`.
+
+**Verified:** `npm run test -w web` → 35 files / 122 tests pass (FridgePage Loaded / Empty / AddItem /
+AddWithoutExpiry / AddNeedsAmount / AddUnknownItem / AddWithoutDiacritics / AddFails failed before: no form / no suggestions). `bash scripts/verify.sh` exit 0;
+lint 0 errors, 2 warnings in untouched files.
+
+**Next:** R06.7.

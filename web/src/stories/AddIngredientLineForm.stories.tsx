@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { AddIngredientLineForm } from "../features/recipes/AddIngredientLineForm";
-import type { Ingredient } from "../features/recipes/useIngredients";
+import type { Ingredient } from "../shared/api/useIngredients";
 
 function ingredient(id: number, name: string, baseUnit: string): Ingredient {
   return {
