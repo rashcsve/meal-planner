@@ -704,7 +704,7 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
     **R05.11c** (done) — cancel swap: Cancel from the picker; revision and slots unchanged via GET.
     **R05.11d** (done) — stale preview: the test changes an input via the API before Accept; "Preview
     again" appears and a second Accept saves.
-    **R05.11e** — empty-slot replacement: open the picker on an empty slot, choose; slot saved.
+    **R05.11e** (done) — empty-slot replacement: open the picker on an empty slot, choose; slot saved.
     **R05.11f** — run against the production build (`vite build` + `vite preview`) instead of the
     dev server.
     **R05.11g** — CI job for `npm run test:e2e` (`.github/` is red zone: ask first; CI needs

@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.11e — Browser journey: empty-slot replacement.
+**Next step:** R05.11f — E2E against the production build (`vite build` + `vite preview`).
 
 ## R04 — planner correctness and search quality
 
@@ -55,6 +55,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.11b | Preview → accept journey; shared fixture truncates tables and seeds via API (member via SQL) | complete 11-09 |
 | R05.11c | Cancel-swap journey: picker opened from the rail, Cancel writes nothing (revision + slots via GET) | complete 11-09 |
 | R05.11d | Stale-preview journey: budget changed via API before Accept → "Preview again" → second Accept saves | complete 11-09 |
+| R05.11e | Empty-slot journey: week saved with an empty dinner, filled from the picker; revision +1, snapshot matches choice | complete 11-09 |
 
 ## Earlier milestones
 
