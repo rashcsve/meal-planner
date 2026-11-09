@@ -773,7 +773,11 @@ sidebar removed; keys 1–6 follow menu order, 7 Household; `/today` is a coming
 states. Restyle only; Used/bin, "In a dinner" and side cards wait for R08/R09. (done)
 **R06.6b** — Fridge add form ("Add to the fridge"): typed item with suggestions from existing ingredients, amount in base unit, optional expiry. (done)
 **R06.6c** — Fridge item suggestions: keyboard (↑/↓ move, Enter picks, Esc closes). (done)
-**R06.7+** — one screen per slice, each with loading/error/empty states.
+**R06.7a** — Recipes frame: count label + page title in every state, `role=status` loading, recipe copy in error/empty. Table kept. (done)
+**R06.7b** — Recipes card grid (DishPhoto, title, kcal · time, tags) replaces the table; sorting kept
+via a "Sort by" select (decided 2026-11-09). **R06.7c** — "Add a recipe" tile. **R06.7d** — v1 filter chips.
+"Planned for …", "Uses …" and "dinner-sized" wait for plan/fridge data (R08/R09).
+**R06.7+** — remaining screens, one per slice, each with loading/error/empty states.
 
 ### R07 — Recipe detail
 

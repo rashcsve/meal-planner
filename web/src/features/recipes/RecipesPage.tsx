@@ -1,10 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Table,
-  type ColumnDef,
-  type SortDirection,
-} from "../../shared/ui/Table";
+import { Table, type ColumnDef, type SortDirection } from "../../shared/ui/Table";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { ErrorState } from "../../shared/ui/ErrorState";
 import { EmptyState } from "../../shared/ui/EmptyState";
@@ -149,6 +145,17 @@ const columns: ColumnDef<Recipe>[] = [
   },
 ];
 
+function RecipesHeader({ count }: { count?: number }) {
+  return (
+    <header>
+      {count != null && count > 0 && (
+        <p className="type-label">{count === 1 ? "1 recipe" : `${count} recipes`}</p>
+      )}
+      <h1 className="type-page-title text-ink">Recipes</h1>
+    </header>
+  );
+}
+
 export function RecipesPage() {
   const { id } = useParams<{ id: string }>();
   const recipeId = id ? Number(id) : undefined;
@@ -173,18 +180,13 @@ export function RecipesPage() {
   const filtered = useMemo(() => {
     if (!data) return [];
     const query = normalizeForSearch(search.trim());
-    return data.filter(
-      (r) => matchesFilters(r, filters) && matchesSearch(r, query),
-    );
+    return data.filter((r) => matchesFilters(r, filters) && matchesSearch(r, query));
   }, [data, search, filters]);
 
   const sorted = useMemo(() => {
     const rows = [...filtered];
     rows.sort((a, b) => {
-      const cmp = compareValues(
-        a[sortKey as keyof Recipe],
-        b[sortKey as keyof Recipe],
-      );
+      const cmp = compareValues(a[sortKey as keyof Recipe], b[sortKey as keyof Recipe]);
       return sortDirection === "asc" ? cmp : -cmp;
     });
     return rows;
@@ -197,10 +199,11 @@ export function RecipesPage() {
 
   if (isLoading) {
     return (
-      <div className="h-full overflow-auto p-3.5">
-        <div className="flex flex-col gap-1.5">
+      <div className="flex h-full flex-col gap-4 overflow-auto bg-page p-8">
+        <RecipesHeader />
+        <div role="status" aria-label="Loading recipes" className="flex flex-col gap-1.5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-8" />
+            <Skeleton key={i} className="h-11" />
           ))}
         </div>
       </div>
@@ -209,7 +212,8 @@ export function RecipesPage() {
 
   if (error) {
     return (
-      <div className="h-full overflow-auto p-3.5">
+      <div className="flex h-full flex-col gap-4 overflow-auto bg-page p-8">
+        <RecipesHeader />
         <ErrorState title="Couldn't load recipes" message={error.message} />
       </div>
     );
@@ -217,8 +221,9 @@ export function RecipesPage() {
 
   return (
     <div className="flex h-full">
-      <div className="flex-1 overflow-auto p-3.5">
-        <div className="flex flex-col gap-2">
+      <div className="flex-1 overflow-auto bg-page p-8">
+        <div className="flex flex-col gap-4">
+          <RecipesHeader count={data?.length} />
           <div className="flex items-center gap-2">
             <SearchInput
               value={search}
@@ -242,18 +247,13 @@ export function RecipesPage() {
             </div>
           </div>
           {showForm && (
-            <RecipeForm
-              onSaved={() => setShowForm(false)}
-              onCancel={() => setShowForm(false)}
-            />
+            <RecipeForm onSaved={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
           )}
           <div data-detail-rail-ignore>
             {sorted.length === 0 ? (
               <EmptyState
                 message={
-                  data && data.length > 0
-                    ? "No recipes match your search."
-                    : "No recipes yet."
+                  data && data.length > 0 ? "No recipes match your search." : "No recipes yet."
                 }
                 action={null}
               />
@@ -265,17 +265,13 @@ export function RecipesPage() {
                 sortKey={sortKey}
                 sortDirection={sortDirection}
                 onSortChange={handleSortChange}
-                onRowClick={(r) =>
-                  navigate(r.id === recipeId ? "/recipes" : `/recipes/${r.id}`)
-                }
+                onRowClick={(r) => navigate(r.id === recipeId ? "/recipes" : `/recipes/${r.id}`)}
               />
             )}
           </div>
         </div>
       </div>
-      {recipeId != null && (
-        <RecipeDetail id={recipeId} onClose={() => navigate("/recipes")} />
-      )}
+      {recipeId != null && <RecipeDetail id={recipeId} onClose={() => navigate("/recipes")} />}
     </div>
   );
 }
