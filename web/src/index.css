@@ -5,27 +5,39 @@
 
   --spacing: 4px;
 
-  --color-paper: #efeee9;
-  --color-card: #ffffff;
-  --color-sink: #e7e5df;
-  --color-rail: #f4f3ef;
+  --color-page: #fafaf9;
+  --color-surface: #ffffff;
+  --color-fill: #f5f5f4;
+  --color-dark: #18181b;
 
-  --color-ink: #17191c;
-  --color-muted: #6b6e73;
-  --color-faint: #9a9c9f;
+  --color-ink: #18181b;
+  --color-muted: #57534e;
+  --color-subtle: #a8a29e;
 
-  --color-line: #dad8d1;
-  --color-hair: #e6e4de;
+  --color-border: #d6d3d1;
+  --color-divider: #e7e5e4;
 
-  --color-promo: #d93a20;
-  --color-check: #b8860b;
-  --color-ok: #2e7d52;
+  --color-ok: #2d6a4f;
+  --color-warning: #b54708;
+  --color-danger: #b42318;
   --color-lock: #1f3f8f;
 
-  --color-promo-tint: #fbe7e2;
-  --color-check-tint: #fdf3d6;
-  --color-ok-tint: #e3f0e9;
+  --color-ok-tint: #ecfdf3;
+  --color-warning-tint: #fffaeb;
+  --color-danger-tint: #fef3f2;
   --color-lock-tint: #e7e9ee;
+
+  --color-paper: var(--color-page);
+  --color-card: var(--color-surface);
+  --color-sink: var(--color-fill);
+  --color-rail: var(--color-fill);
+  --color-faint: var(--color-subtle);
+  --color-line: var(--color-border);
+  --color-hair: var(--color-divider);
+  --color-promo: var(--color-danger);
+  --color-check: var(--color-warning);
+  --color-promo-tint: var(--color-danger-tint);
+  --color-check-tint: var(--color-warning-tint);
 
   --text-9: 9px;
   --text-10: 10px;
@@ -39,6 +51,9 @@
 
   --radius: 2px;
   --radius-capsule: 3px;
+  --radius-tag: 4px;
+  --radius-control: 6px;
+  --radius-card: 8px;
 
   --tracking-flag: 0.06em;
 

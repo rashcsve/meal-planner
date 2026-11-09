@@ -746,6 +746,22 @@ now, rather than undoing fixed desktop assumptions in R14. No blanket feature re
 
 **Boards:** listed under Verification above.
 
+#### R06 implementation slices
+
+Written 2026-11-09. Tokens before layout; no logic changes in token slices.
+
+**R06.1a** — v1 colour and radius tokens in `index.css`; old colour names become aliases of v1
+values so every screen keeps rendering. Tokens only, no markup. Checked by eye in Storybook
+against `context/design/v1/style-guide.png`.
+**R06.1b** — Inter replaces Archivo; 14px base; type roles; sentence-case labels.
+**R06.1c** — primitives (Button, Input, Select, FlagTag, ReasonTag): 44px targets,
+primary/secondary/destructive, visible focus, v1 radii; one story per variant.
+**R06.2** — top menu (Today, Plan, Shopping, Fridge, Recipes, Import) + Household access.
+**R06.3** — redirect `/week` → `/plan`, `/pantry` → `/fridge`, deep-link parameters kept.
+**R06.4** — shortcut hints move to a `?` sheet.
+**R06.5** — DishPhoto: recipe photo or a fill tile with the dish name.
+**R06.6+** — one screen per slice, each with loading/error/empty states.
+
 ### R07 — Recipe detail
 
 **Goal:** ingredients, cooking instructions and kcal agree at every portion setting.
