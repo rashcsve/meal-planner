@@ -2478,3 +2478,21 @@ pre-existing web warnings.
 Roles failed before). Typecheck clean; lint 0 errors, 3 warnings in untouched files.
 
 **Next:** R06.1b2.
+
+## R06.1c1 — Button primitive — `awaiting review` (2026-11-09)
+
+**Outcome:** Button is 44px (`h-11`), `rounded-control` (6px), `type-body` + 500. Variants
+`primary` (ink fill, white text), `secondary` (white, border line), `destructive` (white, danger
+text, danger-tint border). Focus: 2px solid lock outline, 2px offset.
+
+**Decisions:**
+- R06.1c split into 1c1 Button, 1c2 Input + Select, 1c3 FlagTag + ReasonTag.
+- `ghost` → `secondary`, `danger` → `destructive` renamed at every call site (13 files incl.
+  `RecipesPage` ternary) so names match the design system.
+- Focus ring width (2px) chosen here; spec only says "visible".
+
+**Verified:** `npm run test -w web` → 33 files / 102 tests pass (`Button.stories.tsx`: Primary,
+Secondary, Destructive, Focused failed before). `bash scripts/verify.sh` clean; lint 0 errors,
+3 warnings in untouched files.
+
+**Next:** R06.1c2.

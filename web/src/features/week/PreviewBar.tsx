@@ -28,7 +28,7 @@ export function PreviewBar({
       >
         <p className="flex-1">{message}</p>
         <Button onClick={onRegenerate}>Preview again</Button>
-        <Button variant="ghost" onClick={onDiscard}>
+        <Button variant="secondary" onClick={onDiscard}>
           Discard
         </Button>
       </div>
@@ -42,10 +42,10 @@ export function PreviewBar({
         <Button onClick={onAccept} disabled={busy}>
           Accept
         </Button>
-        <Button variant="ghost" onClick={onRegenerate} disabled={busy}>
+        <Button variant="secondary" onClick={onRegenerate} disabled={busy}>
           Try again
         </Button>
-        <Button variant="ghost" onClick={onDiscard} disabled={busy}>
+        <Button variant="secondary" onClick={onDiscard} disabled={busy}>
           Discard
         </Button>
       </div>

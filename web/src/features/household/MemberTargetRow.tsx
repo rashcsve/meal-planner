@@ -43,7 +43,7 @@ export function MemberTargetRow({ member, onSave, isSaving, error }: MemberTarge
         {...register("dinnerCalorieTarget", { valueAsNumber: true })}
       />
       <span className="type-label text-9 text-faint">kcal / dinner</span>
-      <Button type="submit" variant="ghost" disabled={isSaving}>
+      <Button type="submit" variant="secondary" disabled={isSaving}>
         Save
       </Button>
       {message && (

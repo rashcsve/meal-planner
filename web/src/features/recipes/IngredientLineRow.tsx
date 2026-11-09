@@ -84,7 +84,7 @@ export function IngredientLineRow({
           <input type="checkbox" {...register("isOptional")} />
           optional
         </label>
-        <Button type="submit" variant="ghost" disabled={isSaving}>
+        <Button type="submit" variant="secondary" disabled={isSaving}>
           Save
         </Button>
         <CloseButton

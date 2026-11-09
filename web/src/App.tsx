@@ -14,7 +14,7 @@ function ComingSoon({ label }: { label: string }) {
       <EmptyState
         message={`${label} isn't built yet.`}
         action={
-          <Button variant="ghost" disabled>
+          <Button variant="secondary" disabled>
             Coming soon
           </Button>
         }

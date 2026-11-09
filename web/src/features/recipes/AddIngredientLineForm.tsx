@@ -84,7 +84,7 @@ export function AddIngredientLineForm({
       >
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           onClick={() => {
             setIsNew((v) => !v);
             setNewName("");
@@ -120,7 +120,7 @@ export function AddIngredientLineForm({
             </Select>
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               disabled={isCreating || newName.trim() === ""}
               onClick={handleCreate}
             >
@@ -170,7 +170,7 @@ export function AddIngredientLineForm({
           <input type="checkbox" {...register("isOptional")} />
           optional
         </label>
-        <Button type="submit" variant="ghost" disabled={isAdding || isNew}>
+        <Button type="submit" variant="secondary" disabled={isAdding || isNew}>
           Add
         </Button>
       </form>

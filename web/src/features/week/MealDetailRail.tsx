@@ -156,7 +156,7 @@ export function MealDetailRail({
                   Locked
                 </span>
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   onClick={() => handleSetLocked(false)}
                   disabled={setSlotLocked.isPending}
                 >
@@ -168,7 +168,7 @@ export function MealDetailRail({
                 {slot.recipeId !== null && (
                   <div className="mb-2.5 flex justify-end">
                     <Button
-                      variant="ghost"
+                      variant="secondary"
                       onClick={() => handleSetLocked(true)}
                       disabled={setSlotLocked.isPending}
                     >
