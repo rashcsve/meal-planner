@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 
 test("an empty week offers to generate a plan", async ({ page }) => {
   await page.goto("/week");

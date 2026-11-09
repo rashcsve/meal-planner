@@ -694,12 +694,13 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
     not stubbed stories (those exist already). **R05.11a** (done) — harness: global setup starts
     Testcontainers Postgres, migrates, runs api on 3100 (cwd `e2e/`, so no `.env`) and Vite on
     5174; smoke journey on an empty week.
-    **R05.11a2** (done, Docker check pending) — harness hardening: ports 3100/5174 must be free
+    **R05.11a2** (done) — harness hardening: ports 3100/5174 must be free
     before start (an impostor on 3100 could answer `/health`); a failed setup tears down what it
     started; servers get SIGKILL 5s after SIGTERM; `e2e/` is in root `typecheck` (api's `tsc`, the
     hoisted TS 7 is broken) and `lint`.
-    **R05.11b** — preview → accept; adds the shared fixture that truncates tables before each
-    journey and seeds through the public API; asserts the saved week via GET.
+    **R05.11b** (done) — preview → accept; adds the shared fixture that truncates tables before each
+    journey and seeds through the public API; asserts the saved week via GET. Exception: the
+    household member is inserted by SQL (no create-member endpoint exists).
     **R05.11c** — cancel swap: Cancel from the picker; revision and slots unchanged via GET.
     **R05.11d** — stale preview: the test changes an input via the API before Accept; "Preview
     again" appears and a second Accept saves.
