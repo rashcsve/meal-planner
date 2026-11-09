@@ -109,20 +109,18 @@ function RecipeCard({ recipe, href }: { recipe: Recipe; href: string }) {
         <DishPhoto name={recipe.title} />
       </div>
       <div className="flex flex-col gap-2 p-4">
-        <h2 className="type-section text-ink">{recipe.title}</h2>
+        <h2 className="type-section min-h-[2lh] line-clamp-2 text-ink">{recipe.title}</h2>
         <p className="type-small text-muted">{`${kcal}${recipe.time} min`}</p>
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-tag bg-fill px-1.5 py-px text-12 font-semibold text-ink"
-              >
-                {sentenceCase(tag)}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="flex h-5 flex-wrap gap-1.5 overflow-hidden">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-tag bg-fill px-1.5 py-px text-12 font-semibold text-ink"
+            >
+              {sentenceCase(tag)}
+            </span>
+          ))}
+        </div>
       </div>
     </Link>
   );
