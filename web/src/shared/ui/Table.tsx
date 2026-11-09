@@ -27,12 +27,21 @@ function isGroupRow<T>(row: T | GroupRow): row is GroupRow {
   return typeof row === "object" && row !== null && "__group" in row;
 }
 
-function ariaSortValue(isSorted: boolean, direction: SortDirection | undefined): "ascending" | "descending" | "none" {
+function ariaSortValue(
+  isSorted: boolean,
+  direction: SortDirection | undefined,
+): "ascending" | "descending" | "none" {
   if (!isSorted) return "none";
   return direction === "asc" ? "ascending" : "descending";
 }
 
-function SortArrow({ visible, direction }: { visible: boolean; direction: SortDirection | undefined }) {
+function SortArrow({
+  visible,
+  direction,
+}: {
+  visible: boolean;
+  direction: SortDirection | undefined;
+}) {
   return (
     <span
       aria-hidden="true"
@@ -62,9 +71,9 @@ export interface TableProps<T> {
 
 export const rowStateShadow: Record<RowState, string> = {
   none: "",
-  check: "shadow-[inset_2px_0_0_0_var(--color-check)]",
-  promo: "shadow-[inset_2px_0_0_0_var(--color-promo)]",
-  expiring: "shadow-[inset_2px_0_0_0_var(--color-promo)]",
+  check: "[box-shadow:inset_3px_0_0_0_var(--color-check)]",
+  promo: "[box-shadow:inset_3px_0_0_0_var(--color-promo)]",
+  expiring: "[box-shadow:inset_3px_0_0_0_var(--color-promo)]",
 };
 
 export function Table<T>({
@@ -82,7 +91,8 @@ export function Table<T>({
   const showCheckbox = Boolean(selectedIds && onToggleSelect);
 
   function handleHeaderClick(key: string) {
-    const nextDirection: SortDirection = key === sortKey && sortDirection === "asc" ? "desc" : "asc";
+    const nextDirection: SortDirection =
+      key === sortKey && sortDirection === "asc" ? "desc" : "asc";
     onSortChange?.(key, nextDirection);
   }
 
@@ -130,10 +140,7 @@ export function Table<T>({
           if (isGroupRow(row)) {
             return (
               <tr key={`group-${row.label}`} className="bg-rail">
-                <td
-                  colSpan={columns.length + (showCheckbox ? 1 : 0)}
-                  className="px-2.25 py-1.25"
-                >
+                <td colSpan={columns.length + (showCheckbox ? 1 : 0)} className="px-2.25 py-1.25">
                   <div className="flex items-center justify-between">
                     <span className="text-10 font-black font-stretch-76% text-ink">
                       {row.label}
