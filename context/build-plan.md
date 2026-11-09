@@ -690,6 +690,24 @@ exist with revision checks. The historical-snapshot work deferred from R02.5 is 
 
 11. **R05.11 — Browser journeys:** preview → accept, cancel swap, stale preview, empty-slot
     replacement.
+    Split 2026-11-03: real web + api + Postgres via `@playwright/test` (`npm run test:e2e`),
+    not stubbed stories (those exist already). **R05.11a** (done) — harness: global setup starts
+    Testcontainers Postgres, migrates, runs api on 3100 (cwd `e2e/`, so no `.env`) and Vite on
+    5174; smoke journey on an empty week.
+    **R05.11a2** (done, Docker check pending) — harness hardening: ports 3100/5174 must be free
+    before start (an impostor on 3100 could answer `/health`); a failed setup tears down what it
+    started; servers get SIGKILL 5s after SIGTERM; `e2e/` is in root `typecheck` (api's `tsc`, the
+    hoisted TS 7 is broken) and `lint`.
+    **R05.11b** — preview → accept; adds the shared fixture that truncates tables before each
+    journey and seeds through the public API; asserts the saved week via GET.
+    **R05.11c** — cancel swap: Cancel from the picker; revision and slots unchanged via GET.
+    **R05.11d** — stale preview: the test changes an input via the API before Accept; "Preview
+    again" appears and a second Accept saves.
+    **R05.11e** — empty-slot replacement: open the picker on an empty slot, choose; slot saved.
+    **R05.11f** — run against the production build (`vite build` + `vite preview`) instead of the
+    dev server.
+    **R05.11g** — CI job for `npm run test:e2e` (`.github/` is red zone: ask first; CI needs
+    `npx playwright install chromium`).
 
 ### R06 — Use It Up design refresh
 

@@ -5,3 +5,5 @@ dist/
 *.tsbuildinfo
 api/scripts/*
 !api/scripts/compare-search.ts
+e2e/test-results/
+e2e/playwright-report/

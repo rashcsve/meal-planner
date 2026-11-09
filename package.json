@@ -12,13 +12,15 @@
     "dev": "npm run dev -w api",
     "dev:all": "docker compose -f api/docker-compose.yml up -d && concurrently -n api,web -c blue,green \"npm run dev -w api\" \"npm run dev -w web\"",
     "test": "npm run test -w api && npm run test -w web",
-    "typecheck": "npm run typecheck -w api && npm run typecheck -w web",
-    "lint": "npm run lint -w api && npm run lint -w web",
+    "typecheck": "npm run typecheck -w api && npm run typecheck -w web && npm exec -w api -- tsc -p ../e2e",
+    "lint": "npm run lint -w api && npm run lint -w web && oxlint e2e",
     "migrate": "npm run migrate -w api",
     "format": "prettier --write",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:hooks": "node --test .claude/hooks/guard.test.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "concurrently": "^10.0.5",
     "prettier": "^3.9.7"
   }

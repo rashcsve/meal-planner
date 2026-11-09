@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R05.11 — Browser journeys.
+**Next step:** R05.11b — Browser journey: preview → accept.
 
 ## R04 — planner correctness and search quality
 
@@ -50,6 +50,8 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R05.9b | Rail shows top-three `suggestions` + "See all options" link to the picker; empty slots too, locked none | complete 11-03 |
 | R05.10a | Optimistic lock/unlock: instant flip, rollback on error, older responses ignored, refetch on settle | complete 11-03 |
 | R05.10b | Rail "Lock" button on filled, unlocked slots; lock failure shows its own error | complete 11-03 |
+| R05.11a | E2E harness (Playwright + Testcontainers, real api + web) + empty-week smoke journey | complete 11-03 |
+| R05.11a2 | Harness hardening: free-port check, teardown on failed setup, kill timeout, e2e in typecheck + lint | code done 11-09; e2e run pending Docker |
 
 ## Earlier milestones
 
