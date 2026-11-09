@@ -30,7 +30,7 @@ function Shell({ path }: { path: string }) {
 const meta: Meta<typeof Shell> = {
   title: "app/AppShell",
   component: Shell,
-  args: { path: "/week" },
+  args: { path: "/plan" },
 };
 
 export default meta;
@@ -38,9 +38,9 @@ type Story = StoryObj<typeof Shell>;
 
 const MENU = [
   ["Today", "/today"],
-  ["Plan", "/week"],
+  ["Plan", "/plan"],
   ["Shopping", "/shopping"],
-  ["Fridge", "/pantry"],
+  ["Fridge", "/fridge"],
   ["Recipes", "/recipes"],
   ["Import", "/import"],
 ];
@@ -64,7 +64,7 @@ export const OnPlan: Story = {
 };
 
 export const SwapPickerMarksPlan: Story = {
-  args: { path: "/week/2026-11-02/swap/mon/dinner" },
+  args: { path: "/plan/2026-11-02/swap/mon/dinner" },
   play: async ({ canvasElement }) => {
     const menu = within(within(canvasElement).getByRole("navigation", { name: "Main" }));
     await expect(menu.getByRole("link", { name: "Plan" })).toHaveAttribute("aria-current", "page");
@@ -76,10 +76,10 @@ export const NumberKeysFollowMenuOrder: Story = {
     const canvas = within(canvasElement);
     const keys = [
       ["1", "/today"],
-      ["4", "/pantry"],
+      ["4", "/fridge"],
       ["6", "/import"],
       ["7", "/household"],
-      ["2", "/week"],
+      ["2", "/plan"],
     ];
     for (const [key, path] of keys) {
       await userEvent.keyboard(key);

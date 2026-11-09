@@ -8,7 +8,7 @@ test("a generated preview is saved only after Accept", async ({
   seedPlannableHousehold,
 }) => {
   const { recipeIds } = await seedPlannableHousehold();
-  await page.goto(`/week?start=${WEEK}`);
+  await page.goto(`/plan?start=${WEEK}`);
 
   await page.getByRole("button", { name: "Generate week" }).click();
   await expect(

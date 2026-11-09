@@ -30,7 +30,7 @@ test("Cancel in the swap picker leaves the saved week untouched", async ({
     (s: { day: number; mealSlot: string }) => s.day === 0 && s.mealSlot === "dinner",
   );
 
-  await page.goto(`/week?start=${WEEK}`);
+  await page.goto(`/plan?start=${WEEK}`);
   await page
     .getByRole("button")
     .filter({ hasText: firstDinner.recipeSnapshot.title })
@@ -40,7 +40,7 @@ test("Cancel in the swap picker leaves the saved week untouched", async ({
   await expect(page.getByRole("heading", { name: "Swap meal" })).toBeVisible();
 
   await page.getByRole("button", { name: "Cancel" }).click();
-  await expect(page).toHaveURL(new RegExp(`/week\\?start=${WEEK}$`));
+  await expect(page).toHaveURL(new RegExp(`/plan\\?start=${WEEK}$`));
 
   const after = await (await api.get(`/api/plans/${WEEK}`)).json();
   expect(after.revision).toBe(before.revision);

@@ -215,7 +215,7 @@ export function MealDetailRail({
                   ))}
                 </ul>
                 <Link
-                  to={`/week/${weekStartDate}/swap/${slot.day}/${mealSlot}`}
+                  to={`/plan/${weekStartDate}/swap/${slot.day}/${mealSlot}`}
                   className="mt-2 inline-block text-11 underline focus-visible:outline-thin focus-visible:outline-lock"
                 >
                   See all options

@@ -28,7 +28,7 @@ export function SwapPicker() {
   const candidatesQuery = useSlotCandidates(weekStartDate, day, mealSlot, offset);
   const replaceSlot = useReplaceSlot();
 
-  const backToWeek = () => navigate(`/week?start=${weekStartDate}`);
+  const backToWeek = () => navigate(`/plan?start=${weekStartDate}`);
   const recipeTitle = (id: number) => recipesQuery.data?.find((r) => r.id === id)?.title ?? "";
   const memberName = (id: number) => membersQuery.data?.find((m) => m.id === id)?.name ?? "";
   const week = weekQuery.data;

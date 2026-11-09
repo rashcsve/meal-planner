@@ -97,10 +97,10 @@ function Providers({ children }: { children: ReactNode }) {
   );
   return (
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[`/week?start=${WEEK}`, `/week/${WEEK}/swap/0/dinner`]}>
+      <MemoryRouter initialEntries={[`/plan?start=${WEEK}`, `/plan/${WEEK}/swap/0/dinner`]}>
         <Routes>
-          <Route path="/week" element={<WeekMarker />} />
-          <Route path="/week/:week/swap/:day/:mealSlot" element={children} />
+          <Route path="/plan" element={<WeekMarker />} />
+          <Route path="/plan/:week/swap/:day/:mealSlot" element={children} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
@@ -145,7 +145,7 @@ export const CancelDoesNotMutate: Story = {
     const canvas = within(canvasElement);
     await canvas.findByRole("button", { name: /Pasta bake/ });
     await userEvent.click(canvas.getByRole("button", { name: "Cancel" }));
-    await expect(await canvas.findByText(`Week page at /week?start=${WEEK}`)).toBeInTheDocument();
+    await expect(await canvas.findByText(`Week page at /plan?start=${WEEK}`)).toBeInTheDocument();
     await expect(api.requestsTo("PUT", REPLACE)).toHaveLength(0);
   },
 };
@@ -154,7 +154,7 @@ export const ChooseReplaces: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole("button", { name: /Pasta bake/ }));
-    await expect(await canvas.findByText(`Week page at /week?start=${WEEK}`)).toBeInTheDocument();
+    await expect(await canvas.findByText(`Week page at /plan?start=${WEEK}`)).toBeInTheDocument();
     await expect(api.requestsTo("PUT", REPLACE).map((r) => r.body)).toEqual([
       { recipeId: 8, expectedRevision: 3 },
     ]);

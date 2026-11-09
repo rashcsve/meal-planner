@@ -28,12 +28,12 @@ function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/today" element={<ComingSoon label="Today" />} />
-        <Route path="/week" element={<WeekPage />} />
-        <Route path="/week/:week/swap/:day/:mealSlot" element={<SwapPicker />} />
+        <Route path="/plan" element={<WeekPage />} />
+        <Route path="/plan/:week/swap/:day/:mealSlot" element={<SwapPicker />} />
         <Route path="/shopping" element={<ComingSoon label="Shopping" />} />
         <Route path="/recipes" element={<RecipesPage />} />
         <Route path="/recipes/:id" element={<RecipesPage />} />
-        <Route path="/pantry" element={<PantryPage />} />
+        <Route path="/fridge" element={<PantryPage />} />
         <Route path="/household" element={<HouseholdPage />} />
         <Route path="/import" element={<ComingSoon label="Import" />} />
         <Route path="*" element={<Navigate to="/recipes" replace />} />
