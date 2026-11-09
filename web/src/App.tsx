@@ -27,6 +27,7 @@ function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
+        <Route path="/today" element={<ComingSoon label="Today" />} />
         <Route path="/week" element={<WeekPage />} />
         <Route path="/week/:week/swap/:day/:mealSlot" element={<SwapPicker />} />
         <Route path="/shopping" element={<ComingSoon label="Shopping" />} />

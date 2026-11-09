@@ -1,22 +1,19 @@
 import { Outlet } from "react-router-dom";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { Sidebar } from "./Sidebar";
+import { TopMenu } from "./TopMenu";
 import { useNavShortcuts } from "./useNavShortcuts";
 
 export function AppShell() {
   useNavShortcuts();
 
   return (
-    <div className="grid h-screen grid-cols-[194px_1fr]">
-      <Sidebar />
-      <div className="grid grid-rows-[42px_1fr] overflow-hidden">
-        <div className="border-b border-line" />
-        <main className="overflow-hidden">
-          <ErrorBoundary>
-            <Outlet />
-          </ErrorBoundary>
-        </main>
-      </div>
+    <div className="grid h-screen grid-rows-[56px_1fr]">
+      <TopMenu />
+      <main className="overflow-hidden">
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
+      </main>
     </div>
   );
 }

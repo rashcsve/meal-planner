@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { NAV_ITEMS } from "./Sidebar";
+import { NAV_ITEMS } from "./navItems";
 
 const SHORTCUTS: Record<string, string> = Object.fromEntries(
   NAV_ITEMS.map((item) => [item.key, item.to]),

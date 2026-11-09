@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** R06.2.
+**Next step:** R06.3.
 
 ## R04 — planner correctness and search quality
 
@@ -70,7 +70,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | R06.1c1 | Button: 44px, 6px radius, 14/500; primary/secondary/destructive (renamed at all call sites); 2px lock focus | complete 11-09 |
 | R06.1c2 | Input + Select (and SearchInput via Input): 44px, 6px radius, v1 border, 14/400, Button's focus ring | complete 11-09 |
 | R06.1c3 | FlagTag + ReasonTag: 12/600 on tint, 4px radius; `save` tag danger → ok | complete 11-09 |
-| R06.2 | Top menu + Household access | not started |
+| R06.2 | 56px top menu replaces sidebar (Plan → `/week`, Fridge → `/pantry` until R06.3); Household link; keys 1–7 by menu order; `/today` coming soon | complete 11-09 |
 | R06.3 | `/week` → `/plan`, `/pantry` → `/fridge` redirects, params kept | not started |
 | R06.4 | Shortcut hints in a `?` sheet | not started |
 | R06.5 | DishPhoto | not started |
