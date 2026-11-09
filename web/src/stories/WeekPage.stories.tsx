@@ -5,10 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { WeekPage } from "../features/week/WeekPage";
 import { mockApi, type MockRoute } from "./mockApi";
+import { expectNoCaps } from "./expectNoCaps";
 
 const WEEK = "2026-11-02";
 const PREVIEW = /\/api\/plans\/generate\/preview$/;
 const ACCEPT = /\/api\/plans\/accept$/;
+const WEEK_GET = new RegExp(`/api/plans/${WEEK}$`);
+const never = () => new Promise(() => {});
 
 const inputVersions = {
   recipesVersionAt: "2026-11-01T10:00:00.000Z",
@@ -63,7 +66,7 @@ const baseRoutes: MockRoute[] = [
   },
   {
     method: "GET",
-    path: new RegExp(`/api/plans/${WEEK}$`),
+    path: /\/api\/plans\/\d{4}-\d{2}-\d{2}$/,
     status: 404,
     body: { error: { message: "Not found" } },
   },
@@ -97,7 +100,11 @@ const meta: Meta<typeof WeekPage> = {
     ),
   ],
   beforeEach: ({ parameters }) => {
-    api = mockApi([...(parameters.acceptRoute ? [parameters.acceptRoute] : []), ...baseRoutes]);
+    api = mockApi([
+      ...(parameters.routes ?? []),
+      ...(parameters.acceptRoute ? [parameters.acceptRoute] : []),
+      ...baseRoutes,
+    ]);
     return () => api.restore();
   },
 };
@@ -191,5 +198,77 @@ export const AcceptFails: Story = {
     await expect(await canvas.findByText("Couldn't save the plan")).toBeInTheDocument();
     await expect(canvas.getByText("Lentil soup")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Accept" })).toBeEnabled();
+  },
+};
+
+async function expectFrame(canvas: ReturnType<typeof within>, range = "2–8 November") {
+  await expect(canvas.getByText("Seven dinners")).toBeInTheDocument();
+  await expect(canvas.getByRole("heading", { level: 1, name: range })).toBeInTheDocument();
+  await expect(canvas.getByRole("button", { name: "Previous week" })).toBeInTheDocument();
+  await expect(canvas.getByRole("button", { name: "Next week" })).toBeInTheDocument();
+}
+
+export const Empty: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("No plan generated for this week yet.");
+    await expectFrame(canvas);
+    await expectNoCaps(canvasElement);
+  },
+};
+
+export const Loading: Story = {
+  parameters: { routes: [{ method: "GET", path: WEEK_GET, body: never }] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("status", { name: "Loading the plan" });
+    await expectFrame(canvas);
+  },
+};
+
+export const LoadError: Story = {
+  parameters: {
+    routes: [
+      { method: "GET", path: WEEK_GET, status: 500, body: { error: { message: "Server down" } } },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const alert = await canvas.findByRole("alert");
+    await expect(alert).toHaveTextContent("Couldn't load the week");
+    await expectFrame(canvas);
+  },
+};
+
+export const SavedWeek: Story = {
+  parameters: { routes: [{ method: "GET", path: WEEK_GET, body: acceptedWeek }] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("Lentil soup");
+    await expectFrame(canvas);
+    await expectNoCaps(canvasElement);
+  },
+};
+
+export const PreviewKeepsFrame: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await openPreview(canvasElement);
+    await expectFrame(canvas);
+  },
+};
+
+export const ArrowsChangeWeek: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("No plan generated for this week yet.");
+    await userEvent.click(canvas.getByRole("button", { name: "Next week" }));
+    await expect(
+      await canvas.findByRole("heading", { level: 1, name: "9–15 November" }),
+    ).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Previous week" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Previous week" }));
+    await expect(
+      await canvas.findByRole("heading", { level: 1, name: "26 October–1 November" }),
+    ).toBeInTheDocument();
   },
 };

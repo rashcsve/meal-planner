@@ -51,12 +51,10 @@ export function formatDayLabel(dateIso: string): string {
 export function formatWeekRange(weekStartDate: string): string {
   const start = parseIsoDate(weekStartDate);
   const end = parseIsoDate(addDays(weekStartDate, 6));
-  const startLabel = start.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
-  const endLabel = end.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-  return `${startLabel}–${endLabel}`;
+  const dayMonth = { day: "numeric", month: "long", timeZone: "UTC" } as const;
+  const startLabel =
+    start.getUTCMonth() === end.getUTCMonth()
+      ? start.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" })
+      : start.toLocaleDateString("en-GB", dayMonth);
+  return `${startLabel}–${end.toLocaleDateString("en-GB", dayMonth)}`;
 }
