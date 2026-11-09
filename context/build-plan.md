@@ -758,7 +758,7 @@ a11y checks see real colours; `faint` aliases `muted` because v1 `subtle` #A8A29
 AA as text.
 **R06.1b1** — Inter replaces Archivo; 14px base; type-role utilities; old `type-*` utilities
 sentence case. Old `text-9…34` sizes stay until the screens move to roles (R06.6+). (done)
-**R06.1b2** — remove raw `uppercase` / `tracking-*` classes from markup.
+**R06.1b2** — remove raw `uppercase` / `tracking-*` classes from markup. (done)
 **R06.1c** — primitives (Button, Input, Select, FlagTag, ReasonTag): 44px targets,
 primary/secondary/destructive, visible focus, v1 radii; one story per variant.
 **R06.2** — top menu (Today, Plan, Shopping, Fridge, Recipes, Import) + Household access.

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { Sidebar } from "../app/Sidebar";
 import { mockApi } from "./mockApi";
+import { expectNoCaps } from "./expectNoCaps";
 
 function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -47,5 +48,6 @@ export const OnWeek: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("2–8 November 2026")).toBeVisible();
     await expect(canvas.getByText("Plan")).toBeVisible();
+    await expectNoCaps(canvasElement);
   },
 };

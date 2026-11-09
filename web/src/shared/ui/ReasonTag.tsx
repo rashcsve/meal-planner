@@ -18,7 +18,7 @@ export function ReasonTag({ variant, children, title }: ReasonTagProps) {
   return (
     <span
       title={title}
-      className={`inline-flex items-center rounded px-1 py-px text-9 font-bold uppercase tracking-wider font-stretch-88% ${variantClasses[variant]}`}
+      className={`inline-flex items-center rounded px-1 py-px text-9 font-bold font-stretch-88% ${variantClasses[variant]}`}
     >
       {children}
     </span>

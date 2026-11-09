@@ -104,7 +104,7 @@ export function Table<T>({
                 aria-sort={col.sortable ? ariaSortValue(isSorted, sortDirection) : undefined}
                 style={{ width: col.width }}
                 className={cx(
-                  "whitespace-nowrap border-b border-line px-2.25 py-1.75 text-9 font-bold font-stretch-88% tracking-[0.07em] text-faint uppercase",
+                  "whitespace-nowrap border-b border-line px-2.25 py-1.75 text-9 font-bold font-stretch-88% text-faint",
                   col.align === "right" ? "text-right" : "text-left",
                 )}
               >
@@ -112,7 +112,7 @@ export function Table<T>({
                   <button
                     type="button"
                     onClick={() => handleHeaderClick(col.key)}
-                    className="cursor-pointer select-none uppercase hover:text-ink focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1"
+                    className="cursor-pointer select-none hover:text-ink focus-visible:outline-thin focus-visible:outline-lock focus-visible:-outline-offset-1"
                   >
                     {col.header}
                     <SortArrow visible={isSorted} direction={sortDirection} />
@@ -135,7 +135,7 @@ export function Table<T>({
                   className="px-2.25 py-1.25"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-10 font-black font-stretch-76% tracking-wider text-ink uppercase">
+                    <span className="text-10 font-black font-stretch-76% text-ink">
                       {row.label}
                     </span>
                     <span className="text-right text-12 font-extrabold font-stretch-80% [font-feature-settings:'tnum']">

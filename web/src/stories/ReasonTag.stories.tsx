@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ReasonTag } from "../shared/ui/ReasonTag";
+import { expectNoCaps } from "./expectNoCaps";
 
 const meta: Meta<typeof ReasonTag> = {
   title: "shared/ui/ReasonTag",
   component: ReasonTag,
+  play: async ({ canvasElement }) => expectNoCaps(canvasElement),
 };
 
 export default meta;

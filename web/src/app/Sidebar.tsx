@@ -64,12 +64,12 @@ export function Sidebar() {
 
   return (
     <aside className="flex flex-col overflow-hidden border-r border-line bg-sink">
-      <div className="border-b border-line px-3.5 pt-3.25 pb-2.75 text-15 leading-[1.15] tracking-[-0.01em] font-stretch-70% font-black">
+      <div className="border-b border-line px-3.5 pt-3.25 pb-2.75 text-15 leading-[1.15] font-stretch-70% font-black">
         MEAL
         <br />
         PLANNER
         {weekRangeLabel && (
-          <span className="mt-0.5 block text-9 font-stretch-88% font-semibold tracking-widest text-faint">
+          <span className="mt-0.5 block text-9 font-stretch-88% font-semibold text-faint">
             {weekRangeLabel}
           </span>
         )}
