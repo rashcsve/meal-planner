@@ -3,7 +3,7 @@
 Short status only. Full entries (decisions, tests, verification) live in
 [progress-archive.md](progress-archive.md) — read one only when the current step depends on it.
 
-**Next step:** fix story tests to load Tailwind (vitest config), then R06.1b.
+**Next step:** R06.1b.
 
 ## R04 — planner correctness and search quality
 
@@ -64,6 +64,7 @@ Short status only. Full entries (decisions, tests, verification) live in
 | Step | What | Status |
 | --- | --- | --- |
 | R06.1a | v1 colour + radius tokens; old colour names alias v1 values | complete 11-09 |
+| R06.1a2 | Story tests load Tailwind (a11y contrast now real); `faint` aliases `muted` — v1 `subtle` #A8A29E fails AA as text | complete 11-09 |
 | R06.1b | Inter, 14px base, type roles, sentence case | not started |
 | R06.1c | Primitives: 44px targets, button variants, focus, v1 radii | not started |
 | R06.2 | Top menu + Household access | not started |

@@ -31,7 +31,7 @@
   --color-card: var(--color-surface);
   --color-sink: var(--color-fill);
   --color-rail: var(--color-fill);
-  --color-faint: var(--color-subtle);
+  --color-faint: var(--color-muted);
   --color-line: var(--color-border);
   --color-hair: var(--color-divider);
   --color-promo: var(--color-danger);

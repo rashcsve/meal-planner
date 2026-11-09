@@ -753,6 +753,9 @@ Written 2026-11-09. Tokens before layout; no logic changes in token slices.
 **R06.1a** — v1 colour and radius tokens in `index.css`; old colour names become aliases of v1
 values so every screen keeps rendering. Tokens only, no markup. Checked by eye in Storybook
 against `context/design/v1/style-guide.png`.
+**R06.1a2** — story tests load Tailwind (`@tailwindcss/vite` in `web/vitest.config.ts`) so the
+a11y checks see real colours; `faint` aliases `muted` because v1 `subtle` #A8A29E (~2.5:1) fails
+AA as text.
 **R06.1b** — Inter replaces Archivo; 14px base; type roles; sentence-case labels.
 **R06.1c** — primitives (Button, Input, Select, FlagTag, ReasonTag): 44px targets,
 primary/secondary/destructive, visible focus, v1 radii; one story per variant.
