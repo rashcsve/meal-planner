@@ -32,6 +32,32 @@ export function AddToFridgeForm() {
     ? ingredients.filter((i) => normalizeForSearch(i.name).includes(needle))
     : [];
   const showList = open && matches.length > 0;
+  const [active, setActive] = useState(-1);
+  const activeOption = showList ? matches[active] : undefined;
+  const optionId = (id: number) => `fridge-item-option-${id}`;
+
+  function closeList() {
+    setOpen(false);
+    setActive(-1);
+  }
+
+  function onItemKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown" && matches.length > 0) {
+      e.preventDefault();
+      setOpen(true);
+      setActive((i) => Math.min(i + 1, matches.length - 1));
+    } else if (e.key === "ArrowUp" && showList) {
+      e.preventDefault();
+      setActive((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeOption) {
+      e.preventDefault();
+      chooseText(activeOption.name);
+      closeList();
+    } else if (e.key === "Escape" && showList) {
+      e.preventDefault();
+      closeList();
+    }
+  }
 
   function chooseText(text: string) {
     setQuery(text);
@@ -74,14 +100,17 @@ export function AddToFridgeForm() {
               aria-expanded={showList}
               aria-controls="fridge-item-options"
               aria-autocomplete="list"
+              aria-activedescendant={activeOption ? optionId(activeOption.id) : undefined}
               autoComplete="off"
               className="w-full"
               value={query}
               onChange={(e) => {
                 chooseText(e.target.value);
                 setOpen(true);
+                setActive(-1);
               }}
-              onBlur={() => setOpen(false)}
+              onKeyDown={onItemKeyDown}
+              onBlur={closeList}
             />
             {showList && (
               <ul
@@ -93,13 +122,14 @@ export function AddToFridgeForm() {
                 {matches.map((i) => (
                   <li
                     key={i.id}
+                    id={optionId(i.id)}
                     role="option"
-                    aria-selected={false}
-                    className="cursor-pointer px-3 py-2 hover:bg-fill"
+                    aria-selected={i === activeOption}
+                    className={`cursor-pointer px-3 py-2 hover:bg-fill ${i === activeOption ? "bg-fill" : ""}`}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       chooseText(i.name);
-                      setOpen(false);
+                      closeList();
                     }}
                   >
                     {i.name}
@@ -131,7 +161,11 @@ export function AddToFridgeForm() {
           <Input
             id="fridge-expires"
             type="date"
-            onClick={(e) => e.currentTarget.showPicker()}
+            onClick={(e) => {
+              try {
+                e.currentTarget.showPicker();
+              } catch {}
+            }}
             {...register("expiresOn", { setValueAs: emptyToUndefined })}
           />
         </div>
