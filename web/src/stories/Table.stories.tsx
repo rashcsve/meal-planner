@@ -1,11 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import {
-  Table,
-  type ColumnDef,
-  type GroupRow,
-  type RowState,
-} from "../shared/ui/Table";
+import { Table, type ColumnDef, type GroupRow, type RowState } from "../shared/ui/Table";
+import { expectNoCaps } from "./expectNoCaps";
 
 interface Ingredient {
   id: string;
@@ -106,9 +102,7 @@ function sortRows(
   let bucket: Ingredient[] = [];
   const flush = () => {
     bucket.sort((a, b) =>
-      direction === "asc"
-        ? getValue(a) - getValue(b)
-        : getValue(b) - getValue(a),
+      direction === "asc" ? getValue(a) - getValue(b) : getValue(b) - getValue(a),
     );
     sorted.push(...bucket);
     bucket = [];
@@ -128,9 +122,7 @@ function sortRows(
 function FullTableStory() {
   const [sortKey, setSortKey] = useState("price");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [selectedIds, setSelectedIds] = useState<Set<string | number>>(
-    new Set(),
-  );
+  const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
 
   const sortedRows = useMemo(() => {
     const getValue = columns.find((c) => c.key === sortKey)?.sortValue;
@@ -183,4 +175,6 @@ export default meta;
 type Story = StoryObj<typeof FullTableStory>;
 
 export const Basic: Story = { render: () => <BasicTableStory /> };
-export const Ingredients: Story = {};
+export const Ingredients: Story = {
+  play: async ({ canvasElement }) => expectNoCaps(canvasElement),
+};

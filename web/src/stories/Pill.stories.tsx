@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Pill } from "../shared/ui/Pill";
+import { expectNoCaps } from "./expectNoCaps";
 
 const meta: Meta<typeof Pill> = {
   title: "shared/ui/Pill",
@@ -12,4 +13,6 @@ const meta: Meta<typeof Pill> = {
 export default meta;
 type Story = StoryObj<typeof Pill>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvasElement }) => expectNoCaps(canvasElement),
+};

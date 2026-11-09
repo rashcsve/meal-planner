@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FlagTag } from "../shared/ui/FlagTag";
+import { expectNoCaps } from "./expectNoCaps";
 
 const meta: Meta<typeof FlagTag> = {
   title: "shared/ui/FlagTag",
@@ -12,4 +13,6 @@ const meta: Meta<typeof FlagTag> = {
 export default meta;
 type Story = StoryObj<typeof FlagTag>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvasElement }) => expectNoCaps(canvasElement),
+};
