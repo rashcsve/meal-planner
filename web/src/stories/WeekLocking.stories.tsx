@@ -171,3 +171,35 @@ export const LateUnlockResponseKeepsNewerRevision: Story = {
     refetch.resolve(week(5, true));
   },
 };
+
+export const CardUnlockConflictShowsErrorOnCard: Story = {
+  parameters: { lockStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Unlock Mon 2" }));
+
+    await waitFor(() =>
+      expect(canvas.getByRole("button", { name: "Lock Mon 2" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      ),
+    );
+    await expect(api.requestsTo("DELETE", LOCK).map((r) => r.body)).toEqual([
+      { expectedRevision: 3 },
+    ]);
+    await expect(canvas.queryByRole("button", { name: "Unlock to edit" })).toBeNull();
+
+    unlock.resolve({
+      error: {
+        message: "Plan was changed by another request",
+        details: { code: "STALE_PLAN_REVISION" },
+      },
+    });
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent("Couldn't unlock meal");
+    await expect(canvas.getByRole("button", { name: "Unlock Mon 2" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  },
+};
