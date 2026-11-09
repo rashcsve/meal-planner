@@ -722,8 +722,8 @@ shared primitives/stories, shell/router, existing recipe/fridge/plan/household v
 in `.claude/rules/web.md`: Inter, greyscale with ok/warning/danger/lock tones,
 4/6/8px radii, 44px targets, underline top menu, sentence-case labels.
 Then update layouts: top navigation (Today, Plan, Shopping, Fridge, Recipes, Import),
-Household access and future spend slot; redirect `/week` → `/plan`, `/pantry` → `/fridge`
-while preserving deep-link parameters. Keep shortcuts, move hints to a `?` sheet.
+Household access and future spend slot; rename `/week` → `/plan`, `/pantry` → `/fridge`
+(no redirects: no old links in use). Keep shortcuts, move hints to a `?` sheet.
 Add DishPhoto: the recipe's photo, or a plain fill tile with the dish name. Give every built screen
 loading/error/empty states; generation empty state uses R05's actual behavior.
 
@@ -766,7 +766,7 @@ sentence case. Old `text-9…34` sizes stay until the screens move to roles (R06
 `save` moves from danger to ok (v1: money saved = ok). (done)
 **R06.2** — top menu (Today, Plan, Shopping, Fridge, Recipes, Import) + Household access;
 sidebar removed; keys 1–6 follow menu order, 7 Household; `/today` is a coming-soon page. (done)
-**R06.3** — redirect `/week` → `/plan`, `/pantry` → `/fridge`, deep-link parameters kept.
+**R06.3** — `/week` → `/plan`, `/pantry` → `/fridge`. Changed 2026-11-09: rename only, no redirects (no old links in use). (done)
 **R06.4** — shortcut hints move to a `?` sheet.
 **R06.5** — DishPhoto: recipe photo or a fill tile with the dish name.
 **R06.6+** — one screen per slice, each with loading/error/empty states.

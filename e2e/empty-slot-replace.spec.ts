@@ -29,7 +29,7 @@ test("choosing a recipe in the picker fills an empty slot and saves it", async (
   expect(accepted.ok(), await accepted.text()).toBe(true);
   const before = await (await api.get(`/api/plans/${WEEK}`)).json();
 
-  await page.goto(`/week?start=${WEEK}`);
+  await page.goto(`/plan?start=${WEEK}`);
   await page.getByRole("button").filter({ hasText: "No recipe assigned" }).click();
   await page.getByRole("link", { name: "See all options" }).click();
   await expect(page.getByText("No recipe assigned for this day.")).toBeVisible();
@@ -37,7 +37,7 @@ test("choosing a recipe in the picker fills an empty slot and saves it", async (
   const choice = page.getByRole("listitem").getByRole("button").first();
   const chosenTitle = (await choice.locator("span").first().textContent()) ?? "";
   await choice.click();
-  await expect(page).toHaveURL(new RegExp(`/week\\?start=${WEEK}$`));
+  await expect(page).toHaveURL(new RegExp(`/plan\\?start=${WEEK}$`));
   await expect(page.getByText("No recipe assigned")).toHaveCount(0);
 
   const after = await (await api.get(`/api/plans/${WEEK}`)).json();

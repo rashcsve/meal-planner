@@ -8,7 +8,7 @@ test("an input change before Accept asks for a new preview, and the second Accep
   seedPlannableHousehold,
 }) => {
   const { recipeIds } = await seedPlannableHousehold();
-  await page.goto(`/week?start=${WEEK}`);
+  await page.goto(`/plan?start=${WEEK}`);
 
   await page.getByRole("button", { name: "Generate week" }).click();
   await expect(

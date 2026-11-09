@@ -119,7 +119,7 @@ async function expectTopThreeAndLink(canvasElement: HTMLElement) {
   await expect(canvas.queryByRole("button", { name: /Mushroom risotto/ })).not.toBeInTheDocument();
   await expect(canvas.getByRole("link", { name: "See all options" })).toHaveAttribute(
     "href",
-    `/week/${WEEK}/swap/0/dinner`,
+    `/plan/${WEEK}/swap/0/dinner`,
   );
 }
 
