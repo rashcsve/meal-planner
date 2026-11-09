@@ -780,6 +780,7 @@ via a "Sort by" select (decided 2026-11-09). (done) **R06.7c** — "Add a recipe
 **R06.7+** — remaining screens, one per slice, each with loading/error/empty states.
 **R06.8a** — Household frame: "Everything the planner reads before it runs" + page title in every state,
 `role=status` loading, "No one in the household yet." when there are no members. Restyle only. (done)
+**R06.8b** — Household "Who eats" card: v1 card + h2, rows with initial avatar, name, "about N kcal at dinner" (or "No dinner target yet"), kcal input + Save. Restyle only; portion stepper and "Add someone" wait for data. (done)
 
 ### R07 — Recipe detail
 

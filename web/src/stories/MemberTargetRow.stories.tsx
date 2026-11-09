@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
 import { MemberTargetRow } from "../features/household/MemberTargetRow";
 import type { HouseholdMember } from "../features/household/useHousehold";
 
@@ -26,10 +27,25 @@ const meta: Meta<typeof MemberTargetRow> = {
 export default meta;
 type Story = StoryObj<typeof MemberTargetRow>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Svetlana")).toBeInTheDocument();
+    await expect(canvas.getByText("about 500 kcal at dinner")).toBeInTheDocument();
+    const avatar = canvas.getByText("S");
+    await expect(avatar).toHaveAttribute("aria-hidden", "true");
+    await expect(canvas.getByLabelText("Dinner calorie target for Svetlana")).toHaveValue(500);
+    await expect(canvas.getByText("kcal", { exact: true })).toBeInTheDocument();
+  },
+};
 
 export const Unconfigured: Story = {
   args: { member: { ...member, dinnerCalorieTarget: null } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("No dinner target yet")).toBeInTheDocument();
+    await expect(canvas.queryByText(/kcal at dinner/)).not.toBeInTheDocument();
+  },
 };
 
 export const Saving: Story = { args: { isSaving: true } };
