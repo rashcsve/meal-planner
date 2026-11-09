@@ -2630,3 +2630,17 @@ with approval, because the tile repeats the name. `npm run test -w web` → 36 f
 pass; typecheck clean; lint 0 errors, 2 warnings in untouched files.
 
 **Next:** R06.7c.
+
+## R06.7c — "Add a recipe" tile — `awaiting review` (2026-11-09)
+
+**Outcome:** a dashed `AddRecipeTile` button ("+", "Add a recipe", "Name, ingredients, minutes") is
+the first item of the recipes grid. It toggles the inline `RecipeForm` (`aria-expanded`); the form's
+Cancel closes it. The toolbar "Add recipe" button is removed (decided 2026-11-09). The grid, with the
+tile, renders in every loaded state; with no recipes or no matches the empty message shows above it.
+The "+" sits in a 44px square, not the board's circle (v1: circles only for dots and avatars).
+
+**Verified:** stories AddTile / EmptyHasAddTile / NoMatchHasAddTile failed before (no tile) and pass
+after. `npm run test -w web` → 36 files / 138 tests pass; `bash scripts/verify.sh` passes; 2 lint
+warnings in untouched files.
+
+**Next:** R06.7d.
